@@ -1,6 +1,8 @@
 import os
+import sys
 from datetime import timedelta
 
+import pytest
 from conftest import make_disk
 from sqlalchemy import select
 
@@ -124,6 +126,7 @@ def test_build_bays_states_and_display_order(db):
         assert bays.build_bays(s, cfg, snap)[3].state == "offline"
 
 
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="sysfs gibt es nur unter Linux")
 def test_sata_ports_from_sysfs(tmp_path):
     dev = tmp_path / "devices/pci0000:00/0000:00:17.0/ata3/host2/target2:0:0/2:0:0:0/block/sdb"
     dev.mkdir(parents=True)

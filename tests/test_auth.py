@@ -84,14 +84,17 @@ def test_no_password_means_open_locally(client):
 
 def test_create_app_without_explicit_paths_and_legacy_import(db, tmp_path, monkeypatch):
     """Regression: `diskatlas serve` ruft create_app ohne Testpfade auf."""
+    from diskatlas.config import default_data_dir
+    from diskatlas.services import bays
+
+    # Datenverzeichnis plattformübergreifend umlenken (Linux: XDG, Windows: LOCALAPPDATA)
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
-    legacy = tmp_path / "diskatlas" / "bays.json"
-    legacy.parent.mkdir(parents=True)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    legacy = default_data_dir() / "bays.json"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
     legacy.write_text('{"ports": ["ata6", "ata5"], "reverse": true}', encoding="utf-8")
     client = TestClient(create_app(Config(), db))
     assert client.get("/").status_code == 200
-    from diskatlas.services import bays
-
     with db.session() as s:
         cfg = bays.load_config(s)
     assert cfg.ports[:2] == ["ata6", "ata5"] and cfg.reverse is True
