@@ -12,6 +12,10 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Geändert
+- **README auf Englisch** (`README.md`), deutsche Fassung in `README.de.md`; beide mit
+  Sprachumschaltung. Veraltete Stellen korrigiert (Platzhalter-URL beim `git clone`, Hinweis „kein
+  Login“ aus Version 0.1, Start des Containers mit Passwort und Token, Befehl `diskatlas agent`).
+- `docs/CODE_SIGNING.md` vollständig englisch mit deutscher Kurzfassung.
 - README und Release-Seiten nennen die Code-Signatur über SignPath (Voraussetzung für den Antrag
   bei der SignPath Foundation).
 

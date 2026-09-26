@@ -1,100 +1,107 @@
 # DiskAtlas
 
-**Inventar für Festplatten.** DiskAtlas erfasst automatisch jede angeschlossene oder per
-Hot-Plug angesteckte Festplatte (Bezeichnung, Seriennummer, SMART-Gesundheit, Größe,
-belegter und freier Speicher, alle Dateien) und speichert alles in einer Datenbank. So bleibt
-die Übersicht vollständig, auch wenn eine Platte längst wieder im Schrank liegt.
+**English** | [Deutsch](README.de.md)
 
-- 🔌 **Hot-Plug**: neue Festplatten werden innerhalb weniger Sekunden erkannt und gescannt
-- 🩺 **SMART**: Gesundheit, Temperatur, Betriebsstunden, defekte Sektoren, Verlauf
-- 🗂️ **Dateiindex**: „Auf welcher Platte liegt diese Datei?“, auch offline durchsuchbar
-- 🏷️ **Labels & Kategorien**: z. B. `Standort: Keller`, `Inhalt: Filme`, plus Notizen
-- 📊 **Dashboard**: Kennzahlen, Suche, Filter, Gruppierung, Sortierung (Browser)
-- 🐧🪟 **Linux Mint und Windows**; Server optional im **Docker-Container** (Unraid) oder in der Cloud
+**An inventory for hard drives.** DiskAtlas automatically records every hard drive that is
+connected or hot-plugged (model, serial number, SMART health, capacity, used and free space, and
+every file on it) and stores it all in a database. Your overview stays complete even when a drive
+has long been put back in the cupboard.
 
-Details zu Architektur, Entscheidungen und Roadmap: **[PROJECT.md](PROJECT.md)** ·
-Änderungen: **[CHANGELOG.md](CHANGELOG.md)**
+- 🔌 **Hot-plug**: new drives are detected and scanned within seconds
+- 🩺 **SMART**: health, temperature, power-on hours, bad sectors, history
+- 🗂️ **File index**: "Which drive holds this file?" – searchable even while the drive is offline
+- 🏷️ **Labels & categories**: e.g. `Location: Basement`, `Content: Movies`, plus notes
+- 📊 **Dashboard**: key figures, search, filters, grouping, sorting (in the browser)
+- 📱 **iPhone web app**: scan a drive's serial-number barcode to see where it is
+- 🐧🪟 **Linux and Windows**; optional central server as a **Docker container** (e.g. Unraid)
+
+> The user interface and the detailed guides are currently in German.
+
+Architecture, decisions and roadmap: **[PROJECT.md](PROJECT.md)** (German) ·
+Changes: **[CHANGELOG.md](CHANGELOG.md)** (German)
 
 ---
 
 ## Installation
 
-### Fertiges Programm (empfohlen)
+### Ready-made program (recommended)
 
-Unter *Releases* liegt der Agent als einzelne Datei für Windows und Linux: Symbol im
-Infobereich, Einstellungsfenster, wahlweise **nur auf diesem PC** (Oberfläche und Datenbank im
-Programm) oder **mit einem DiskAtlas-Server** (Docker/Unraid). Anleitung:
-**[docs/AGENT.md](docs/AGENT.md)**.
+The [Releases](https://github.com/RealCommerzpunk/DiskAtlas/releases) page has the agent as a
+single file for Windows and Linux: an icon in the system tray and a settings window. It runs
+either **on this PC only** (web interface and database inside the program) or **connected to a
+DiskAtlas server** (Docker/Unraid). Guide: **[docs/AGENT.md](docs/AGENT.md)** (German).
 
-Code-Signatur der Windows-Datei: Free code signing provided by [SignPath.io](https://about.signpath.io/),
-certificate by [SignPath Foundation](https://signpath.org/) (Einrichtung läuft; Richtlinie:
+Code signing of the Windows file: Free code signing provided by
+[SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/) (setup in progress; policy:
 [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)).
 
-### Aus dem Quellcode: Linux Mint / Ubuntu
+### From source: Linux Mint / Ubuntu
 
 ```bash
 sudo apt install python3-venv smartmontools git
-git clone https://github.com/OWNER/diskatlas.git ~/diskatlas   # oder vorhandenen Ordner nutzen
+git clone https://github.com/RealCommerzpunk/DiskAtlas.git ~/diskatlas
 cd ~/diskatlas
 python3 -m venv .venv
 .venv/bin/pip install -e .
 .venv/bin/diskatlas run
 ```
 
-Dann im Browser **http://127.0.0.1:8765** öffnen.
+Then open **http://127.0.0.1:8765** in the browser.
 
-### Aus dem Quellcode: Windows 10/11
+### From source: Windows 10/11
 
-1. [Python 3.11+](https://www.python.org/downloads/) installieren (Haken bei *Add to PATH*).
-2. [smartmontools für Windows](https://www.smartmontools.org/wiki/Download) installieren.
-3. In einer **Administrator**-PowerShell (SMART benötigt Adminrechte):
+1. Install [Python 3.11+](https://www.python.org/downloads/) (tick *Add to PATH*).
+2. Install [smartmontools for Windows](https://www.smartmontools.org/wiki/Download).
+3. In an **administrator** PowerShell (SMART requires admin rights):
 
 ```powershell
-cd C:\Pfad\zu\diskatlas
+cd C:\path\to\diskatlas
 py -m venv .venv
 .venv\Scripts\pip install -e .
 .venv\Scripts\diskatlas run
 ```
 
-Autostart bei der Anmeldung (mit Adminrechten):
+Start at logon (with admin rights):
 `powershell -ExecutionPolicy Bypass -File deploy\windows\install-autostart.ps1`
 
-## SMART-Berechtigungen (Linux)
+## SMART permissions (Linux)
 
-`smartctl` braucht root-Rechte. Ohne sie funktioniert alles andere, der Gesundheitsstatus
-bleibt aber „Unbekannt“. Empfohlen wird eine sudo-Regel, die **nur** `smartctl` freigibt:
+`smartctl` needs root rights. Without them everything else works, but the health status stays
+"unknown". Recommended: a sudo rule that allows **only** `smartctl`:
 
 ```bash
 ./scripts/setup-smartctl-sudo.sh
 ```
 
-DiskAtlas versucht danach automatisch `sudo -n smartctl …`. Alternative: den Agenten als root
-starten (`sudo .venv/bin/diskatlas watch`).
+DiskAtlas then tries `sudo -n smartctl …` automatically. Alternatively run the agent as root
+(`sudo .venv/bin/diskatlas watch`).
 
-## Benutzung
+## Usage
 
-| Befehl | Beschreibung |
+| Command | Description |
 |---|---|
-| `diskatlas run` | Dashboard **und** Überwachung starten (Normalbetrieb) |
-| `diskatlas scan` | alle angeschlossenen Festplatten einmal scannen (`--no-files`, `--disk /dev/sdb`) |
-| `diskatlas disks --smart` | erkannte Festplatten anzeigen, ohne zu speichern |
-| `diskatlas serve` | nur Dashboard/API (z. B. im Container) |
-| `diskatlas watch` | nur Überwachung (lokal oder an einen Server) |
-| `diskatlas config --init` | Beispielkonfiguration anlegen |
-| `diskatlas db copy --to URL` | Datenbestand in eine andere Datenbank umziehen |
+| `diskatlas run` | start dashboard **and** monitoring (normal operation) |
+| `diskatlas scan` | scan all connected drives once (`--no-files`, `--disk /dev/sdb`) |
+| `diskatlas disks --smart` | show detected drives without saving |
+| `diskatlas serve` | dashboard/API only (e.g. in the container) |
+| `diskatlas agent` | agent for a central server (sends to `server_url`, runs server commands) |
+| `diskatlas watch` | monitoring only (local database or a server) |
+| `diskatlas config --init` | create an example configuration |
+| `diskatlas db copy --to URL` | move all data to another database |
 
-Mit `-v` gibt es ausführliche Logs. Die REST-API ist unter **/docs** dokumentiert.
+Add `-v` for verbose logs. The REST API is documented at **/docs**.
 
-**Speicherorte (Standard)**
+**Default locations**
 
 | | Linux | Windows |
 |---|---|---|
-| Datenbank | `~/.local/share/diskatlas/diskatlas.db` | `%LOCALAPPDATA%\diskatlas\diskatlas.db` |
-| Konfiguration | `~/.config/diskatlas/config.toml` | `%APPDATA%\diskatlas\config.toml` |
+| Database | `~/.local/share/diskatlas/diskatlas.db` | `%LOCALAPPDATA%\diskatlas\diskatlas.db` |
+| Configuration | `~/.config/diskatlas/config.toml` | `%APPDATA%\diskatlas\config.toml` |
 
-Alle Optionen: [config.example.toml](config.example.toml).
+All options: [config.example.toml](config.example.toml).
 
-### Autostart unter Linux (systemd)
+### Autostart on Linux (systemd)
 
 ```bash
 mkdir -p ~/.config/systemd/user
@@ -102,35 +109,37 @@ cp deploy/linux/diskatlas.service ~/.config/systemd/user/
 systemctl --user daemon-reload && systemctl --user enable --now diskatlas
 ```
 
-## Zentraler Server (Docker / Unraid)
+## Central server (Docker / Unraid)
 
-Der Container betreibt Dashboard, API und Ingest. Die Rechner mit den Festplatten senden
-ihre Scans per Agent dorthin.
+The container runs the dashboard, API and ingest. The computers with the drives send their scans
+to it via the agent. Setup on Unraid including HTTPS for the iPhone:
+**[docs/UNRAID.md](docs/UNRAID.md)** (German).
 
 ```bash
-docker compose up -d        # Token in docker-compose.yml vorher ändern!
+DISKATLAS_PASSWORD=... DISKATLAS_API_TOKEN=... docker compose up -d
 ```
 
-Auf jedem Rechner in `config.toml`:
+On each computer, in `config.toml`:
 
 ```toml
 [agent]
 server_url = "http://unraid.local:8765"
-api_token  = "gleiches-token-wie-im-container"
+api_token  = "same-token-as-in-the-container"
 ```
 
-und dann `diskatlas watch` starten. Bestehende lokale Daten übernehmen:
+then start `diskatlas agent` (or use the [agent program](docs/AGENT.md)). To move existing local
+data:
 
 ```bash
 diskatlas db copy --to "postgresql+psycopg://diskatlas:pw@unraid.local:5432/diskatlas"
 ```
 
-(Für PostgreSQL lokal einmal `pip install -e ".[postgres]"`.)
+(For PostgreSQL, run `pip install -e ".[postgres]"` once locally.)
 
-> ⚠️ Dashboard und API haben in Version 0.1 noch **keinen Login**, nur die Ingest-Endpunkte
-> sind per Token geschützt. Nur im eigenen Netz betreiben.
+The web interface is protected by a password; agents authenticate with the API token. The
+container only starts when both are set.
 
-## Entwicklung
+## Development
 
 ```bash
 pip install -e ".[dev]"
@@ -138,13 +147,12 @@ pytest
 ruff check src tests
 ```
 
-Projektstruktur, Datenmodell, Migrationen und Release-Ablauf: siehe
-[PROJECT.md › Entwicklung](PROJECT.md#9-entwicklung).
+Project structure, data model, migrations and release process:
+[PROJECT.md › Entwicklung](PROJECT.md#9-entwicklung) (German).
 
-## Lizenz
+## License
 
-[MIT](LICENSE). Ausnahmen (Fremdbestandteile): Das Programmsymbol stammt von
-[Streamline](https://github.com/webalys-hq/streamline-vectors) (CC BY 4.0, verändert); die
-Windows-Programmdatei enthält `smartctl.exe` aus smartmontools (GPL v2). Details:
-[THIRD_PARTY.md](THIRD_PARTY.md).
-Signatur der Windows-Datei: [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).
+[MIT](LICENSE). Exceptions (third-party parts): the program icon is by
+[Streamline](https://github.com/webalys-hq/streamline-vectors) (CC BY 4.0, modified); the Windows
+program file includes `smartctl.exe` from smartmontools (GPL v2). Details:
+[THIRD_PARTY.md](THIRD_PARTY.md). Code signing: [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).

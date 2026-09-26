@@ -76,7 +76,7 @@ Einmalig von Hand geht auch: Rechtsklick auf die Programmdatei → **Als Adminis
 ## Linux
 
 Nach dem Download ausführbar machen: `chmod +x diskatlas-agent-linux-x86_64`. SMART braucht
-root-Rechte über eine sudo-Regel nur für `smartctl` (siehe README, *SMART-Berechtigungen*);
+root-Rechte über eine sudo-Regel nur für `smartctl` (siehe [README](../README.de.md#smart-berechtigungen-linux), *SMART-Berechtigungen*);
 `smartmontools` muss installiert sein (`sudo apt install smartmontools`).
 
 ## Wenn etwas nicht klappt
