@@ -55,8 +55,11 @@
           disks.map(function (d) {
             return [d.id, d.is_connected, d.health, d.used_bytes, d.file_count, d.custom_name];
           }),
-          bays ? bays.occupied.map(function (o) { return [o.port, o.serial]; }) : null,
+          bays ? bays.occupied.map(function (o) { return [o.client_id, o.port, o.serial]; }) : null,
           bays ? bays.online : null,
+          bays && bays.clients ? Object.keys(bays.clients).map(function (id) {
+            return [id, bays.clients[id].online];
+          }) : null,
           cmds ? cmds.map(function (c) { return [c.id, c.status]; }) : null,
         ]);
         if (known !== null && sig !== known && !userEdited) {

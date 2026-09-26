@@ -179,6 +179,22 @@ Passt alles, kann der Ordner `vorher` gelöscht werden.
 - **Nach dem Umstieg** sind alle bisherigen Platten *herrenlos* (nur für den Master sichtbar):
   *Verwaltung → Herrenlose Platten* übergibt sie samt Labels einem Benutzer.
 
+## Schächte und Clients
+
+Wechselschächte (Hot-Swap-Rahmen) sind Sache des jeweiligen Rechners, also des **Clients**:
+
+1. Weboberfläche → *Konto* → *Meine Clients*. Standard ist **„Keine Wechselschächte“**; dann stehen
+   die Laufwerke dieses Clients einfach in der Liste.
+2. Haken entfernen, **Anzahl der Schächte** eintragen, *Speichern*.
+3. *Schächte einrichten*: im Assistenten für jeden Schacht die Platte herausziehen und wieder
+   einstecken – der Port wird automatisch zugeordnet. (Der Agent muss laufen und SATA-Ports
+   melden: Linux, `diskatlas agent`.) Zum Schluss *Speichern*.
+
+Im Dashboard erscheint je Client mit Wechselschächten ein eigener Schachtblock. Nach dem
+Update übernimmt der passende Client seine frühere Zuordnung beim ersten Heartbeat selbst. Über
+*Client* im Filter (Dashboard und Dateisuche) suchst du nach dem Rechner, an dem eine Platte
+zuletzt hing.
+
 ## Aktualisieren
 
 Neue Version: Tag `vX.Y.Z` pushen → GitHub baut das Image → in Unraid den Container *aktualisieren*.

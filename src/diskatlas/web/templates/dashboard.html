@@ -26,7 +26,7 @@
     </thead>
 {% endmacro %}
 
-{% macro bay_rows(bays) %}
+{% macro bay_rows(bays, setup_url="/bays/setup") %}
     <tbody class="bay-rows">
     {% for bay in bays %}
       {% set d = bay.disk %}
@@ -47,10 +47,17 @@
         {% elif bay.state == 'unknown' %}<td colspan="8" class="bay-empty">Platte erkannt ({{ bay.device }}) – wird erfasst …</td>
         {% elif bay.state == 'empty' %}<td colspan="8" class="bay-empty">Leer</td>
         {% elif bay.state == 'offline' %}<td colspan="8" class="bay-empty">Agent des Rechners meldet sich nicht</td>
-        {% else %}<td colspan="8" class="bay-empty"><a href="/bays/setup">Schächte einrichten</a></td>{% endif %}
+        {% else %}<td colspan="8" class="bay-empty"><a href="{{ setup_url }}">Schächte einrichten</a></td>{% endif %}
       </tr>
     {% endfor %}
     </tbody>
+{% endmacro %}
+
+{% macro bay_panels(panels) %}
+  {% for panel in panels %}
+    {% if panels | length > 1 %}<tbody class="bay-client"><tr><th colspan="10">Schächte von „{{ panel.label }}“</th></tr></tbody>{% endif %}
+    {{ bay_rows(panel.bays, panel.setup_url) }}
+  {% endfor %}
 {% endmacro %}
 
 {% block content %}
@@ -126,23 +133,23 @@
   <label class="check" title="Blendet Festplatten mit dem Label „System“ überall aus{{ ' (' ~ hidden_system_count ~ ' ausgeblendet)' if hide_system and hidden_system_count }}"><input type="checkbox" name="hide" value="1" {{ 'checked' if hide_system }}> Systemplatten ausblenden{% if hide_system and hidden_system_count %} ({{ hidden_system_count }}){% endif %}</label>
   <noscript><button type="submit">OK</button></noscript>
 </form>
-{% if bays is not none %}<a class="small bays-link" href="/bays/setup" title="Schächte einrichten">⚙ Schächte</a>{% endif %}
+{% if bays_link %}<a class="small bays-link" href="{{ bays_link }}" title="Schächte einrichten">⚙ Schächte</a>{% endif %}
 </div>
 
-{% if stats.disk_count == 0 and not bays %}
+{% if stats.disk_count == 0 and not panels %}
 <div class="empty">
   <h2>Noch keine Festplatten erfasst</h2>
   <p>Starte den Agenten mit <code>diskatlas run</code> (Dashboard + Überwachung) oder einmalig mit <code>diskatlas scan</code>.</p>
 </div>
-{% elif filtered_count == 0 and not bays %}
+{% elif filtered_count == 0 and not panels %}
 <div class="empty"><p>Keine Festplatte passt zu den Filtern. <a href="/">Filter zurücksetzen</a></p></div>
 {% endif %}
 
-{% if bays is not none %}{{ tray_defs() }}{% endif %}
-{% set inline_bays = bays is not none and f.group == 'none' and groups and groups[0][1] %}
-{% if bays is not none and not inline_bays %}
+{% if panels %}{{ tray_defs() }}{% endif %}
+{% set inline_bays = panels and f.group == 'none' and groups and groups[0][1] %}
+{% if panels and not inline_bays %}
 <section class="group">
-  <div class="table-wrap"><table class="disks">{{ table_head() }}{{ bay_rows(bays) }}</table></div>
+  <div class="table-wrap"><table class="disks">{{ table_head() }}{{ bay_panels(panels) }}</table></div>
 </section>
 {% endif %}
 
@@ -152,7 +159,7 @@
   <div class="table-wrap">
   <table class="disks">
     {{ table_head() }}
-    {% if inline_bays and loop.first %}{{ bay_rows(bays) }}{% endif %}
+    {% if inline_bays and loop.first %}{{ bay_panels(panels) }}{% endif %}
     <tbody>
     {% for disk in disks %}
       <tr class="{{ 'is-offline' if not disk.is_connected }}">

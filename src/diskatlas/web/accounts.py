@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import time
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from diskatlas.db.models import Client, Disk, User
-from diskatlas.services import users
+from diskatlas.db.models import Client, Disk, HostState, User
+from diskatlas.services import bays as bay_service
+from diskatlas.services import hosts, users
 from diskatlas.web import auth
 from diskatlas.web.deps import get_current_user, get_session, require_master
-from diskatlas.web.views import templates
+from diskatlas.web.views import setup_context, templates
 
 router = APIRouter(include_in_schema=False)
 
@@ -70,6 +72,8 @@ def _account_page(
 ) -> HTMLResponse:
     return templates.TemplateResponse(request, "account.html", {
         "user": user, "error": error, "info": info,
+        "bay_configs": {c.id: bay_service.client_config(c) for c in user.clients},
+        "max_bays": bay_service.MAX_BAYS,
         "new_token": new_token, "new_client": new_client,
     })
 
@@ -127,9 +131,83 @@ def account_client_delete(
     session.execute(
         update(Disk).where(Disk.last_client_id == client.id).values(last_client_id=None)
     )
+    session.execute(delete(HostState).where(HostState.host == hosts.state_key(client, "")))
     session.delete(client)
     session.commit()
     return RedirectResponse("/account", status_code=303)
+
+
+# ------------------------------------------------------------------ Schächte je Client
+def _own_client(session: Session, user: User, client_id: int) -> Client:
+    client = session.get(Client, client_id)
+    if client is None or client.user_id != user.id:  # auch der Master verwaltet nur eigene
+        raise HTTPException(404, "Client nicht gefunden")
+    return client
+
+
+@router.post("/account/clients/{client_id}/bays", response_class=HTMLResponse)
+def account_client_bays(
+    request: Request,
+    client_id: int,
+    bay_count: int = Form(...),
+    no_bays: bool = Form(False),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Einstellungen des Clients: Anzahl der Wechselschächte bzw. „Keine Wechselschächte“."""
+    client = _own_client(session, user, client_id)
+    config = bay_service.client_config(client)
+    try:
+        ports = bay_service.resize(config.ports, bay_count)
+        bay_service.save_client_config(
+            client, bay_service.BayConfig(ports=ports, reverse=config.reverse), has_bays=not no_bays
+        )
+    except bay_service.BayError as exc:
+        return _account_page(request, user, error=str(exc))
+    text = "Keine Wechselschächte." if no_bays else f"{bay_count} Wechselschächte."
+    return _account_page(request, user, info=f"„{client.nickname}“: {text}")
+
+
+@router.get("/clients/{client_id}/bays", response_class=HTMLResponse)
+def client_bays(
+    request: Request,
+    client_id: int,
+    err: str = "",
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    client = _own_client(session, user, client_id)
+    return templates.TemplateResponse(request, "bays_setup.html", setup_context(
+        heading=f"Schächte von „{client.nickname}“", action=f"/clients/{client.id}/bays",
+        poll_url=f"/api/v1/bays/live?client_id={client.id}",
+        snapshot=bay_service.client_snapshot(session, client),
+        config=bay_service.client_config(client), back_url="/account#clients", err=err,
+    ))
+
+
+@router.post("/clients/{client_id}/bays")
+def client_bays_save(
+    client_id: int,
+    port: list[str] = Form(default=[]),
+    reverse: bool = Form(False),
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    client = _own_client(session, user, client_id)
+    config = bay_service.client_config(client)
+    snapshot = bay_service.client_snapshot(session, client)
+    # bisherige Zuordnungen bleiben gültig, auch wenn der Agent gerade offline ist
+    valid = set(snapshot.all_ports if snapshot else []) | {p for p in config.ports if p}
+    chosen = bay_service.clean_ports([p if p in valid else None for p in port], config.count)
+    try:
+        bay_service.save_client_config(
+            client, bay_service.BayConfig(ports=chosen, reverse=reverse), has_bays=True
+        )
+    except bay_service.BayError as exc:
+        return RedirectResponse(
+            f"/clients/{client.id}/bays?" + urlencode({"err": str(exc)}), status_code=303
+        )
+    return RedirectResponse("/", status_code=303)
 
 
 # ------------------------------------------------------------------ Verwaltung (Master)

@@ -285,3 +285,4 @@ table.disks th.rail, table.disks td.rail { width: 74px; min-width: 74px; padding
 .scan-title { font-size: 1.25rem; font-weight: 700; }
 .scan-where { font-size: 1.2rem; font-weight: 700; margin: .3rem 0; }
 @media (max-width: 640px) { .topbar { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); } }
+.bay-client th { text-align: left; padding: .5rem .8rem .2rem; font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
