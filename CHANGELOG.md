@@ -11,6 +11,23 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Agent als Tray-Programm** (`diskatlas-tray`, als fertige Datei `DiskAtlas-Agent.exe` bzw.
+  `diskatlas-agent`): Symbol im Systembereich mit farbigem Statuspunkt (grün verbunden, gelb
+  wartend/nicht eingerichtet, rot Server nicht erreichbar oder Token abgelehnt), Menü mit Status,
+  *Einstellungen …*, *Dashboard öffnen* und *Beenden*. Das Einstellungsfenster zeigt den
+  Verbindungsstatus live (Server, Rechner, letzte Antwort, Anzahl Datenträger) und bearbeitet die
+  `[agent]`-Optionen der `config.toml` (Server-Adresse, API-Token, Rechnername, Dateiindex,
+  Auto-Einhängen, Intervalle, smartctl). *Verbindung testen* prüft Erreichbarkeit und Token getrennt.
+  Nach dem Speichern startet der Agent mit den neuen Werten neu (kein Programmneustart nötig); die
+  vorige Datei bleibt als `config.toml.bak` erhalten. Beim ersten Start ohne Server-Adresse öffnet
+  sich das Fenster von selbst. Option *Beim Anmelden automatisch starten* (Linux: XDG-Autostart,
+  Windows: `HKCU\…\Run`). Nur eine Instanz; Log in `agent-tray.log` im Datenverzeichnis.
+- PyInstaller-Bauanleitung `packaging/diskatlas-agent.spec` und GitHub-Actions-Workflow
+  `agent.yml`: baut die Programme für Windows (x64) und Linux (x86_64, Ubuntu 24.04/Mint 22) und
+  hängt sie bei Versions-Tags an das Release.
+- Neue optionale Abhängigkeitsgruppe `tray` (pystray, Pillow, pywebview).
+
 ## [0.3.0] - 2026-09-26
 
 ### Hinzugefügt

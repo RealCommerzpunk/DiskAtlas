@@ -68,7 +68,22 @@ Das Passwort schützt die Oberfläche zusätzlich; die Adresse ist nur im eigene
 
 ## 4. Agent auf dem PC einrichten
 
-**Linux:**
+**Am einfachsten: das fertige Programm.** Unter *Releases* auf der GitHub-Seite liegen
+`DiskAtlas-Agent-windows-x64.exe` und `diskatlas-agent-linux-x86_64` (Linux: nach dem Download
+`chmod +x diskatlas-agent-linux-x86_64`). Programm starten → rechts unten erscheint das
+DiskAtlas-Symbol, beim ersten Start öffnet sich das Einstellungsfenster:
+
+1. **Server-Adresse** (`https://tower.tail1234.ts.net` oder `http://<unraid-ip>:8765`) und
+   **API-Token** (derselbe wie im Container) eintragen.
+2. **Verbindung testen** → „Verbindung in Ordnung …“ → **Speichern**.
+3. Haken bei **Beim Anmelden automatisch starten** setzen.
+
+Der Punkt am Symbol zeigt den Zustand: grün verbunden, gelb wartend/nicht eingerichtet, rot
+gestört. Ein Klick aufs Symbol öffnet das Menü (Einstellungen, Dashboard, Beenden).
+
+Windows: Ohne Administratorrechte kann der Agent SMART nicht lesen. Die übrigen Daten kommen trotzdem an.
+
+**Aus dem Quellcode (Linux):**
 
 ```bash
 cd ~/diskatlas && . .venv/bin/activate
@@ -101,8 +116,8 @@ Schacht die Platte ziehen und wieder einstecken. Die Zuordnung liegt auf dem Ser
 ## Aktualisieren
 
 Neue Version: Tag `vX.Y.Z` pushen → GitHub baut das Image → in Unraid den Container *aktualisieren*.
-Die Datenbank wird beim Start automatisch migriert. Den Agenten am PC per `git pull` und
-`pip install -e .` aktualisieren. **Server und Agenten sollten dieselbe Version haben.**
+Die Datenbank wird beim Start automatisch migriert. Das Agent-Programm durch die neue Datei aus dem
+Release ersetzen (bzw. aus dem Quellcode: `git pull` und `pip install -e .`). **Server und Agenten sollten dieselbe Version haben.**
 
 ## Sicherung
 

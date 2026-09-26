@@ -1,0 +1,80 @@
+name: Agent-Programm bauen
+
+# Baut den Tray-Agenten als einzelne ausführbare Datei für Windows und Linux.
+# Feature-Branches/PRs: nur als Artefakt (Reiter „Actions“ → Lauf → „Artifacts“).
+# Versions-Tags (v0.4.0 …): zusätzlich an das GitHub-Release gehängt.
+on:
+  push:
+    branches: ["feature/**"]
+    tags: ["v*"]
+    paths-ignore: ["docs/**", "**.md"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            binary: DiskAtlas-Agent.exe
+            asset: DiskAtlas-Agent-windows-x64.exe
+          # Gebaut gegen Ubuntu 24.04 (Basis von Linux Mint 22); GTK/WebKit werden mitgeliefert.
+          - os: ubuntu-24.04
+            binary: diskatlas-agent
+            asset: diskatlas-agent-linux-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Umgebung (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m venv .venv
+          .venv\Scripts\python -m pip install --upgrade pip
+          .venv\Scripts\python -m pip install -e ".[tray,build]"
+
+      # Unter Linux kommen GTK, WebKit und AppIndicator aus den Systempaketen (python3-gi),
+      # daher die System-Python mit Zugriff auf deren Pakete.
+      - name: Umgebung (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-venv python3-gi \
+            gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-ayatanaappindicator3-0.1
+          python3 -m venv --system-site-packages .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -e ".[tray,build]"
+
+      - name: Bauen
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python; else PY=.venv/bin/python; fi
+          $PY -m PyInstaller --noconfirm --log-level WARN packaging/diskatlas-agent.spec
+          ls -la dist
+          mv "dist/${{ matrix.binary }}" "dist/${{ matrix.asset }}"
+
+      - name: Starttest (Linux)
+        if: runner.os == 'Linux'
+        run: dist/${{ matrix.asset }} --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+      - name: An Release hängen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset }}
