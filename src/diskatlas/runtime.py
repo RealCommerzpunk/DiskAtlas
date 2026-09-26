@@ -54,6 +54,9 @@ def start_local_server(config: Config, timeout: float = SERVER_STARTUP_TIMEOUT) 
         uvicorn.Config(
             app, host=config.server.host, port=port, log_level="warning",
             ws="none",  # WebSockets unnötig; vermeidet Konflikte mit System-websockets
+            # Eigene Logging-Einrichtung von uvicorn scheitert ohne Konsole (Windows-Programm
+            # ohne stdout); die Meldungen landen so im Protokoll des Aufrufers.
+            log_config=None,
         )
     )
     thread = threading.Thread(target=server.run, name="diskatlas-server", daemon=True)

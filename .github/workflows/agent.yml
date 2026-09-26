@@ -89,12 +89,26 @@ jobs:
           $settings = Start-Process $exe -ArgumentList "--settings", "-v" -PassThru
           Start-Sleep 30
           $windowOpen = -not $settings.HasExited
+          # Bildschirmfoto des Desktops (als Artefakt „starttest-windows“).
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$PWD\starttest-windows.png")
           Write-Host "--- agent-status.json"; Get-Content "$data\agent-status.json" -ErrorAction SilentlyContinue
           Write-Host "--- agent-tray.log"; Get-Content "$data\agent-tray.log" -ErrorAction SilentlyContinue
           Write-Host "--- agent-settings.log"; Get-Content "$data\agent-settings.log" -ErrorAction SilentlyContinue
+          Write-Host "--- Oberfläche erreichbar: $ok, Einstellungsfenster offen: $windowOpen (Code $($settings.ExitCode))"
           Stop-Process -Id $settings.Id, $tray.Id -Force -ErrorAction SilentlyContinue
-          if (-not $ok) { throw "Die lokale Oberfläche antwortet nicht." }
-          if (-not $windowOpen) { throw "Das Einstellungsfenster wurde vorzeitig beendet (Code $($settings.ExitCode))." }
+          if (-not $ok -or -not $windowOpen) { throw "Starttest fehlgeschlagen." }
+
+      - name: Bildschirmfoto vom Starttest
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: starttest-windows
+          path: starttest-windows.png
+          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v4
         with:

@@ -222,6 +222,7 @@ def setup_logging(verbose: bool, log_name: str) -> None:
     # httpx meldet sonst jede Anfrage (alle paar Sekunden), Alembic jeden Start.
     for name in ("httpx", "alembic"):
         logging.getLogger(name).setLevel(logging.DEBUG if verbose else logging.WARNING)
+    logging.getLogger("PIL").setLevel(logging.INFO)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -243,6 +244,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     setup_logging(args.verbose, SETTINGS_LOG if args.settings else TRAY_LOG)
     config_path = resolve_config_path(args.config)
+    log.info("DiskAtlas %s (%s), Konfiguration %s", __version__,
+             "Einstellungsfenster" if args.settings else "Tray", config_path)
     if args.settings:
         from diskatlas.tray.window import run_settings_window
 

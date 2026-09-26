@@ -220,10 +220,13 @@ def run_settings_window(config_path: Path) -> int:
     except ImportError:
         log.error("pywebview fehlt. Installation: pip install -e \".[tray]\"")
         return 2
-    webview.create_window(
+    log.info("pywebview %s wird gestartet", getattr(webview, "__version__", "?"))
+    window = webview.create_window(
         "DiskAtlas Agent", html=HTML, js_api=SettingsApi(config_path),
         width=560, height=760, min_size=(460, 520),
     )
+    window.events.shown += lambda: log.info("Einstellungsfenster angezeigt")
     icon = Path(__file__).resolve().parent.parent / "web" / "static" / "icon_256.png"
     webview.start(icon=str(icon) if icon.is_file() else None)
+    log.info("Einstellungsfenster geschlossen")
     return 0

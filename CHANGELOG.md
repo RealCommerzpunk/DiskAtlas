@@ -41,7 +41,11 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 - Tray-Menü *Protokolle anzeigen*; das Einstellungsfenster schreibt eigene Protokolle
   (`agent-settings.log`), und das Tray meldet per Benachrichtigung, wenn es sich nicht öffnen lässt.
 - Build: Starttest unter Windows (lokale Oberfläche muss antworten, Einstellungsfenster offen
-  bleiben; Protokolle im Build-Log).
+  bleiben; Protokolle im Build-Log, Bildschirmfoto als Artefakt).
+
+### Behoben
+- Lokale Weboberfläche startete im Windows-Programm ohne Konsole nicht (uvicorn richtete eigenes
+  Logging auf das fehlende `stdout` ein); sie protokolliert jetzt in die Datei des Programms.
 
 ### Geändert
 - Linux-Programmdatei nutzt GTK, AppIndicator und WebKit des Systems statt eigener Kopien:
