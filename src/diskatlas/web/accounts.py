@@ -1,4 +1,4 @@
-"""Konto-Seiten: Zugang beantragen, eigenes Konto samt Clients, Verwaltung durch den Master."""
+"""Konto-Seiten: Zugang beantragen, eigenes Konto samt Clients, Verwaltung durch den Admin."""
 
 from __future__ import annotations
 
@@ -140,7 +140,7 @@ def account_client_delete(
 # ------------------------------------------------------------------ Schächte je Client
 def _own_client(session: Session, user: User, client_id: int) -> Client:
     client = session.get(Client, client_id)
-    if client is None or client.user_id != user.id:  # auch der Master verwaltet nur eigene
+    if client is None or client.user_id != user.id:  # auch der Admin verwaltet nur eigene
         raise HTTPException(404, "Client nicht gefunden")
     return client
 
@@ -210,7 +210,7 @@ def client_bays_save(
     return RedirectResponse("/", status_code=303)
 
 
-# ------------------------------------------------------------------ Verwaltung (Master)
+# ------------------------------------------------------------------ Verwaltung (Admin)
 @router.get("/admin/users", response_class=HTMLResponse)
 def admin_users(
     request: Request,

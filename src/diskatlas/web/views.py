@@ -136,7 +136,7 @@ def login(
         return _redirect("/login?" + urlencode({"next": target, "err": error}))
     throttle.reset(client)
     if user.status != "active":
-        pending = "Dein Antrag wartet noch auf Freischaltung durch den Master."
+        pending = "Dein Antrag wartet noch auf Freischaltung durch den Admin."
         return _redirect("/login?" + urlencode({"next": target, "err": pending}))
     response = _redirect(target)
     auth.set_session(request, response, user)

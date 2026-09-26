@@ -3,7 +3,7 @@
 #
 # Start:  DISKATLAS_PASSWORD=... docker compose up -d
 #   oder den Wert in eine Datei `.env` neben dieser Datei schreiben (wird nicht eingecheckt).
-# Der Server startet bewusst NICHT ohne Passwort, weil er im Netz lauscht. Danach als „Master“
+# Beim allerersten Start ist das Passwort Pflicht (der Server lauscht im Netz), danach nicht mehr. Dann als „Admin“
 # anmelden und unter „Konto“ für jeden Agenten einen Client mit eigenem Token anlegen.
 # Standard: SQLite im Verzeichnis ./data. Für PostgreSQL die auskommentierten Zeilen aktivieren.
 services:
@@ -17,8 +17,9 @@ services:
     volumes:
       - ./data:/data
     environment:
-      # Startpasswort des Benutzers „Master“ (wird nur beim allerersten Start übernommen)
-      DISKATLAS_PASSWORD: "${DISKATLAS_PASSWORD:?bitte DISKATLAS_PASSWORD setzen}"
+      # Startpasswort des Benutzers „Admin“ (nur beim allerersten Start nötig,
+      # danach darf die Zeile leer bleiben)
+      DISKATLAS_PASSWORD: "${DISKATLAS_PASSWORD:-}"
       # DISKATLAS_DATABASE_URL: "postgresql+psycopg://diskatlas:diskatlas@db:5432/diskatlas"
     # depends_on: [db]
 

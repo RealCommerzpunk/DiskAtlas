@@ -343,7 +343,7 @@ def test_only_the_master_adopts_the_orphaned_global_setting(world):
     assert _client_row(world, _cid(world, "Anna")).has_bays is False
     assert _setting(world, "bays") is not None
     _heartbeat(world, "master", "pc")
-    row = _client_row(world, _cid(world, "Master"))
+    row = _client_row(world, _cid(world, "Admin"))
     assert row.has_bays is True and json.loads(row.bay_ports)[0] == "ata2"
     assert _setting(world, "bays") is None
 

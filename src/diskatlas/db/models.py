@@ -75,7 +75,7 @@ class Disk(Base):
     smart_checked_at: Mapped[datetime | None]
     smart_error: Mapped[str | None] = mapped_column(Text)
 
-    # Besitzer; NULL = herrenlos (nur der Master sieht und verwaltet solche Platten)
+    # Besitzer; NULL = herrenlos (nur der Admin sieht und verwaltet solche Platten)
     owner_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
@@ -327,7 +327,7 @@ class Command(Base):
 
 
 class User(Base):
-    """Benutzerkonto. `pending` = Antrag wartet auf Freischaltung durch den Master."""
+    """Benutzerkonto. `pending` = Antrag wartet auf Freischaltung durch den Admin."""
 
     __tablename__ = "users"
 
@@ -336,7 +336,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     is_master: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | active
-    note: Mapped[str | None] = mapped_column(Text)  # Nachricht beim Antrag an den Master
+    note: Mapped[str | None] = mapped_column(Text)  # Nachricht beim Antrag an den Admin
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
     clients: Mapped[list[Client]] = relationship(

@@ -23,7 +23,7 @@ MARK = "GEHEIMNIS"  # taucht in allen Daten von Anna auf; Bob darf ihn nirgends 
 
 
 class World:
-    """Server mit Master, Anna und Bob – je einem Client und einer angemeldeten Sitzung."""
+    """Server mit Admin, Anna und Bob – je einem Client und einer angemeldeten Sitzung."""
 
     def __init__(self, db, tmp_path):
         cfg = Config()
@@ -33,18 +33,18 @@ class World:
         self.tokens: dict[str, str] = {}
         self.ids: dict[str, int] = {}
         with db.session() as s:
-            self.ids["master"] = users.find_user(s, "Master").id
+            self.ids["master"] = users.find_user(s, "Admin").id
             for name in ("Anna", "Bob"):
                 user = users.register(s, name, f"{name.lower()}-passwort-1")
                 user.status = "active"
                 s.commit()
                 self.ids[name.lower()] = user.id
-            for name in ("Master", "Anna", "Bob"):
+            for name in ("Admin", "Anna", "Bob"):
                 user = users.find_user(s, name)
                 _, token = users.create_client(s, user, f"{name}-PC")
-                self.tokens[name.lower()] = token
+                self.tokens["master" if name == "Admin" else name.lower()] = token
         self.web = {
-            "master": self._login("Master", "master-passwort"),
+            "master": self._login("Admin", "master-passwort"),
             "anna": self._login("Anna", "anna-passwort-1"),
             "bob": self._login("Bob", "bob-passwort-1"),
         }
@@ -187,7 +187,7 @@ def test_each_user_sees_only_their_own_disks_and_master_sees_all(world):
 
     assert serials("anna") == ["A1"]
     assert serials("bob") == ["B1"]
-    assert serials("master") == ["A1", "B1", "OLD"], "der Master sieht alles, auch Herrenloses"
+    assert serials("master") == ["A1", "B1", "OLD"], "der Admin sieht alles, auch Herrenloses"
     assert world.web["anna"].get(f"/api/v1/disks/{world.disk_id('sn:B1')}").status_code == 404
     assert world.web["anna"].get(f"/disks/{world.disk_id('sn:OLD')}").status_code == 404
 
@@ -418,8 +418,8 @@ def test_user_list_shows_only_names(world):
     with world.db.session() as s:
         users.register(s, "Carl", "carl-passwort-1")  # Antrag: nicht sichtbar
     data = world.web["bob"].get("/api/v1/users").json()
-    assert [u["nickname"] for u in data] == ["Anna", "Bob", "Master"]
-    assert data[0]["clients"] == ["Anna-PC"]
+    assert [u["nickname"] for u in data] == ["Admin", "Anna", "Bob"]
+    assert data[1]["clients"] == ["Anna-PC"]
     text = world.web["bob"].get("/api/v1/users").text
     assert "hash" not in text.lower() and "token" not in text.lower() and "passwort" not in text
     assert world.agent("anna").get("/api/v1/users").status_code == 200

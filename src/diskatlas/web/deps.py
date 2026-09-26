@@ -46,7 +46,7 @@ def get_current_user(request: Request, session: Session = Depends(get_session)) 
 
 def require_master(user: User = Depends(get_current_user)) -> User:
     if not user.is_master:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur für den Master.")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur für den Admin.")
     return user
 
 

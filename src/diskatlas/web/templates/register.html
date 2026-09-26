@@ -15,7 +15,7 @@
     <img src="{{ url_for('static', path='favicon.svg') }}" alt="" width="64" height="64" class="login-logo">
     <h1>Zugang beantragen</h1>
     {% if done %}
-      <p class="notice ok" role="status">Antrag gesendet. Sobald der Master ihn freigeschaltet hat, kannst du dich anmelden.</p>
+      <p class="notice ok" role="status">Antrag gesendet. Sobald der Admin ihn freigeschaltet hat, kannst du dich anmelden.</p>
       <p><a href="/login">Zur Anmeldung</a></p>
     {% else %}
       {% if error %}<p class="notice health-reasons failed" role="alert">{{ error }}</p>{% endif %}
@@ -28,7 +28,7 @@
           <input type="password" name="password" autocomplete="new-password" minlength="10" required>
           <small class="muted">Mindestens 10 Zeichen.</small>
         </label>
-        <label>Nachricht an den Master (optional)
+        <label>Nachricht an den Admin (optional)
           <textarea name="note" rows="2" maxlength="500">{{ note }}</textarea>
         </label>
         <button type="submit">Antrag senden</button>

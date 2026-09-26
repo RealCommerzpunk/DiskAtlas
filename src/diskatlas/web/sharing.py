@@ -73,7 +73,7 @@ def assign_owner(
     viewer: Viewer = Depends(get_viewer),
     _: User = Depends(require_master),
 ):
-    """Der Master weist eine herrenlose Platte einem Benutzer zu."""
+    """Der Admin weist eine herrenlose Platte einem Benutzer zu."""
     disk = disk_or_404(session, viewer, disk_id, write=True)
     target = session.get(User, user_id)
     if target is None or target.status != "active":
@@ -144,7 +144,7 @@ def transfer_reject(
     return _to_transfers("Antrag abgelehnt.")
 
 
-# ------------------------------------------------------------------ Altbestand (Master)
+# ------------------------------------------------------------------ Altbestand (Admin)
 @router.post("/admin/disks/assign-unowned")
 def assign_unowned(
     user_id: int = Form(...),

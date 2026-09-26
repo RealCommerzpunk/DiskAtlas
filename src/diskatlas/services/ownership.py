@@ -44,7 +44,7 @@ def shared_with(session: Session, disk: Disk) -> list[User]:
 
 
 def pending_transfers(session: Session, user_id: int | None) -> list[DiskTransferRequest]:
-    """Offene Übernahmeanträge an den Besitzer `user_id` (None: alle, für den Master)."""
+    """Offene Übernahmeanträge an den Besitzer `user_id` (None: alle, für den Admin)."""
     stmt = (
         select(DiskTransferRequest)
         .where(DiskTransferRequest.status == "pending")

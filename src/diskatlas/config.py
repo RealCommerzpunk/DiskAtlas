@@ -76,7 +76,7 @@ class AgentConfig:
 class ServerConfig:
     host: str = "127.0.0.1"
     port: int = 8765
-    # Startpasswort des Benutzers „Master“ (nur beim allerersten Start ausgewertet). Pflicht,
+    # Startpasswort des Benutzers „Admin“ (nur beim allerersten Start ausgewertet). Pflicht,
     # sobald der Server nicht nur lokal lauscht.
     password: str = ""
     # Nur für Tests/Sonderfälle: Betrieb im Netz ohne Passwort erlauben (nicht empfohlen).

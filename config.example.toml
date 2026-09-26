@@ -35,4 +35,4 @@
 [server]
 # host = "127.0.0.1"              # "0.0.0.0" für Zugriff aus dem Netzwerk
 # port = 8765
-# password = ""                   # Startpasswort des Benutzers "Master"; Pflicht, wenn host nicht 127.0.0.1 ist
+# password = ""                   # Startpasswort des Benutzers "Admin"; nur beim allerersten Start nötig, wenn host nicht 127.0.0.1 ist

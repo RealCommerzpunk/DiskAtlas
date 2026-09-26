@@ -19,19 +19,21 @@ Du brauchst einen geheimen Wert:
 
 | Wert | Wofür |
 |---|---|
-| `DISKATLAS_PASSWORD` | Startpasswort des Benutzers **Master** (Anmeldung mit Name „Master“) |
+| `DISKATLAS_PASSWORD` | Startpasswort des Benutzers **Admin** (Anmeldung mit Name „Admin“) |
 
-Das Passwort wird nur beim allerersten Start übernommen; danach ändert der Master es unter
-*Konto*. Weitere Benutzer beantragen den Zugang unter `/register`, der Master schaltet sie unter
+Das Passwort wird nur beim allerersten Start übernommen; danach ändert der Admin es unter
+*Konto*. Weitere Benutzer beantragen den Zugang unter `/register`, der Admin schaltet sie unter
 *Verwaltung* frei. Die Agenten weisen sich nicht mehr mit einem gemeinsamen Token aus, sondern
 jeder **Client** mit seinem eigenen (siehe Abschnitt 4).
 
-Der Container **startet nicht**, wenn das Passwort fehlt – bewusst, damit die Oberfläche nie
-unbeabsichtigt offen im Netz steht.
+Beim allerersten Start **startet der Container nicht ohne** Passwort – bewusst, damit die Oberfläche
+nie unbeabsichtigt offen im Netz steht. Sobald der Admin existiert, ist die Variable **nicht mehr
+nötig** und darf leer bleiben (Aktualisierungen des Images brauchen sie nicht). Ein Konto „Master“
+aus Version 0.6 und älter heißt nach dem Update „Admin“.
 
 > **Umstieg von Version 0.4.0 und älter:** Der Container-Wert `DISKATLAS_API_TOKEN` wird nicht mehr
 > gebraucht (harmlos, wenn er stehen bleibt). Deine Agenten melden sich erst wieder, wenn du dich
-> als **Master** anmeldest, unter *Konto* einen Client anlegst und das angezeigte Token in die
+> als **Admin** anmeldest, unter *Konto* einen Client anlegst und das angezeigte Token in die
 > Konfiguration des Agenten einträgst (`api_token`).
 
 ## 2. Container auf Unraid einrichten
@@ -169,14 +171,14 @@ Passt alles, kann der Ordner `vorher` gelöscht werden.
 ## Benutzer, Platten und Freigaben
 
 - **Jede Platte gehört dem Benutzer, dessen Client sie zuerst meldet.** Benutzer sehen nur ihre
-  eigenen und die ihnen freigegebenen Platten; nur der Besitzer (und der Master) darf ändern.
+  eigenen und die ihnen freigegebenen Platten; nur der Besitzer (und der Admin) darf ändern.
 - **Freigeben:** auf der Plattenseite unter *Besitz & Freigabe* einzelne Benutzer wählen – sie
   sehen die Platte dann *nur lesend*.
 - **Platte weitergeben:** Steckt sie an einem Rechner eines anderen Benutzers, entsteht dort ein
   Übernahmeantrag. Der bisherige Besitzer bestätigt oder lehnt ihn unter *Übernahmen* ab; bis dahin
   bleibt alles unverändert. Bei Zustimmung entfallen seine Notizen, Labels und Freigaben dazu.
-- **Der Master sieht alles**, verwaltet Benutzer und Anträge und übergibt Altbestand.
-- **Nach dem Umstieg** sind alle bisherigen Platten *herrenlos* (nur für den Master sichtbar):
+- **Der Admin sieht alles**, verwaltet Benutzer und Anträge und übergibt Altbestand.
+- **Nach dem Umstieg** sind alle bisherigen Platten *herrenlos* (nur für den Admin sichtbar):
   *Verwaltung → Herrenlose Platten* übergibt sie samt Labels einem Benutzer.
 
 ## Schächte und Clients
