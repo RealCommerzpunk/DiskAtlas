@@ -115,6 +115,21 @@ def test_usage_watcher_triggers_after_settling():
     assert not w.update("v", 200, 200), "nur einmal"
 
 
+def test_usage_watcher_ignores_small_fluctuations():
+    from diskatlas.agent.agent import UsageWatcher
+
+    w = UsageWatcher(settle=30, min_delta=1000)
+    assert not w.update("v", 10_000, 0)
+    for t, used in ((10, 10_100), (50, 10_300), (90, 9_800)):  # Protokolle, Caches: klein
+        assert not w.update("v", used, t)
+        assert not w.update("v", used, t + 40), "auch nach Ruhe kein Auslöser"
+    assert not w.update("v", 20_000, 200), "echte Änderung: erst abwarten"
+    assert w.update("v", 20_000, 231)
+    # der Bezugswert wurde nachgezogen: erneut nur bei neuer, deutlicher Änderung
+    assert not w.update("v", 20_400, 300) and not w.update("v", 20_400, 340)
+    assert not w.update("v", 30_000, 400) and w.update("v", 30_000, 431)
+
+
 def test_watch_auto_mounts_unmounted_volumes_once(db, tmp_path, monkeypatch):
     from diskatlas.services import mounting
 

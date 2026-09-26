@@ -56,7 +56,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Auto-Einhängen | Linux: nicht eingehängte Dateisysteme selbst einhängen (`auto_mount`, udisks2), damit Belegung/Index möglich sind | ✅ 0.2.0 |
 | Systemdatenträger ausblenden | Haken im Dashboard (Standard an), blendet Platten mit Label „System“ in UI-Listen und Suchen aus | ✅ 0.2.0 |
 | Hot-Swap-Schächte | 4 grafische Einschübe als erste Zeilen der Festplattenliste, Port→Schacht per Assistent, Linux/SATA | ✅ 0.2.0 |
-| Änderungserkennung | Neuindex bei geänderter Belegung + 30 s Ruhe (`change_settle_seconds`) | ✅ 0.2.0 |
+| Änderungserkennung | Neuindex bei deutlich geänderter Belegung (≥ 50 MB, `change_min_bytes`) + 30 s Ruhe, höchstens alle 10 min; Systemvolumes nie | ✅ 0.2.0 (Schwellen: Unreleased) |
 | Volume umbenennen | Dateisystem-Label aus der GUI ändern (Linux udisks2/polkit, dabei bei Bedarf aus-/einhängen; Windows `Set-Volume`), nur lokal | ✅ 0.2.0 |
 | Indizierungs-Warnbanner | „nicht abziehen“ mit Zwischenstand auf jeder Seite (`/api/v1/activity`) | ✅ 0.2.0 |
 | Doubletten | Dateien (Name+Größe) und Ordner (identischer Inhalt) aus dem Index, ohne Prüfsummen | ✅ 0.2.0 |
@@ -196,7 +196,7 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-23 | **Systemvolumes (`/`, `/boot`, `C:\`) werden standardmäßig nicht indiziert** | Fokus auf Datenplatten; per `index_system_volumes = true` änderbar. |
 | 2026-09-23 | **Dezimale Größeneinheiten (TB = 10¹²)** | entspricht der Herstellerangabe auf dem Etikett. |
 | 2026-09-23 | **Doubletten ohne Prüfsummen, zur Laufzeit berechnet** | Kein Lesen der Platten nötig, funktioniert auch offline, keine Schemaänderung. Ordner-Signatur = Anzahl, Größe, Summe der Hashes (rel. Pfad, Größe). Nachteil: „Name+Größe“ ist ein starker Hinweis, aber kein Beweis; Inhaltshash wäre eine spätere Erweiterung (Roadmap). |
-| 2026-09-23 | **Änderungserkennung über die Belegung (statvfs), nicht per inotify** | Billig, plattformübergreifend, kein Watcher je Verzeichnis. Blind für reines Verschieben innerhalb einer Platte (Belegung gleich) – das erfasst weiterhin der 24-h-Neuindex. |
+| 2026-09-23 | **Änderungserkennung über die Belegung (statvfs), nicht per inotify** | Billig, plattformübergreifend, kein Watcher je Verzeichnis. Blind für reines Verschieben innerhalb einer Platte (Belegung gleich) – das erfasst weiterhin der 24-h-Neuindex. Ohne Mindeständerung, Mindestabstand und Ausnahme für Systemvolumes indizierte ein Agent seine Systemplatte im Dauerlauf neu (Protokolle und Caches ändern die Belegung ständig; 78 Neuindizes in 2,5 h). |
 | 2026-09-23 | **Umbenennen nur lokal und nur bei Loopback-Server** | Schreibt auf den Datenträger; solange es kein Login gibt, darf das nicht über das Netz auslösbar sein. Berechtigung über polkit statt sudoers. |
 | 2026-09-23 | **Neu formatiert = gleiche Partition mit neuer Dateisystem-UUID → Index verwerfen; neue Partitions-GUID = neues Volume** | Volumes werden über die GPT-GUID identifiziert (MBR: Dateisystem-UUID); ein Neupartitionieren erzeugt also neue Volumes, das alte bleibt als „nicht mehr vorhanden“ stehen und kann manuell gelöscht werden. |
 | 2026-09-23 | **Auto-Einhängen standardmäßig an, über udisks2 (schreibbar wie im Dateimanager)** | Ohne Einhängen sind Belegung und Dateiindex nicht erfassbar. Schreibgeschützt einhängen wurde verworfen, weil Daten zwischen Platten verschoben werden sollen. Abschaltbar mit `auto_mount = false`. |

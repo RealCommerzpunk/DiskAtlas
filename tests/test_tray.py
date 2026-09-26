@@ -205,6 +205,9 @@ def test_status_sink_tracks_success_and_failures():
 # ------------------------------------------------------------------ Controller
 def test_controller_states(tmp_path, monkeypatch):
     monkeypatch.delenv("DISKATLAS_SERVER_URL", raising=False)
+    # Ohne Datei fällt der Controller auf den Standardpfad zurück: nie die echte Konfiguration.
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
     path = tmp_path / "config.toml"
 
     controller = ctl.AgentController(path)

@@ -11,6 +11,17 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Behoben
+- **Dauerlauf beim Indizieren der Systemplatte.** Der Agent startete einen Neuindex bei *jeder*
+  Änderung der Belegung nach 30 s Ruhe – auf einer laufenden Systemplatte (Protokolle, Caches)
+  also direkt nach jedem Durchlauf, im Test 78-mal in 2,5 Stunden. Jetzt braucht ein Neuindex
+  wegen Datenänderung mindestens 50 MB Änderung (`change_min_bytes`) und 10 Minuten Abstand zum
+  letzten Komplett-Scan (`change_min_interval_minutes`); **Systemvolumes lösen ihn nie aus** (dort
+  gilt nur `rescan_interval_hours`, standardmäßig 24 h). Ein Datenträger wird außerdem nicht für
+  einen weiteren Komplett-Scan vorgemerkt, solange sein Scan läuft. Bei langsamen Servern hatte die
+  Dauerschleife zusätzlich Zeitüberschreitungen (HTTP 500) beim Hochladen ausgelöst.
+- Ein Test las die echte Konfiguration des Entwicklungsrechners; jetzt isoliert.
+
 ## [0.5.0] - 2026-09-26
 
 ### Geändert (Achtung, bricht bestehende Einrichtungen)

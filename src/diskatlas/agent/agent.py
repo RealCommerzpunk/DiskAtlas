@@ -31,25 +31,30 @@ SmartReader = Callable[[str], SmartInfo]
 class UsageWatcher:
     """Erkennt Datenänderungen an der Belegung eines Volumes (statvfs, ohne Dateien zu lesen).
 
-    `update` liefert True, sobald sich die Belegung geändert hat und danach `settle` Sekunden
-    stabil blieb – dann ist ein Kopier-/Verschiebevorgang vermutlich beendet.
+    `update` liefert True, sobald sich die Belegung seit dem letzten Auslöser um mindestens
+    `min_delta` Byte geändert hat und danach `settle` Sekunden stabil blieb – dann ist ein
+    Kopier-/Verschiebevorgang vermutlich beendet. Kleine Schwankungen (Protokolle, Caches) lösen
+    nichts aus; sie erfasst der regelmäßige Komplett-Scan.
     """
 
-    def __init__(self, settle: float):
+    def __init__(self, settle: float, min_delta: int = 0):
         self.settle = settle
-        self._state: dict[str, tuple[int, float, bool]] = {}  # key -> (used, geändert_um, offen)
+        self.min_delta = min_delta
+        # key -> (Bezugswert beim letzten Auslöser, letzter Wert, geändert_um, offen)
+        self._state: dict[str, tuple[int, int, float, bool]] = {}
 
     def update(self, key: str, used: int, now: float) -> bool:
         prev = self._state.get(key)
         if prev is None:
-            self._state[key] = (used, now, False)  # Ausgangswert, kein Auslöser
+            self._state[key] = (used, used, now, False)  # Ausgangswert, kein Auslöser
             return False
-        last_used, changed_at, dirty = prev
+        baseline, last_used, changed_at, dirty = prev
         if used != last_used:
-            self._state[key] = (used, now, True)
+            dirty = abs(used - baseline) > self.min_delta
+            self._state[key] = (baseline, used, now, dirty)
             return False
         if dirty and now - changed_at >= self.settle:
-            self._state[key] = (used, changed_at, False)
+            self._state[key] = (used, used, changed_at, False)
             return True
         return False
 
@@ -177,6 +182,7 @@ class Agent:
         """Läuft bis `stop()`: erkennt neue/entfernte Festplatten und plant Scans."""
         jobs: queue.Queue[tuple[str, str]] = queue.Queue()
         pending: set[tuple[str, str]] = set()
+        scanning: set[str] = set()  # Datenträger, die der Worker gerade bearbeitet
         current: dict[str, DiskInfo] = {}
         lock = threading.Lock()
 
@@ -196,7 +202,10 @@ class Agent:
                 with lock:
                     pending.discard((key, kind))
                     disk = current.get(key)
+                    scanning.add(key)
                 if disk is None:
+                    with lock:
+                        scanning.discard(key)
                     continue  # inzwischen wieder abgesteckt
                 try:
                     if kind == "mount":
@@ -205,6 +214,9 @@ class Agent:
                     self.scan_disk(disk, index_files=None if kind == "full" else False)
                 except Exception:
                     log.exception("Scan von %s fehlgeschlagen", key)
+                finally:
+                    with lock:
+                        scanning.discard(key)
 
         worker_thread = threading.Thread(target=worker, name="diskatlas-scan", daemon=True)
         worker_thread.start()
@@ -219,7 +231,8 @@ class Agent:
         last_smart: dict[str, float] = {}
         previous: set[str] | None = None
         last_heartbeat = 0.0
-        usage = UsageWatcher(self.config.change_settle_seconds)
+        usage = UsageWatcher(self.config.change_settle_seconds, self.config.change_min_bytes)
+        change_pause = self.config.change_min_interval_minutes * 60
         mount_tried: dict[str, float] = {}
         rescan = self.config.rescan_interval_hours * 3600
         smart_every = self.config.smart_interval_minutes * 60
@@ -263,7 +276,11 @@ class Agent:
                     signatures[disk.key] = sig
                     last_full[disk.key] = last_smart[disk.key] = now
                     enqueue(disk.key, "full")
-                elif self._data_changed(disk, usage, now):
+                elif (
+                    disk.key not in scanning
+                    and now - last_full.get(disk.key, 0) >= change_pause
+                    and self._data_changed(disk, usage, now)
+                ):
                     log.info("Datenänderung auf %s erkannt – aktualisiere Index", disk.device)
                     last_full[disk.key] = last_smart[disk.key] = now
                     enqueue(disk.key, "full")
@@ -370,9 +387,8 @@ class Agent:
             return False
         changed = False
         for volume in disk.volumes:
-            if not volume.mountpoint or (
-                volume.is_system and not self.config.index_system_volumes
-            ):
+            # Systemvolumes ändern sich ständig; sie erfasst nur der regelmäßige Komplett-Scan.
+            if not volume.mountpoint or volume.is_system:
                 continue
             used = _volume_used(volume.mountpoint)
             if used is not None and usage.update(f"{disk.key}|{volume.key}", used, now):
