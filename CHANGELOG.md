@@ -40,6 +40,10 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   mit Adminrechten, SmartScreen, Protokolle).
 - Tray-Menü *Protokolle anzeigen*; das Einstellungsfenster schreibt eigene Protokolle
   (`agent-settings.log`), und das Tray meldet per Benachrichtigung, wenn es sich nicht öffnen lässt.
+- **MIT-Lizenz** (`LICENSE`); Windows-Datei mit Metadaten (Produkt, Version, Copyright).
+- Signatur der Windows-Datei über **SignPath** vorbereitet: Schritt im Build (nur Versions-Tags,
+  aktiv sobald die Zugangsdaten hinterlegt sind), Richtlinie [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md),
+  Artefakt-Konfiguration `packaging/signpath/`. Anleitung zum Entfernen in docs/AGENT.md.
 - Build: Starttest unter Windows (lokale Oberfläche muss antworten, Einstellungsfenster offen
   bleiben; Protokolle im Build-Log, Bildschirmfoto als Artefakt).
 

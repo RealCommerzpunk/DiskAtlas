@@ -7,10 +7,12 @@ name = "diskatlas"
 dynamic = ["version"]
 description = "Inventar für Festplatten: Hardware, SMART-Gesundheit, Belegung und Dateiindex – auch offline durchsuchbar."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
 keywords = ["disk", "inventory", "smart", "hdd", "catalog"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Framework :: FastAPI",

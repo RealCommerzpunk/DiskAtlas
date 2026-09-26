@@ -32,6 +32,8 @@ dem Speichern von selbst.
 
 **SmartScreen-Warnung beim ersten Start** („Der Computer wurde durch Windows geschützt“): Die
 Datei ist (noch) nicht digital signiert. *Weitere Informationen* → *Trotzdem ausführen*.
+Die Signatur über SignPath ist vorbereitet ([CODE_SIGNING.md](CODE_SIGNING.md)); auch signiert
+kann SmartScreen anfangs noch warnen, bis das Zertifikat genug Downloads gesammelt hat.
 
 **SMART-Werte brauchen Administratorrechte.** Ohne sie kommen Modell, Seriennummer, Belegung und
 Dateien trotzdem an, nur die Gesundheitswerte fehlen; das Einstellungsfenster weist darauf hin.
@@ -83,6 +85,17 @@ Unter Windows `%LOCALAPPDATA%\diskatlas`, unter Linux `~/.local/share/diskatlas`
 Die Konfiguration steht in `%APPDATA%\diskatlas\config.toml` bzw. `~/.config/diskatlas/config.toml`;
 beim Speichern bleibt die vorherige Fassung als `config.toml.bak` erhalten.
 
+## Entfernen
+
+Das Programm installiert nichts. Zum Entfernen:
+
+1. Im Einstellungsfenster den Haken **Beim Anmelden automatisch starten** entfernen (bzw. unter
+   Windows die geplante Aufgabe `DiskAtlas Agent` in der Aufgabenplanung löschen).
+2. Im Menü **Beenden**, dann die Programmdatei löschen.
+3. Wer auch Einstellungen und Daten loswerden will: die Ordner `%APPDATA%\diskatlas` und
+   `%LOCALAPPDATA%\diskatlas` (Windows) bzw. `~/.config/diskatlas` und `~/.local/share/diskatlas`
+   (Linux) löschen. Im lokalen Betrieb liegt dort auch die Datenbank.
+
 ## Enthaltene Fremdsoftware
 
 Die Windows-Datei enthält **smartctl.exe** aus [smartmontools](https://www.smartmontools.org/)
@@ -91,3 +104,6 @@ lizenziert unter der **GNU General Public License v2 oder später**. smartctl is
 Programm, das der Agent nur aufruft. Lizenztext und Herkunft zeigt das Einstellungsfenster
 (*Lizenz und Quellcode*); der zugehörige Quellcode (`smartmontools-<Version>.tar.gz`) liegt bei
 jeder Version auf der Release-Seite neben der Programmdatei.
+
+DiskAtlas selbst steht unter der [MIT-Lizenz](../LICENSE). Zur Signatur der Windows-Datei:
+[CODE_SIGNING.md](CODE_SIGNING.md).

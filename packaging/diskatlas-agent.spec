@@ -6,6 +6,7 @@
 # eigener Weboberfläche und Datenbank.
 # Windows: liegt build/smartmontools/ vor (packaging/fetch_smartctl.py), wird smartctl.exe samt
 # Lizenz mitgeliefert.
+import re
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ ROOT = Path(SPECPATH).parent
 PKG = ROOT / "src" / "diskatlas"
 IS_WIN = sys.platform == "win32"
 SMARTMONTOOLS = ROOT / "build" / "smartmontools"
+VERSION = re.search(r'__version__ = "([^"]+)"', (PKG / "__init__.py").read_text()).group(1)
 
 hiddenimports = [
     "diskatlas.tray.window",
@@ -88,6 +90,32 @@ if not IS_WIN:
                                     "etc/", "lib/girepository"))
     ]
 
+version_info = None
+if IS_WIN:
+    # Metadaten der .exe (Eigenschaften → Details); SignPath prüft Produktname und Version.
+    from PyInstaller.utils.win32.versioninfo import (
+        FixedFileInfo, StringFileInfo, StringStruct, StringTable, VarFileInfo, VarStruct,
+        VSVersionInfo,
+    )
+
+    numbers = tuple(int(part) for part in re.findall(r"\d+", VERSION)[:3]) + (0,)
+    version_info = VSVersionInfo(
+        ffi=FixedFileInfo(filevers=numbers, prodvers=numbers),
+        kids=[
+            StringFileInfo([StringTable("040904B0", [
+                StringStruct("CompanyName", "RealCommerzpunk"),
+                StringStruct("FileDescription", "DiskAtlas Agent"),
+                StringStruct("FileVersion", VERSION),
+                StringStruct("InternalName", "DiskAtlas-Agent"),
+                StringStruct("LegalCopyright", "Copyright (c) 2026 RealCommerzpunk, MIT License"),
+                StringStruct("OriginalFilename", "DiskAtlas-Agent.exe"),
+                StringStruct("ProductName", "DiskAtlas"),
+                StringStruct("ProductVersion", VERSION),
+            ])]),
+            VarFileInfo([VarStruct("Translation", [0x0409, 1200])]),
+        ],
+    )
+
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
@@ -98,4 +126,5 @@ exe = EXE(
     console=False,
     icon=str(ROOT / "packaging" / "windows" / "app.ico") if IS_WIN else None,
     upx=False,
+    version=version_info,
 )

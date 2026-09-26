@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artefakt-Konfiguration für SignPath (in SignPath unter Project → Artifact Configurations
+     einfügen). Das GitHub-Artefakt ist ein ZIP mit genau der einen Windows-Programmdatei. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="DiskAtlas-Agent-windows-x64.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

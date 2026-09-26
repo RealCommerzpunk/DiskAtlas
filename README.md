@@ -136,3 +136,9 @@ ruff check src tests
 
 Projektstruktur, Datenmodell, Migrationen und Release-Ablauf: siehe
 [PROJECT.md › Entwicklung](PROJECT.md#9-entwicklung).
+
+## Lizenz
+
+[MIT](LICENSE). Die Windows-Programmdatei enthält zusätzlich `smartctl.exe` aus smartmontools
+(GPL v2, siehe [docs/AGENT.md](docs/AGENT.md#enthaltene-fremdsoftware)).
+Signatur der Windows-Datei: [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).

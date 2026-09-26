@@ -100,6 +100,19 @@ jobs:
           Write-Host "--- agent-settings.log"; Get-Content "$data\agent-settings.log" -ErrorAction SilentlyContinue
           Write-Host "--- Oberfläche erreichbar: $ok, Einstellungsfenster offen: $windowOpen (Code $($settings.ExitCode))"
           Stop-Process -Id $settings.Id, $tray.Id -Force -ErrorAction SilentlyContinue
+          if (-not $windowOpen) {
+            # .NET-Abstürze (Code 0xE0434352) stehen nur im Ereignisprotokoll.
+            Write-Host "--- Ereignisprotokoll (.NET Runtime / Application Error)"
+            Get-WinEvent -FilterHashtable @{ LogName = "Application"; ProviderName = ".NET Runtime", "Application Error" } `
+              -MaxEvents 4 -ErrorAction SilentlyContinue | ForEach-Object { $_.TimeCreated; $_.Message }
+            # Gegenprobe ohne PyInstaller: gleiches Fenster aus der Python-Umgebung.
+            Write-Host "--- Gegenprobe aus dem Quellcode"
+            $src = Start-Process .venv\Scripts\python.exe -ArgumentList "-m", "diskatlas.tray.app", "--settings", "-v" -PassThru
+            Start-Sleep 25
+            Write-Host "Quellcode-Fenster offen: $(-not $src.HasExited) (Code $($src.ExitCode))"
+            Get-Content "$data\agent-settings.log" -Tail 30 -ErrorAction SilentlyContinue
+            Stop-Process -Id $src.Id -Force -ErrorAction SilentlyContinue
+          }
           if (-not $ok -or -not $windowOpen) { throw "Starttest fehlgeschlagen." }
 
       - name: Bildschirmfoto vom Starttest
@@ -111,10 +124,33 @@ jobs:
           if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v4
+        id: upload
         with:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
+
+      # Signatur über SignPath (docs/CODE_SIGNING.md): nur für Versions-Tags und erst, wenn die
+      # Zugangsdaten hinterlegt sind (Repository-Variablen SIGNPATH_* und Secret
+      # SIGNPATH_API_TOKEN). Jede Signatur muss in SignPath von Hand freigegeben werden; der
+      # Lauf wartet bis zu einer Stunde darauf.
+      - name: Signieren (SignPath)
+        id: sign
+        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/v') && vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: dist/signed
+
+      - name: Signierte Datei übernehmen
+        if: steps.sign.outcome == 'success'
+        shell: bash
+        run: mv -f "dist/signed/${{ matrix.asset }}" "dist/${{ matrix.asset }}"
 
       # GPL: Der Quellcode des mitgelieferten smartctl liegt neben der .exe.
       - name: smartmontools-Quellcode als Artefakt
