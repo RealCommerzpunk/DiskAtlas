@@ -1,0 +1,5 @@
+{
+  "smartctl": {"version": [7, 4], "exit_status": 2, "messages": [
+    {"string": "Smartctl open device: /dev/sdz failed: Permission denied", "severity": "error"}
+  ]}
+}

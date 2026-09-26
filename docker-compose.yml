@@ -1,0 +1,27 @@
+# Start: docker compose up -d   ->   http://<host>:8765
+# Standard: SQLite im Verzeichnis ./data. Für PostgreSQL die auskommentierten Zeilen aktivieren.
+services:
+  diskatlas:
+    build: .
+    image: diskatlas:latest
+    container_name: diskatlas
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/data
+    environment:
+      # Token, mit dem sich Agenten beim Senden ausweisen – unbedingt ändern!
+      DISKATLAS_API_TOKEN: "bitte-aendern"
+      # DISKATLAS_DATABASE_URL: "postgresql+psycopg://diskatlas:diskatlas@db:5432/diskatlas"
+    # depends_on: [db]
+
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: diskatlas
+  #     POSTGRES_PASSWORD: diskatlas
+  #     POSTGRES_DB: diskatlas
+  #   volumes:
+  #     - ./data/postgres:/var/lib/postgresql/data

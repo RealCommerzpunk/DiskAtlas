@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Dateisuche{% endblock %}
+{% block content %}
+<h1>Dateisuche</h1>
+<p class="muted">Durchsucht den Index aller erfassten Festplatten – auch wenn sie gerade nicht angeschlossen sind.</p>
+
+<form class="filters" method="get" action="/files">
+  <input type="search" name="q" value="{{ f.q }}" placeholder="Name oder Pfad (mehrere Wörter = alle müssen vorkommen)" autofocus>
+  <input name="ext" value="{{ f.ext }}" placeholder="Endung(en): mkv, mp4" size="14">
+  <select name="disk" aria-label="Festplatte">
+    <option value="">Alle Festplatten</option>
+    {% for d in disks %}<option value="{{ d.id }}" {{ 'selected' if f.disk == d.id|string }}>{{ d.display_name }}</option>{% endfor %}
+  </select>
+  <select name="label" aria-label="Label">
+    <option value="">Jedes Label</option>
+    {% for lab in labels %}<option value="{{ lab.id }}" {{ 'selected' if f.label == lab.id|string }}>{{ lab.category ~ ': ' if lab.category }}{{ lab.name }}</option>{% endfor %}
+  </select>
+  <input name="min_mb" value="{{ f.min_mb }}" placeholder="min. MB" size="7" inputmode="decimal">
+  <input type="hidden" name="sort" value="{{ f.sort }}">
+  {% if f.desc %}<input type="hidden" name="desc" value="true">{% endif %}
+  <button type="submit">Suchen</button>
+</form>
+
+{% if has_query %}
+<p class="muted">{{ total | number }} Treffer{% if pages > 1 %} · Seite {{ page }} von {{ pages }}{% endif %}</p>
+{% if rows %}
+<div class="table-wrap">
+<table class="files">
+  <thead>
+    <tr>
+      {% for key, text in [('name', 'Name'), ('path', 'Pfad'), ('size', 'Größe'), ('mtime', 'Geändert')] %}
+      <th class="{{ 'num' if key == 'size' }}"><a href="{{ sort_url(key) }}">{{ text }}{% if f.sort == key %} {{ '▼' if f.desc else '▲' }}{% endif %}</a></th>
+      {% endfor %}
+      <th>Festplatte</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for file, volume, disk in rows %}
+    <tr>
+      <td class="filename">{{ file.name }}</td>
+      <td class="path muted small" title="{{ file.path }}">{{ file.path }}</td>
+      <td class="num">{{ file.size | filesize }}</td>
+      <td>{{ file.mtime | date }}</td>
+      <td>
+        <a href="/disks/{{ disk.id }}">{{ disk.display_name }}</a>
+        <div class="small">{% if disk.is_connected %}<span class="dot online"></span> {{ volume.mountpoint or 'nicht eingehängt' }}{% else %}<span class="dot offline"></span> offline{% endif %}{% if volume.label and volume.label != disk.display_name %} · {{ volume.label }}{% endif %}</div>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ page_url(page - 1) }}">← zurück</a>{% endif %}
+  <span>Seite {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a href="{{ page_url(page + 1) }}">weiter →</a>{% endif %}
+</nav>
+{% endif %}
+{% endif %}
+{% else %}
+<div class="empty"><p>Suchbegriff, Dateiendung, Festplatte oder Mindestgröße angeben.</p></div>
+{% endif %}
+{% endblock %}

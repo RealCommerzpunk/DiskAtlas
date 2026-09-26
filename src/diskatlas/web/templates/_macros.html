@@ -1,0 +1,50 @@
+{% macro health_badge(health) -%}
+<span class="badge health-{{ health }}">{{ HEALTH_LABELS.get(health, health) }}</span>
+{%- endmacro %}
+
+{% macro connection_badge(disk) -%}
+{% if disk.is_connected %}
+<span class="badge online" title="an {{ disk.last_host or '?' }}">angeschlossen</span>
+{% else %}
+<span class="badge offline" title="zuletzt {{ disk.last_seen | dt }}">offline · {{ disk.last_seen | ago }}</span>
+{% endif %}
+{%- endmacro %}
+
+{% macro label_chip(label) -%}
+<span class="chip" style="background: {{ label.color }}; color: {{ label.color | text_color }}"
+      title="{{ label.category or 'ohne Kategorie' }}">{% if label.category %}<small>{{ label.category }}:</small> {% endif %}{{ label.name }}</span>
+{%- endmacro %}
+
+{% macro usage_bar(percent) -%}
+{% if percent is not none %}
+<div class="bar {{ 'bar-high' if percent >= 90 else 'bar-mid' if percent >= 75 }}" title="{{ percent | percent }} belegt">
+  <span style="width: {{ '%.1f' | format(percent) }}%"></span>
+</div>
+{% else %}<div class="bar bar-empty"></div>{% endif %}
+{%- endmacro %}
+
+
+{# Verlauf für die Schacht-Kappe (einmal pro Seite einbinden). #}
+{% macro tray_defs() -%}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="trayMetal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eef0f5"/><stop offset=".5" stop-color="#a5abb7"/><stop offset="1" stop-color="#6f7582"/>
+    </linearGradient>
+  </defs>
+</svg>
+{%- endmacro %}
+
+{# Kappe eines 3,5"-Wechselrahmens: Federhebel, Schachtnummer und Status-LED. #}
+{% macro bay_cap(number, led) -%}
+<svg class="cap-svg led-{{ led }}" viewBox="0 0 64 44" role="img" aria-label="Schacht {{ number }}">
+  <rect x="0.5" y="0.5" width="63" height="43" rx="5" fill="#0b0c0e" stroke="#2a2c33"/>
+  <circle class="tray-led" cx="11" cy="10" r="3.4"/>
+  <text x="11" y="35" class="cap-num" text-anchor="middle">{{ number }}</text>
+  <rect x="25" y="6" width="32" height="6" rx="3" fill="url(#trayMetal)"/>
+  <rect x="25" y="32" width="32" height="6" rx="3" fill="url(#trayMetal)"/>
+  <polyline points="31,12 39,17 31,22 39,27 31,32" fill="none" stroke="url(#trayMetal)" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="44" y="16" width="13" height="12" rx="2" fill="#17181c" stroke="#3d4048"/>
+  <rect x="47" y="20" width="7" height="2" rx="1" fill="#050506"/><rect x="47" y="24" width="7" height="2" rx="1" fill="#050506"/>
+</svg>
+{%- endmacro %}

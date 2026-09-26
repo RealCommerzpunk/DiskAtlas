@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Schächte einrichten{% endblock %}
+{% block content %}
+<h1>Schächte einrichten</h1>
+<p class="muted">Jeder Hot-Swap-Schacht hängt an einem festen SATA-Port des Mainboards. Einmal zugeordnet,
+erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhängig von Gerätename und Einhängepunkt.</p>
+{% if flash_err %}<p class="notice health-reasons failed" role="alert">{{ flash_err }}</p>{% endif %}
+
+<section class="card" id="wizard" hidden>
+  <h2>Assistent</h2>
+  <p id="wiz-text" class="wiz-text"></p>
+  <p class="muted small" id="wiz-ports"></p>
+  <div class="wiz-actions">
+    <button type="button" class="secondary" id="wiz-skip">Schacht überspringen</button>
+    <button type="button" class="secondary" id="wiz-restart">Neu beginnen</button>
+  </div>
+</section>
+
+<form method="post" action="/bays/setup" class="card" id="bay-form">
+  <h2>Zuordnung</h2>
+  <div class="bay-assign">
+    {% for i in range(bay_count) %}
+    <label>Schacht {{ i + 1 }}
+      <select name="port" data-bay="{{ i }}">
+        <option value="">– nicht zugeordnet –</option>
+        {% for p in all_ports %}
+        <option value="{{ p }}" {{ 'selected' if assignment[i] == p }}>{{ p }}{% if p in live %} · {{ live[p].model or live[p].device }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+  </div>
+  <label class="check"><input type="checkbox" name="reverse" value="true" {{ 'checked' if reverse }}>
+    Schacht 1 liegt unten (Anzeige von unten nach oben: Schacht {{ bay_count }} steht oben)</label>
+  <p class="muted small">Tipp: Ziehe für jeden Schacht die Platte heraus und stecke sie wieder ein – der Assistent oben
+    erkennt den Port automatisch. Alternativ kannst du die Ports hier von Hand wählen.</p>
+  <button type="submit">Speichern</button> <a href="/">Abbrechen</a>
+</form>
+
+<script>
+(function () {
+  "use strict";
+  var selects = Array.prototype.slice.call(document.querySelectorAll("select[data-bay]"));
+  var box = document.getElementById("wizard");
+  var text = document.getElementById("wiz-text");
+  var portsEl = document.getElementById("wiz-ports");
+  var step = 0, prev = null, N = selects.length;
+  if (!window.fetch) { return; }
+  box.hidden = false;
+
+  function render(occupied) {
+    if (step >= N) {
+      text.textContent = "Fertig – prüfe die Zuordnung unten und klicke auf „Speichern“.";
+      document.getElementById("wiz-skip").hidden = true;
+    } else {
+      document.getElementById("wiz-skip").hidden = false;
+      text.textContent = "Schacht " + (step + 1) + " von " + N +
+        ": Platte herausziehen und wieder einstecken (oder eine andere einstecken).";
+    }
+    portsEl.textContent = "Belegte Ports: " + (occupied.length
+      ? occupied.map(function (o) { return o.port + " (" + (o.model || o.device) + ")"; }).join(", ")
+      : "keine");
+  }
+  function poll() {
+    fetch("/api/v1/bays/live", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var now = data.occupied.map(function (o) { return o.port; });
+        if (prev !== null && step < N) {
+          var appeared = now.filter(function (p) { return prev.indexOf(p) < 0; });
+          appeared.forEach(function (p) {
+            if (step >= N) { return; }
+            // gleicher Port darf nicht zwei Schächten gehören
+            selects.forEach(function (s) { if (s.value === p) { s.value = ""; } });
+            selects[step].value = p;
+            step += 1;
+          });
+        }
+        prev = now;
+        render(data.occupied);
+      })
+      .catch(function () {});
+  }
+  document.getElementById("wiz-skip").addEventListener("click", function () {
+    if (step < N) { selects[step].value = ""; step += 1; poll(); }
+  });
+  document.getElementById("wiz-restart").addEventListener("click", function () {
+    step = 0; selects.forEach(function (s) { s.value = ""; }); poll();
+  });
+  poll();
+  setInterval(poll, 1500);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import label_chip %}
+{% block title %}Labels{% endblock %}
+{% block content %}
+<h1>Labels &amp; Kategorien</h1>
+<p class="muted">Labels lassen sich Festplatten anheften. Die optionale Kategorie (z. B. „Standort“, „Inhalt“, „Status“) fasst Labels zusammen und dient im Dashboard als Gruppierung.</p>
+{% if error %}<p class="notice">{{ error }}</p>{% endif %}
+
+<section class="card">
+  <h2>Neues Label</h2>
+  <form method="post" action="/labels" class="inline">
+    <input name="name" placeholder="Name, z. B. Archiv" required>
+    <input name="category" placeholder="Kategorie, z. B. Inhalt" list="categories">
+    <input type="color" name="color" value="#4f7cff" aria-label="Farbe">
+    <button type="submit">Anlegen</button>
+  </form>
+  <datalist id="categories">
+    {% for cat in labels | map(attribute='0.category') | select | unique %}<option value="{{ cat }}">{% endfor %}
+  </datalist>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Vorschau</th><th>Name</th><th>Kategorie</th><th>Farbe</th><th class="num">Festplatten</th><th></th></tr></thead>
+    <tbody>
+    {% for label, count in labels %}
+      <tr>
+        <td>{{ label_chip(label) }}</td>
+        <td colspan="3">
+          <form method="post" action="/labels/{{ label.id }}" class="inline">
+            <input name="name" value="{{ label.name }}" required size="14">
+            <input name="category" value="{{ label.category or '' }}" list="categories" placeholder="Kategorie" size="12">
+            <input type="color" name="color" value="{{ label.color }}" aria-label="Farbe">
+            <button type="submit" class="secondary">Speichern</button>
+          </form>
+        </td>
+        <td class="num"><a href="/?label={{ label.id }}">{{ count }}</a></td>
+        <td>
+          <form method="post" action="/labels/{{ label.id }}/delete" data-confirm="Label „{{ label.name }}“ löschen? Es wird von allen Festplatten entfernt.">
+            <button class="link danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Noch keine Labels angelegt.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{
+  "smartctl": {"version": [7, 4], "exit_status": 0},
+  "model_name": "Samsung SSD 980 PRO 1TB",
+  "serial_number": "S5GXNX0T000000",
+  "smart_status": {"passed": true, "nvme": {"value": 0}},
+  "nvme_smart_health_information_log": {
+    "critical_warning": 0, "temperature": 44, "available_spare": 100, "percentage_used": 3,
+    "power_cycles": 812, "power_on_hours": 6120, "media_errors": 0
+  },
+  "temperature": {"current": 44},
+  "power_on_time": {"hours": 6120},
+  "power_cycle_count": 812
+}

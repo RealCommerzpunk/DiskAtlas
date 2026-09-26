@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Doubletten{% endblock %}
+{% block content %}
+<h1>Doubletten</h1>
+<p class="muted">Vergleicht den Index aller erfassten Festplatten – auch abgesteckter. Es werden keine Dateiinhalte gelesen:
+Dateien gelten bei <strong>gleichem Namen und gleicher Größe</strong> als gleich, Ordner bei <strong>identischem Inhalt</strong>
+(gleiche relative Pfade und Größen). Vor dem Löschen bitte gegenprüfen.</p>
+
+<nav class="tabs" style="display:flex;gap:.5rem;margin:1rem 0">
+  <a href="/duplicates?mode=files" class="btn {{ 'active' if mode == 'files' }}">Dateien</a>
+  <a href="/duplicates?mode=folders" class="btn {{ 'active' if mode == 'folders' }}">Ordner</a>
+</nav>
+
+<form class="filters" method="get" action="/duplicates">
+  <input type="hidden" name="mode" value="{{ mode }}">
+  {% if mode == 'files' %}<input name="ext" value="{{ f.ext }}" placeholder="Endung(en): mkv, mp4" size="16">{% endif %}
+  {% if mode == 'folders' %}<label>min. Dateien <input name="min_files" type="number" min="1" value="{{ f.min_files }}" style="width:5rem"></label>
+  <label><input type="checkbox" name="hidden" value="true" {{ 'checked' if f.hidden }}> versteckte Ordner (.xyz)</label>{% endif %}
+  <input name="min_mb" value="{{ f.min_mb }}" placeholder="min. MB" size="7" inputmode="decimal">
+  <button type="submit">Prüfen</button>
+</form>
+
+<p class="muted">{{ total | number }} Gruppe{{ 'n' if total != 1 }} · vermeidbarer Platz insgesamt: <strong>{{ wasted | filesize }}</strong>
+{% if mode == 'files' and pages > 1 %} · Seite {{ page }} von {{ pages }}{% endif %}
+{% if capped %} · nur die größten {{ total }} angezeigt{% endif %}</p>
+
+{% if not groups %}
+<div class="empty"><p>Keine Doubletten gefunden.</p></div>
+{% elif mode == 'files' %}
+{% for g in groups %}
+<div class="card" style="margin-bottom:1rem">
+  <h3 style="margin:.2rem 0">{{ g.name }} <span class="muted small">· {{ g.size | filesize }} · {{ g.members | length }}× · {{ g.wasted | filesize }} vermeidbar</span></h3>
+  <div class="table-wrap"><table class="files"><tbody>
+  {% for file, volume, disk in g.members %}
+    <tr>
+      <td class="path small" title="{{ file.path }}">{{ file.path }}</td>
+      <td>{{ file.mtime | date }}</td>
+      <td><a href="/disks/{{ disk.id }}">{{ disk.display_name }}</a>
+        <span class="small">{% if disk.is_connected %}<span class="dot online"></span>{% else %}<span class="dot offline"></span> offline{% endif %}{% if volume.label and volume.label != disk.display_name %} · {{ volume.label }}{% endif %}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody></table></div>
+</div>
+{% endfor %}
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ page_url(page - 1) }}">← zurück</a>{% endif %}
+  <span>Seite {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a href="{{ page_url(page + 1) }}">weiter →</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+{% for g in groups %}
+<div class="card" style="margin-bottom:1rem">
+  <h3 style="margin:.2rem 0">{{ g.folders | length }} identische Ordner <span class="muted small">· {{ g.file_count | number }} Dateien · {{ g.size | filesize }} · {{ g.wasted | filesize }} vermeidbar</span></h3>
+  <div class="table-wrap"><table class="files"><tbody>
+  {% for ref in g.folders %}
+    <tr>
+      <td class="path small">{{ ref.path or '(gesamtes Volume)' }}</td>
+      <td><a href="/disks/{{ ref.disk.id }}">{{ ref.disk.display_name }}</a>
+        <span class="small">{% if ref.disk.is_connected %}<span class="dot online"></span>{% else %}<span class="dot offline"></span> offline{% endif %}{% if ref.volume.label and ref.volume.label != ref.disk.display_name %} · {{ ref.volume.label }}{% endif %}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody></table></div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

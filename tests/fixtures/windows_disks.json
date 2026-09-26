@@ -1,0 +1,17 @@
+[
+  {"Number": 0, "Model": "Samsung SSD 980 PRO 1TB", "FriendlyName": "Samsung SSD 980 PRO 1TB", "Manufacturer": null,
+   "SerialNumber": "0025_3886_81B4_A1C2.", "Size": 1000204886016, "BusType": "NVMe", "MediaType": "SSD", "IsSystem": true, "IsBoot": true,
+   "Partitions": [
+     {"PartitionNumber": 1, "DriveLetter": null, "AccessPaths": ["\\\\?\\Volume{aaaa}\\"], "Size": 104857600, "Guid": "{0f0f0f0f-0000-4000-8000-000000000001}", "Type": "System", "IsSystem": true, "IsBoot": false, "FileSystem": "FAT32", "Label": "", "VolumeSize": 100663296, "SizeRemaining": 70000000, "VolumeId": "\\\\?\\Volume{aaaa}\\"},
+     {"PartitionNumber": 2, "DriveLetter": null, "AccessPaths": [], "Size": 16777216, "Guid": "{0f0f0f0f-0000-4000-8000-000000000002}", "Type": "Reserved", "IsSystem": false, "IsBoot": false, "FileSystem": null, "Label": null, "VolumeSize": null, "SizeRemaining": null, "VolumeId": null},
+     {"PartitionNumber": 3, "DriveLetter": "C", "AccessPaths": ["C:\\", "\\\\?\\Volume{bbbb}\\"], "Size": 999000000000, "Guid": "{0f0f0f0f-0000-4000-8000-000000000003}", "Type": "Basic", "IsSystem": false, "IsBoot": true, "FileSystem": "NTFS", "Label": "Windows", "VolumeSize": 999000000000, "SizeRemaining": 400000000000, "VolumeId": "\\\\?\\Volume{bbbb}\\"}
+   ]},
+  {"Number": 2, "Model": "ST8000VN004-3CP101", "FriendlyName": "ST8000VN004-3CP101", "Manufacturer": null,
+   "SerialNumber": "  TESTHDD0002  ", "Size": 8001563222016, "BusType": "SATA", "MediaType": "HDD", "IsSystem": false, "IsBoot": false,
+   "Partitions": {"PartitionNumber": 1, "DriveLetter": "E", "AccessPaths": ["E:\\"], "Size": 8001561124864, "Guid": "{E3B0C442-98FC-1C14-9AFB-F4C8996FB924}", "Type": "Basic", "IsSystem": false, "IsBoot": false, "FileSystem": "NTFS", "Label": "AVneu", "VolumeSize": 8001561120768, "SizeRemaining": 6001561120768, "VolumeId": "\\\\?\\Volume{cccc}\\"}},
+  {"Number": 3, "Model": "Portable SSD T7", "FriendlyName": "Samsung PSSD T7", "Manufacturer": "Samsung",
+   "SerialNumber": null, "Size": 500107862016, "BusType": "USB", "MediaType": "Unspecified", "IsSystem": false, "IsBoot": false,
+   "Partitions": [
+     {"PartitionNumber": 1, "DriveLetter": null, "AccessPaths": [], "Size": 500106813440, "Guid": null, "Type": "IFS", "IsSystem": false, "IsBoot": false, "FileSystem": "exFAT", "Label": "T7", "VolumeSize": 500106813440, "SizeRemaining": 100, "VolumeId": "\\\\?\\Volume{dddd}\\"}
+   ]}
+]

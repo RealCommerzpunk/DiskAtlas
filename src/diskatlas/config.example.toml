@@ -1,0 +1,34 @@
+# DiskAtlas – Beispielkonfiguration
+# Speicherort (Standard):
+#   Linux:   ~/.config/diskatlas/config.toml
+#   Windows: %APPDATA%\diskatlas\config.toml
+# Alle Werte sind optional; auskommentierte Zeilen zeigen die Standardwerte.
+# Umgebungsvariablen (DISKATLAS_DATABASE_URL, DISKATLAS_SERVER_URL, DISKATLAS_API_TOKEN,
+# DISKATLAS_HOST, DISKATLAS_PORT) haben Vorrang vor dieser Datei.
+
+# Datenbank (SQLAlchemy-URL). Leer = lokale SQLite-Datei:
+#   Linux:   ~/.local/share/diskatlas/diskatlas.db
+#   Windows: %LOCALAPPDATA%\diskatlas\diskatlas.db
+# database_url = "postgresql+psycopg://diskatlas:geheim@unraid.local:5432/diskatlas"
+
+[agent]
+# poll_interval = 5.0             # Sekunden zwischen Hot-Plug-Prüfungen
+# smart_interval_minutes = 60     # SMART-Werte angeschlossener Platten auffrischen
+# rescan_interval_hours = 24      # Dateiindex angeschlossener Platten erneuern
+# change_settle_seconds = 30      # Neuindex nach Datenänderung (belegter Platz), sobald so lange Ruhe ist; 0 = aus
+# index_files = true              # Dateien indizieren
+# index_system_volumes = false    # auch "/" bzw. "C:\" indizieren
+# auto_mount = true               # Linux: nicht eingehängte Dateisysteme automatisch einhängen (udisks2)
+# exclude_dirs = ["$RECYCLE.BIN", "System Volume Information", ".Trash-*", ".Trashes", "lost+found"]
+# smartctl_path = "smartctl"
+# smart_use_sudo = true           # unter Linux ohne root: "sudo -n smartctl" versuchen
+
+# Zentraler Server (z. B. Docker-Container auf dem Unraid). Leer = direkt in database_url schreiben.
+# server_url = "http://unraid.local:8765"
+# api_token = "gleiches-token-wie-auf-dem-server"
+# host_name = ""                  # Anzeigename dieses Rechners (Standard: Hostname)
+
+[server]
+# host = "127.0.0.1"              # "0.0.0.0" für Zugriff aus dem Netzwerk
+# port = 8765
+# api_token = ""                  # Token, das Agenten für /api/v1/ingest mitsenden müssen

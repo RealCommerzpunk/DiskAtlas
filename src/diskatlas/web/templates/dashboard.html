@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% from "_macros.html" import health_badge, connection_badge, label_chip, usage_bar, bay_cap, tray_defs %}
+{% block title %}Dashboard{% endblock %}
+{% block bodyattrs %} data-live{% endblock %}
+
+{% macro disk_cells(disk) %}
+        <td><div class="chips">{% for lab in disk.labels %}{{ label_chip(lab) }}{% endfor %}</div></td>
+        <td>
+          {{ health_badge(disk.health) }}
+          {% if disk.temperature_c is not none %}<span class="muted small">{{ disk.temperature_c }} °C{% if disk.power_on_hours %} · {{ disk.power_on_hours | number }} h{% endif %}</span>{% endif %}
+        </td>
+        <td class="fs">{{ disk.fs_types | join(', ') or '–' }}</td>
+        <td class="num">{{ disk.size_bytes | filesize }}</td>
+        <td class="usage-col">{% if disk.usage_known %}{{ usage_bar(disk.usage_percent) }}{% elif disk.has_unmounted_fs %}<span class="muted small" title="Die Belegung lässt sich nur bei eingehängtem Dateisystem messen. Im Dateimanager anklicken, dann liest DiskAtlas sie und indiziert die Dateien.">nicht eingehängt</span>{% else %}<span class="muted small">unbekannt</span>{% endif %}</td>
+        <td class="num">{{ disk.free_bytes | filesize }}</td>
+        <td class="num">{{ disk.file_count | number }}</td>
+        <td>{{ connection_badge(disk) }}</td>
+{% endmacro %}
+
+{% macro table_head() %}
+    <thead>
+      <tr>
+        <th class="rail"></th><th>Festplatte</th><th>Labels</th><th>Gesundheit</th><th>Dateisystem</th><th class="num">Kapazität</th>
+        <th class="usage-col">Belegung</th><th class="num">Frei</th><th class="num">Dateien</th><th>Status</th>
+      </tr>
+    </thead>
+{% endmacro %}
+
+{% macro bay_rows(bays) %}
+    <tbody class="bay-rows">
+    {% for bay in bays %}
+      {% set d = bay.disk %}
+      {% set led = 'busy' if bay.indexing else (d.health if d else ('unknown' if bay.state == 'unknown' else 'off')) %}
+      <tr class="bay-row state-{{ bay.state }}">
+        <td class="rail bay-cap">{{ bay_cap(bay.number, led) }}</td>
+        <td>
+          {% if bay.state == 'disk' %}
+          <a class="disk-name" href="/disks/{{ d.id }}">{{ d.display_name }}</a>
+          <div class="muted small">Schacht {{ bay.number }} · {{ bay.port }}{% if bay.device %} · {{ bay.device }}{% endif %}{% if d.brand %} · <strong class="brand-name">{{ d.brand }}</strong>{% endif %}{% if d.model and d.model != d.display_name %} · {{ d.model }}{% endif %}</div>
+          {% if bay.indexing %}<div class="bay-warn">⚠ Indizierung läuft – nicht abziehen</div>{% endif %}
+          {% else %}
+          <strong>Schacht {{ bay.number }}</strong>
+          <div class="muted small">{{ bay.port or 'nicht eingerichtet' }}</div>
+          {% endif %}
+        </td>
+        {% if bay.state == 'disk' %}{{ disk_cells(d) }}
+        {% elif bay.state == 'unknown' %}<td colspan="8" class="bay-empty">Platte erkannt ({{ bay.device }}) – wird erfasst …</td>
+        {% elif bay.state == 'empty' %}<td colspan="8" class="bay-empty">Leer</td>
+        {% else %}<td colspan="8" class="bay-empty"><a href="/bays/setup">Schächte einrichten</a></td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+{% endmacro %}
+
+{% block content %}
+<section class="kpis compact">
+  <div class="kpi">
+    <div class="kpi-label">Festplatten</div>
+    <div class="kpi-value">{{ stats.disk_count }}</div>
+    <div class="kpi-sub">{{ stats.connected }} angeschlossen · {{ stats.disk_count - stats.connected }} offline</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Kapazität</div>
+    <div class="kpi-value">{{ stats.capacity | filesize }}</div>
+    <div class="kpi-sub" title="Kapazität = alle Festplatten (auch offline). Belegt/frei = letzter bekannter Stand der Partitionen. „Unbekannt“ = Platten ohne Partitionsdaten (z. B. nie eingehängt); ihre Größe zählt zur Kapazität, aber weder zu belegt noch zu frei.">{{ stats.used | filesize }} belegt · {{ stats.free | filesize }} frei{% if stats.unknown %} · {{ stats.unknown | filesize }} unbekannt{% endif %}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Indizierte Dateien</div>
+    <div class="kpi-value">{{ stats.files | number }}</div>
+    <div class="kpi-sub"><a href="/files">durchsuchen →</a></div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Gesundheit</div>
+    <div class="health-dist">
+      {% for key in ['failed', 'warning', 'unknown', 'ok'] %}
+      <a href="/?health={{ key }}" class="health-count health-{{ key }}"><strong>{{ stats.health.get(key, 0) }}</strong> {{ HEALTH_LABELS[key] }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<div class="filterbar">
+<form class="filters" method="get" action="/" data-autosubmit>
+  <input type="search" name="q" value="{{ f.q }}" placeholder="Suche: Name, Modell, Seriennummer, Label, Notiz …" autofocus>
+  <select name="health" aria-label="Gesundheit">
+    <option value="">Jede Gesundheit</option>
+    {% for key, text in HEALTH_LABELS.items() %}<option value="{{ key }}" {{ 'selected' if f.health == key }}>{{ text }}</option>{% endfor %}
+  </select>
+  <select name="connected" aria-label="Verbindung">
+    <option value="">Alle</option>
+    <option value="yes" {{ 'selected' if f.connected == 'yes' }}>Angeschlossen</option>
+    <option value="no" {{ 'selected' if f.connected == 'no' }}>Offline</option>
+  </select>
+  <select name="label" aria-label="Label">
+    <option value="">Jedes Label</option>
+    {% for lab in labels %}<option value="{{ lab.id }}" {{ 'selected' if f.label == lab.id|string }}>{{ lab.category ~ ': ' if lab.category }}{{ lab.name }}</option>{% endfor %}
+  </select>
+  <select name="fs" aria-label="Dateisystem">
+    <option value="">Jedes Dateisystem</option>
+    {% for t in fs_options %}<option value="{{ t }}" {{ 'selected' if f.fs == t }}>{{ t }}</option>{% endfor %}
+    <option value="{{ NO_FS }}" {{ 'selected' if f.fs == NO_FS }}>(kein Dateisystem)</option>
+  </select>
+  <select name="usage" aria-label="Belegung">
+    <option value="">Belegung: alle</option>
+    <option value="unknown" {{ 'selected' if f.usage == 'unknown' }}>Belegung unbekannt</option>
+    <option value="known" {{ 'selected' if f.usage == 'known' }}>Belegung bekannt</option>
+  </select>
+  <select name="group" aria-label="Gruppieren">
+    {% for key, text in GROUP_OPTIONS.items() %}<option value="{{ key }}" {{ 'selected' if f.group == key }}>{{ text if key != 'none' else 'Gruppieren: nein' }}</option>{% endfor %}
+  </select>
+  <select name="sort" aria-label="Sortieren">
+    {% for key, text in SORT_OPTIONS.items() %}<option value="{{ key }}" {{ 'selected' if f.sort == key }}>Sortiert: {{ text }}</option>{% endfor %}
+  </select>
+  <label class="check"><input type="checkbox" name="desc" value="true" {{ 'checked' if f.desc }}> ↓</label>
+  <noscript><button type="submit">Anwenden</button></noscript>
+</form>
+<form method="post" action="/prefs/hide-system" data-autosubmit class="sysform">
+  <input type="hidden" name="hide" value="0">
+  <label class="check" title="Blendet Festplatten mit dem Label „System“ überall aus{{ ' (' ~ hidden_system_count ~ ' ausgeblendet)' if hide_system and hidden_system_count }}"><input type="checkbox" name="hide" value="1" {{ 'checked' if hide_system }}> Systemplatten ausblenden{% if hide_system and hidden_system_count %} ({{ hidden_system_count }}){% endif %}</label>
+  <noscript><button type="submit">OK</button></noscript>
+</form>
+{% if bays is not none %}<a class="small bays-link" href="/bays/setup" title="Schächte einrichten">⚙ Schächte</a>{% endif %}
+</div>
+
+{% if stats.disk_count == 0 and not bays %}
+<div class="empty">
+  <h2>Noch keine Festplatten erfasst</h2>
+  <p>Starte den Agenten mit <code>diskatlas run</code> (Dashboard + Überwachung) oder einmalig mit <code>diskatlas scan</code>.</p>
+</div>
+{% elif filtered_count == 0 and not bays %}
+<div class="empty"><p>Keine Festplatte passt zu den Filtern. <a href="/">Filter zurücksetzen</a></p></div>
+{% endif %}
+
+{% if bays is not none %}{{ tray_defs() }}{% endif %}
+{% set inline_bays = bays is not none and f.group == 'none' and groups and groups[0][1] %}
+{% if bays is not none and not inline_bays %}
+<section class="group">
+  <div class="table-wrap"><table class="disks">{{ table_head() }}{{ bay_rows(bays) }}</table></div>
+</section>
+{% endif %}
+
+{% for group_name, disks in groups %}{% if disks %}
+<section class="group">
+  {% if group_name %}<h2>{{ group_name }} <span class="muted">({{ disks | length }})</span></h2>{% endif %}
+  <div class="table-wrap">
+  <table class="disks">
+    {{ table_head() }}
+    {% if inline_bays and loop.first %}{{ bay_rows(bays) }}{% endif %}
+    <tbody>
+    {% for disk in disks %}
+      <tr class="{{ 'is-offline' if not disk.is_connected }}">
+        <td class="rail"><span class="dot {{ 'online' if disk.is_connected else 'offline' }}" title="{{ 'angeschlossen' if disk.is_connected else 'offline' }}"></span></td>
+        <td>
+          <a class="disk-name" href="/disks/{{ disk.id }}">{{ disk.display_name }}</a>
+          <div class="muted small">{% if disk.brand %}<strong class="brand-name">{{ disk.brand }}</strong> · {% endif %}{{ disk.model or '' }}{% if disk.serial %} · {{ disk.serial }}{% endif %}{% if disk.media_type %} · {{ disk.media_type }}{% endif %}{% if disk.transport %} · {{ disk.transport | upper }}{% endif %}</div>
+        </td>
+        {{ disk_cells(disk) }}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}{% endfor %}
+{% endblock %}

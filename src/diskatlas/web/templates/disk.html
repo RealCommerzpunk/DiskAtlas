@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% from "_macros.html" import health_badge, connection_badge, label_chip, usage_bar %}
+{% block title %}{{ disk.display_name }}{% endblock %}
+{% block bodyattrs %} data-live{% endblock %}
+{% block content %}
+<p class="crumbs"><a href="/">← Dashboard</a></p>
+<div class="page-head">
+  <div>
+    <h1>{{ disk.display_name }}</h1>
+    <p class="muted">{% if disk.brand %}<strong>{{ disk.brand }}</strong> · {% endif %}{{ disk.model or 'Unbekanntes Modell' }} · {{ disk.size_bytes | filesize }}</p>
+  </div>
+  <div class="head-badges">{{ health_badge(disk.health) }} {{ connection_badge(disk) }}</div>
+</div>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Stammdaten</h2>
+    <dl class="facts">
+      <dt>Seriennummer</dt><dd><code>{{ disk.serial or '–' }}</code></dd>
+      <dt>Hersteller</dt><dd>{{ disk.vendor or '–' }}</dd>
+      <dt>Serie</dt><dd>{{ disk.product_line or '–' }}</dd>
+      <dt>Modell</dt><dd>{{ disk.model or '–' }}</dd>
+      <dt>Typ / Anschluss</dt><dd>{{ disk.media_type or '–' }} · {{ (disk.transport or '–') | upper }}{% if disk.removable %} · wechselbar{% endif %}{% if disk.is_system %} · Systemplatte{% endif %}</dd>
+      <dt>WWN</dt><dd>{{ disk.wwn or '–' }}</dd>
+      <dt>Zuletzt an</dt><dd>{{ disk.last_host or '–' }} ({{ disk.last_device or '–' }})</dd>
+      <dt>Erstmals erfasst</dt><dd>{{ disk.first_seen | dt }}</dd>
+      <dt>Zuletzt gesehen</dt><dd>{{ disk.last_seen | dt }} ({{ disk.last_seen | ago }})</dd>
+      <dt>Belegung</dt><dd>{{ disk.used_bytes | filesize }} belegt · {{ disk.free_bytes | filesize }} frei {{ usage_bar(disk.usage_percent) }}</dd>
+      <dt>Interne ID</dt><dd><code class="muted">{{ disk.disk_key }}</code></dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Eigene Angaben</h2>
+    <form method="post" action="/disks/{{ disk.id }}" class="stack">
+      <label>Anzeigename
+        <input name="custom_name" value="{{ disk.custom_name or '' }}" placeholder="{{ disk.display_name }}">
+      </label>
+      <label>Notizen (Standort, Inhalt, Kaufdatum …)
+        <textarea name="notes" rows="4">{{ disk.notes or '' }}</textarea>
+      </label>
+      <button type="submit">Speichern</button>
+    </form>
+
+    <h3 id="labels">Labels</h3>
+    <div class="chips">
+      {% for lab in disk.labels %}
+      <form method="post" action="/disks/{{ disk.id }}/labels/{{ lab.id }}/remove" class="chip-form">
+        {{ label_chip(lab) }}<button class="link" title="Label entfernen" aria-label="Label entfernen">✕</button>
+      </form>
+      {% else %}<span class="muted">Keine Labels</span>{% endfor %}
+    </div>
+    <form method="post" action="/disks/{{ disk.id }}/labels" class="inline">
+      {% if available_labels %}
+      <select name="label_id" aria-label="Vorhandenes Label">
+        <option value="">Label wählen …</option>
+        {% for lab in available_labels %}<option value="{{ lab.id }}">{{ lab.category ~ ': ' if lab.category }}{{ lab.name }}</option>{% endfor %}
+      </select>
+      <span class="muted">oder neu:</span>
+      {% endif %}
+      <input name="new_name" placeholder="Neues Label" size="12">
+      <input name="new_category" placeholder="Kategorie" size="10">
+      <input type="color" name="new_color" value="#4f7cff" aria-label="Farbe">
+      <button type="submit">Hinzufügen</button>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <h2>SMART</h2>
+  {% if disk.smart_error %}<p class="notice">{{ disk.smart_error }}</p>{% endif %}
+  {% if disk.health in ('warning', 'failed') %}
+  <div class="notice health-reasons {{ disk.health }}">
+    <strong>Warum „{{ HEALTH_LABELS.get(disk.health) }}“?</strong>
+    {% if health_reasons %}
+    <ul>{% for reason in health_reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+    {% else %}<p class="small">Kein einzelner Auslöser gefunden – Details in den Rohdaten von <code>smartctl</code>.</p>{% endif %}
+  </div>
+  {% endif %}
+  <div class="smart-grid">
+    <div><span class="muted">Status</span><strong>{{ health_badge(disk.health) }}</strong></div>
+    <div><span class="muted">Selbsttest-Bewertung</span><strong>{{ 'bestanden' if disk.smart_passed else 'NICHT bestanden' if disk.smart_passed is sameas false else '–' }}</strong></div>
+    <div><span class="muted">Temperatur</span><strong>{{ disk.temperature_c ~ ' °C' if disk.temperature_c is not none else '–' }}</strong></div>
+    <div><span class="muted">Betriebsstunden</span><strong>{{ disk.power_on_hours | number }}</strong>{% if disk.power_on_hours %}<small class="muted">≈ {{ '%.1f' | format(disk.power_on_hours / 8766) }} Jahre</small>{% endif %}</div>
+    <div><span class="muted">Einschaltvorgänge</span><strong>{{ disk.power_cycles | number }}</strong></div>
+    <div><span class="muted">Wiederzugewiesene Sektoren</span><strong class="{{ 'bad' if disk.reallocated_sectors }}">{{ disk.reallocated_sectors | number }}</strong></div>
+    <div><span class="muted">Schwebende Sektoren</span><strong class="{{ 'bad' if disk.pending_sectors }}">{{ disk.pending_sectors | number }}</strong></div>
+    <div><span class="muted">Nicht korrigierbar</span><strong class="{{ 'bad' if disk.uncorrectable_sectors }}">{{ disk.uncorrectable_sectors | number }}</strong></div>
+    {% if disk.percentage_used is not none %}<div><span class="muted">Verschleiß (NVMe)</span><strong>{{ disk.percentage_used }} %</strong></div>{% endif %}
+    <div><span class="muted">Geprüft</span><strong>{{ disk.smart_checked_at | dt }}</strong></div>
+  </div>
+  {% if history %}
+  <details>
+    <summary>Verlauf ({{ history | length }} Messungen)</summary>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>Zeitpunkt</th><th>Status</th><th class="num">Temp.</th><th class="num">Stunden</th><th class="num">Realloc.</th><th class="num">Pending</th><th class="num">Uncorr.</th></tr></thead>
+      <tbody>
+      {% for s in history %}
+        <tr><td>{{ s.taken_at | dt }}</td><td>{{ health_badge(s.health) }}</td><td class="num">{{ s.temperature_c if s.temperature_c is not none else '–' }}</td>
+            <td class="num">{{ s.power_on_hours | number }}</td><td class="num">{{ s.reallocated_sectors | number }}</td>
+            <td class="num">{{ s.pending_sectors | number }}</td><td class="num">{{ s.uncorrectable_sectors | number }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
+  {% endif %}
+</section>
+
+<section class="card" id="volumes">
+  <h2>Partitionen / Volumes</h2>
+  {% if flash_ok %}<p class="notice ok" role="status">{{ flash_ok }}</p>{% endif %}
+  {% if flash_err %}<p class="notice health-reasons failed" role="alert">{{ flash_err }}</p>{% endif %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Bezeichnung</th><th>Dateisystem</th><th class="num">Größe</th><th class="usage-col">Belegung</th><th class="num">Frei</th><th>Eingehängt</th><th class="num">Dateien</th><th>Index</th><th></th></tr></thead>
+    <tbody>
+    {% for v in disk.volumes %}
+      <tr class="{{ 'is-offline' if not v.present }}">
+        <td><strong>{{ v.label or '(ohne Bezeichnung)' }}</strong><div class="muted small">{{ v.device or '' }}{% if v.is_system %} · System{% endif %}{% if not v.present %} · nicht mehr vorhanden{% endif %}</div>
+          {% if v.present and v.device %}
+          <details class="relabel">
+            <summary class="small">Bezeichnung ändern</summary>
+            {% if relabel_block %}<p class="muted small">{{ relabel_block }}</p>
+            {% else %}
+            <form method="post" action="/volumes/{{ v.id }}/label" class="inline-form"
+                  data-confirm="Die Bezeichnung wird auf dem Datenträger selbst geändert (auch im Dateimanager sichtbar). Dafür wird das Volume kurz ausgehängt und danach automatisch wieder eingehängt – laufende Zugriffe auf diese Platte werden unterbrochen. Fortfahren?">
+              <input name="label" value="{{ v.label or '' }}" maxlength="128" aria-label="Neue Bezeichnung" size="16">
+              <button type="submit">Speichern</button>
+            </form>
+            {% endif %}
+          </details>
+          {% endif %}</td>
+        <td>{{ v.fs_type or '–' }}</td>
+        <td class="num">{{ v.size_bytes | filesize }}</td>
+        <td class="usage-col">{{ usage_bar(v.usage_percent) }}</td>
+        <td class="num">{{ v.free_bytes | filesize }}</td>
+        <td>{{ v.mountpoint or '–' }}</td>
+        <td class="num">{% if v.file_count %}<a href="/files?disk={{ disk.id }}&amp;q=">{{ v.file_count | number }}</a>{% else %}–{% endif %}</td>
+        <td><span class="badge index-{{ v.index_status }}">{{ {'never': 'nie', 'running': 'läuft', 'done': 'fertig', 'failed': 'fehlgeschlagen'}.get(v.index_status, v.index_status) }}</span>
+            <div class="muted small">{{ v.indexed_at | dt }}{% if v.index_errors %} · {{ v.index_errors }} unlesbar{% endif %}</div></td>
+        <td>
+          <form method="post" action="/volumes/{{ v.id }}/delete" data-confirm="Volume „{{ v.label or v.device }}“ samt Dateiindex aus der Datenbank löschen?">
+            <button class="link danger" title="Aus Datenbank löschen">Löschen</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="9" class="muted">Keine Volumes erkannt.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+{% if extensions %}
+<section class="card">
+  <h2>Inhalt nach Dateityp</h2>
+  {% set max_size = extensions[0][2] or 1 %}
+  <table class="ext-table">
+    <tbody>
+    {% for ext, count, size in extensions %}
+      <tr>
+        <td><a href="/files?disk={{ disk.id }}&amp;ext={{ ext }}">{{ ext or '(ohne)' }}</a></td>
+        <td class="num">{{ count | number }} Dateien</td>
+        <td class="num">{{ size | filesize }}</td>
+        <td class="usage-col"><div class="bar"><span style="width: {{ '%.1f' | format((size or 0) * 100 / max_size) }}%"></span></div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="/files?disk={{ disk.id }}&amp;sort=size&amp;desc=true&amp;min_mb=0">Alle Dateien dieser Festplatte anzeigen →</a></p>
+</section>
+{% endif %}
+
+<section class="danger-zone">
+  <form method="post" action="/disks/{{ disk.id }}/delete" data-confirm="Festplatte „{{ disk.display_name }}“ mit allen Daten aus dem Inventar löschen? Sie wird beim nächsten Anschließen neu erfasst.">
+    <button class="danger">Festplatte aus Inventar löschen</button>
+  </form>
+</section>
+{% endblock %}

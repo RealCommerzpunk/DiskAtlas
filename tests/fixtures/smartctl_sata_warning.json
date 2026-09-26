@@ -1,0 +1,12 @@
+{
+  "smartctl": {"version": [7, 4], "exit_status": 64},
+  "model_name": "WDC WD20EARX-00PASB0",
+  "serial_number": "WD-TEST0003",
+  "smart_status": {"passed": true},
+  "ata_smart_attributes": {"table": [
+    {"id": 5, "name": "Reallocated_Sector_Ct", "raw": {"value": 12}},
+    {"id": 197, "name": "Current_Pending_Sector", "raw": {"value": 2}}
+  ]},
+  "power_on_time": {"hours": 51234},
+  "temperature": {"current": 41}
+}

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=DiskAtlas
+Comment=Inventar für Festplatten – Hardware, SMART, Belegung und Dateiindex
+Exec=diskatlas-gui
+Icon=diskatlas
+Terminal=false
+Categories=System;Utility;
+StartupWMClass=diskatlas-gui

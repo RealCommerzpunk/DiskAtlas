@@ -1,0 +1,20 @@
+# systemd-User-Dienst: DiskAtlas beim Anmelden automatisch starten.
+# Installation:
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/linux/diskatlas.service ~/.config/systemd/user/
+#   # ExecStart ggf. an den Pfad der virtuellen Umgebung anpassen
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now diskatlas
+#   journalctl --user -u diskatlas -f      # Log ansehen
+[Unit]
+Description=DiskAtlas – Festplatteninventar (Dashboard + Hot-Plug-Überwachung)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/diskatlas/.venv/bin/diskatlas run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

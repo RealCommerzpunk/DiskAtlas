@@ -1,0 +1,26 @@
+{
+   "blockdevices": [
+      {"name": "loop0", "path": "/dev/loop0", "type": "loop", "size": 4096, "model": null, "serial": null, "vendor": null, "wwn": null, "tran": null, "rm": false, "hotplug": false, "rota": false, "mountpoints": ["/snap/core/1"], "fstype": "squashfs", "label": null, "uuid": null, "partuuid": null, "fssize": 4096, "fsused": 4096, "fsavail": 0},
+      {"name": "sda", "path": "/dev/sda", "type": "disk", "size": 120034123776, "model": "KINGSTON SMS200S3120G", "serial": "TESTSSD0001", "vendor": "ATA     ", "wwn": "0x50026b7273048560", "tran": "sata", "rm": false, "hotplug": false, "rota": false, "mountpoints": [null], "fstype": null, "label": null, "uuid": null, "partuuid": null, "fssize": null, "fsused": null, "fsavail": null,
+         "children": [
+            {"name": "sda1", "path": "/dev/sda1", "type": "part", "size": 1048576, "model": null, "serial": null, "vendor": null, "wwn": null, "tran": null, "rm": false, "hotplug": false, "rota": false, "mountpoints": [null], "fstype": null, "label": null, "uuid": null, "partuuid": "11111111-aaaa-4bbb-8ccc-000000000001", "fssize": null, "fsused": null, "fsavail": null},
+            {"name": "sda2", "path": "/dev/sda2", "type": "part", "size": 537919488, "model": null, "serial": null, "vendor": null, "wwn": null, "tran": null, "rm": false, "hotplug": false, "rota": false, "mountpoints": ["/boot/efi"], "fstype": "vfat", "label": null, "uuid": "78C3-E8CC", "partuuid": "11111111-aaaa-4bbb-8ccc-000000000002", "fssize": 536797184, "fsused": 6291456, "fsavail": 530505728},
+            {"name": "sda3", "path": "/dev/sda3", "type": "part", "size": 119493623808, "model": null, "serial": null, "vendor": null, "wwn": null, "tran": null, "rm": false, "hotplug": false, "rota": false, "mountpoints": ["/"], "fstype": "ext4", "label": null, "uuid": "1062ee9e-826c-4ee3-95ce-4e45c599150c", "partuuid": "11111111-aaaa-4bbb-8ccc-000000000003", "fssize": 116950000000, "fsused": 16200000000, "fsavail": 94800000000}
+         ]
+      },
+      {"name": "sdb", "path": "/dev/sdb", "type": "disk", "size": 8001563222016, "model": "ST8000VN004-3CP101", "serial": "TESTHDD0002", "vendor": "ATA     ", "wwn": null, "tran": "sata", "rm": false, "hotplug": true, "rota": true, "mountpoints": [null], "fstype": null, "label": null, "uuid": null, "partuuid": null, "fssize": null, "fsused": null, "fsavail": null,
+         "children": [
+            {"name": "sdb1", "path": "/dev/sdb1", "type": "part", "size": 8001561124864, "model": null, "serial": null, "vendor": null, "wwn": null, "tran": null, "rm": false, "hotplug": true, "rota": true, "mountpoints": ["/media/user/AVneu"], "fstype": "ntfs", "label": "AVneu", "uuid": "1A2B3C4D5E6F7081", "partuuid": "E3B0C442-98FC-1C14-9AFB-F4C8996FB924", "fssize": 8001561120768, "fsused": 2000000000000, "fsavail": 6001561120768}
+         ]
+      },
+      {"name": "sdc", "path": "/dev/sdc", "type": "disk", "size": 2000398934016, "model": "WDC WD20EARX-00PASB0", "serial": null, "vendor": "WDC", "wwn": null, "tran": "usb", "rm": true, "hotplug": true, "rota": "1", "mountpoint": null, "fstype": null, "label": null, "uuid": null, "partuuid": null, "fssize": null, "fsused": null, "fsavail": null,
+         "children": [
+            {"name": "sdc1", "path": "/dev/sdc1", "type": "part", "size": 2000397885440, "rota": "1", "mountpoint": null, "fstype": "crypto_LUKS", "label": null, "uuid": "luks-uuid", "partuuid": "abcd1234-01",
+               "children": [
+                  {"name": "luks-x", "path": "/dev/mapper/luks-x", "type": "crypt", "size": 2000381108224, "mountpoint": "/media/user/Backup", "fstype": "ext4", "label": "Backup", "uuid": "c0ffee00-0000-4000-8000-000000000001", "partuuid": null, "fssize": null, "fsused": null, "fsavail": null}
+               ]
+            }
+         ]
+      }
+   ]
+}
