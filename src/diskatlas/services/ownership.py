@@ -15,14 +15,37 @@ class OwnershipError(ValueError):
     """Unzulässige Aktion; der Text darf dem Benutzer angezeigt werden."""
 
 
-def share(session: Session, disk: Disk, viewer: User) -> None:
-    """Gibt `disk` lesend an `viewer` frei."""
+COPY_MODES = {"never": "nie erlauben", "ask": "immer nachfragen", "always": "immer erlauben"}
+
+
+def share(session: Session, disk: Disk, viewer: User, copy_mode: str = "never") -> None:
+    """Gibt `disk` lesend an `viewer` frei (Kopieren standardmäßig nicht erlaubt)."""
+    if copy_mode not in COPY_MODES:
+        raise OwnershipError("Unbekannte Kopierberechtigung.")
     if viewer.status != "active":
         raise OwnershipError("Dieser Benutzer ist nicht freigeschaltet.")
     if viewer.id == disk.owner_user_id:
         raise OwnershipError("Die Platte gehört diesem Benutzer bereits.")
     if session.get(DiskShare, (disk.id, viewer.id)) is None:
-        session.add(DiskShare(disk_id=disk.id, viewer_user_id=viewer.id))
+        session.add(DiskShare(disk_id=disk.id, viewer_user_id=viewer.id, copy_mode=copy_mode))
+
+
+def set_copy_mode(session: Session, disk: Disk, viewer_user_id: int, mode: str) -> None:
+    """Ändert die Kopierberechtigung einer bestehenden Freigabe."""
+    if mode not in COPY_MODES:
+        raise OwnershipError("Unbekannte Kopierberechtigung.")
+    row = session.get(DiskShare, (disk.id, viewer_user_id))
+    if row is None:
+        raise OwnershipError("Die Platte ist für diesen Benutzer nicht freigegeben.")
+    row.copy_mode = mode
+
+
+def copy_modes(session: Session, disk: Disk) -> dict[int, str]:
+    """Kopierberechtigung je freigegebenem Benutzer."""
+    rows = session.execute(
+        select(DiskShare.viewer_user_id, DiskShare.copy_mode).where(DiskShare.disk_id == disk.id)
+    )
+    return {user_id: mode for user_id, mode in rows}
 
 
 def unshare(session: Session, disk: Disk, viewer_user_id: int) -> None:

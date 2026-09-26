@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     Column,
     ForeignKey,
     Index,
@@ -395,6 +396,9 @@ class DiskShare(Base):
     """Lesefreigabe: `viewer_user_id` darf die Platte sehen (nie ändern)."""
 
     __tablename__ = "disk_shares"
+    __table_args__ = (
+        CheckConstraint("copy_mode IN ('never', 'ask', 'always')", name="ck_share_copy_mode"),
+    )
 
     disk_id: Mapped[int] = mapped_column(
         ForeignKey("disks.id", ondelete="CASCADE"), primary_key=True
@@ -402,7 +406,24 @@ class DiskShare(Base):
     viewer_user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
+    # Darf der Freigegebene Dateien dieser Platte anfordern (kopieren lassen)?
+    # never = nie, ask = der Besitzer fragt je Anfrage, always = immer erlaubt
+    copy_mode: Mapped[str] = mapped_column(String(10), default="never", server_default="never")
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class ClientCopyTarget(Base):
+    """Standard-Zielordner für angeforderte Dateien je Client (auf einer seiner Platten)."""
+
+    __tablename__ = "client_copy_targets"
+
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"), primary_key=True
+    )
+    disk_id: Mapped[int | None] = mapped_column(ForeignKey("disks.id", ondelete="SET NULL"))
+    volume_id: Mapped[int | None] = mapped_column(ForeignKey("volumes.id", ondelete="SET NULL"))
+    path: Mapped[str] = mapped_column(Text, default="", server_default="")
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
 class DiskTransferRequest(Base):

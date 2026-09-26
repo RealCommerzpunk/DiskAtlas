@@ -330,6 +330,8 @@ def _sharing_context(
         "auth_on": True,
         "owner": owner,
         "shares": shares,
+        "copy_modes": ownership.copy_modes(session, disk) if shares else {},
+        "COPY_MODES": ownership.COPY_MODES,
         "share_candidates": [
             u for u in everyone if u.id != disk.owner_user_id and u.id not in shared_ids
         ],
