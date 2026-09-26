@@ -106,8 +106,14 @@
     <option value="unknown" {{ 'selected' if f.usage == 'unknown' }}>Belegung unbekannt</option>
     <option value="known" {{ 'selected' if f.usage == 'known' }}>Belegung bekannt</option>
   </select>
+  {% if client_options %}
+  <select name="client" aria-label="Client">
+    <option value="">Jeder Client</option>
+    {% for c in client_options %}<option value="{{ c.id }}" {{ 'selected' if f.client == c.id }}>{{ c.label }}</option>{% endfor %}
+  </select>
+  {% endif %}
   <select name="group" aria-label="Gruppieren">
-    {% for key, text in GROUP_OPTIONS.items() %}<option value="{{ key }}" {{ 'selected' if f.group == key }}>{{ text if key != 'none' else 'Gruppieren: nein' }}</option>{% endfor %}
+    {% for key, text in group_options.items() %}<option value="{{ key }}" {{ 'selected' if f.group == key }}>{{ text if key != 'none' else 'Gruppieren: nein' }}</option>{% endfor %}
   </select>
   <select name="sort" aria-label="Sortieren">
     {% for key, text in SORT_OPTIONS.items() %}<option value="{{ key }}" {{ 'selected' if f.sort == key }}>Sortiert: {{ text }}</option>{% endfor %}
@@ -153,7 +159,7 @@
         <td class="rail"><span class="dot {{ 'online' if disk.is_connected else 'offline' }}" title="{{ 'angeschlossen' if disk.is_connected else 'offline' }}"></span></td>
         <td>
           <a class="disk-name" href="/disks/{{ disk.id }}">{{ disk.display_name }}</a>
-          <div class="muted small">{% if disk.brand %}<strong class="brand-name">{{ disk.brand }}</strong> · {% endif %}{{ disk.model or '' }}{% if disk.serial %} · {{ disk.serial }}{% endif %}{% if disk.media_type %} · {{ disk.media_type }}{% endif %}{% if disk.transport %} · {{ disk.transport | upper }}{% endif %}</div>
+          <div class="muted small">{% if disk.brand %}<strong class="brand-name">{{ disk.brand }}</strong> · {% endif %}{{ disk.model or '' }}{% if disk.serial %} · {{ disk.serial }}{% endif %}{% if disk.media_type %} · {{ disk.media_type }}{% endif %}{% if disk.transport %} · {{ disk.transport | upper }}{% endif %}{% if disk.last_client_label %} · <span title="Zuletzt an diesem Client">{{ disk.last_client_label }}</span>{% endif %}</div>
         </td>
         {{ disk_cells(disk) }}
       </tr>

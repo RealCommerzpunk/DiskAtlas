@@ -11,6 +11,16 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **„Zuletzt an Client …“** (Migration `0006`): Jede Platte merkt sich den Client, dessen Agent sie
+  zuletzt gemeldet hat (beim Scan und beim Heartbeat; nur für Platten des eigenen Benutzers). Auf
+  Plattenseite und in der Liste steht „Benutzer / Client“; **Dashboard, Dateisuche und die API**
+  (`client=<Id>` bei `/disks` und `/files`, `none` = unbekannt) lassen sich danach **filtern**, die
+  Volltextsuche findet auch den Client-Namen, und die Liste kann nach **Client gruppiert** werden.
+  Die Auswahl zeigt nur Clients sichtbarer Platten. Beim Löschen eines Clients wird der Verweis
+  entfernt. Ohne Anmeldung (lokal) gibt es keine Clients und damit keinen Filter.
+  Bestehende Platten zeigen den Client erst nach dem nächsten Scan/Heartbeat („(unbekannt)“).
+
 ## [0.5.1] - 2026-09-27
 
 ### Behoben

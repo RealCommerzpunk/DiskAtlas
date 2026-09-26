@@ -65,6 +65,7 @@ def list_disks(
     label_id: int | None = None,
     fs: str = "",
     usage: str = "",
+    client: str = Query("", description="Client-ID, an dem die Platte zuletzt hing, oder 'none'"),
     sort: str = "name",
     desc: bool = False,
     session: Session = Depends(get_session),
@@ -73,7 +74,8 @@ def list_disks(
     disks = queries.filter_disks(
         queries.load_disks(session, authz.visible_ids(viewer)),
         queries.DiskFilter(
-            q=q, health=health, connected=connected, label_id=label_id, fs=fs, usage=usage
+            q=q, health=health, connected=connected, label_id=label_id, fs=fs, usage=usage,
+            client=client,
         ),
     )
     return queries.sort_disks(disks, sort, desc)
@@ -190,6 +192,7 @@ def search_files(
     label_id: int | None = None,
     min_size: int | None = None,
     max_size: int | None = None,
+    client: str = Query("", description="Client-ID, an dem die Platte zuletzt hing, oder 'none'"),
     sort: str = "name",
     desc: bool = False,
     limit: int = Query(100, ge=1, le=1000),
@@ -202,7 +205,7 @@ def search_files(
         queries.FileQuery(
             q=q, extension=ext, disk_id=disk_id, label_id=label_id, min_size=min_size,
             max_size=max_size, sort=sort, descending=desc, limit=limit, offset=offset,
-            visible=authz.visible_ids(viewer),
+            visible=authz.visible_ids(viewer), client=client,
         ),
     )
     items = [
@@ -386,7 +389,8 @@ def ingest_connected(
     session: Session = Depends(get_session),
     client: Client | None = Depends(require_client),
 ):
-    ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client))
+    ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client),
+                          client_id=client.id if client else None)
     hosts.record(session, body.host, body.ports_info, user_id=_owner(client))
     return {"ok": True}
 

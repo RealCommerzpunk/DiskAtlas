@@ -6,7 +6,7 @@ import time
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from diskatlas.db.models import Client, Disk, User
@@ -123,6 +123,10 @@ def account_client_delete(
     client = session.get(Client, client_id)
     if client is None or client.user_id != user.id:
         raise HTTPException(404, "Client nicht gefunden")
+    # SQLite vergibt Ids wieder: Verweise auf den gelöschten Client ausdrücklich entfernen
+    session.execute(
+        update(Disk).where(Disk.last_client_id == client.id).values(last_client_id=None)
+    )
     session.delete(client)
     session.commit()
     return RedirectResponse("/account", status_code=303)

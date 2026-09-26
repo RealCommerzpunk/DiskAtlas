@@ -11,7 +11,15 @@ from datetime import datetime
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, selectinload
 
-from diskatlas.db.models import Disk, FileEntry, Label, SmartSnapshot, Volume, disk_labels
+from diskatlas.db.models import (
+    Client,
+    Disk,
+    FileEntry,
+    Label,
+    SmartSnapshot,
+    Volume,
+    disk_labels,
+)
 from diskatlas.probe.smart import health_reasons as smart_health_reasons
 from diskatlas.services.authz import Viewer
 
@@ -24,6 +32,7 @@ GROUP_OPTIONS = {
     "label": "Label",
     "category": "Label-Kategorie",
     "host": "Rechner",
+    "client": "Client",
     "transport": "Anschluss",
     "media": "Typ (HDD/SSD)",
     "fs": "Dateisystem",
@@ -60,9 +69,55 @@ class DiskFilter:
     label_id: int | None = None
     fs: str = ""  # Dateisystem, oder NO_FS für Platten ohne erkanntes Dateisystem
     usage: str = ""  # "", "known", "unknown"
+    client: str = ""  # "", NO_CLIENT (unbekannt) oder Client-ID
 
 
 NO_FS = "__none__"
+NO_CLIENT = "none"
+
+
+def client_matches(disk: Disk, value: str) -> bool:
+    """Passt der Client, an dem die Platte zuletzt hing, zum Filterwert?"""
+    if not value:
+        return True
+    if value == NO_CLIENT:
+        return disk.last_client_id is None
+    return str(disk.last_client_id) == value
+
+
+def client_condition(value: str):
+    """Dieselbe Bedingung als SQL auf `Disk` (None = kein Filter)."""
+    if not value:
+        return None
+    if value == NO_CLIENT:
+        return Disk.last_client_id.is_(None)
+    return Disk.last_client_id == int(value) if value.isdigit() else Disk.last_client_id == -1
+
+
+@dataclass
+class ClientOption:
+    id: str  # Client-ID oder NO_CLIENT
+    label: str  # „Benutzer / Client“
+
+
+def client_options(session: Session, visible: Select | None = None) -> list[ClientOption]:
+    """Clients, an denen die (sichtbaren) Platten zuletzt hingen; leer ohne Clients."""
+    stmt = select(Disk.last_client_id).distinct()
+    if visible is not None:
+        stmt = stmt.where(Disk.id.in_(visible))
+    ids = set(session.scalars(stmt))
+    known = sorted(i for i in ids if i is not None)
+    if not known:
+        return []
+    clients = session.scalars(select(Client).where(Client.id.in_(known)).options(
+        selectinload(Client.user)))
+    options = sorted(
+        (ClientOption(str(c.id), f"{c.user.nickname} / {c.nickname}") for c in clients),
+        key=lambda o: o.label.lower(),
+    )
+    if None in ids:
+        options.append(ClientOption(NO_CLIENT, "(unbekannt)"))
+    return options
 
 
 def known_fs_types(disks: list[Disk]) -> list[str]:
@@ -83,7 +138,10 @@ class DashboardStats:
 
 def load_disks(session: Session, visible: Select | None = None) -> list[Disk]:
     """Alle Platten; `visible` = Unterabfrage der erlaubten IDs (None: ohne Beschränkung)."""
-    stmt = select(Disk).options(selectinload(Disk.labels), selectinload(Disk.volumes))
+    stmt = select(Disk).options(
+        selectinload(Disk.labels), selectinload(Disk.volumes),
+        selectinload(Disk.last_client).selectinload(Client.user),
+    )
     if visible is not None:
         stmt = stmt.where(Disk.id.in_(visible))
     return list(session.scalars(stmt))
@@ -108,7 +166,10 @@ def get_disk(session: Session, disk_id: int, visible: Select | None = None) -> D
     stmt = (
         select(Disk)
         .where(Disk.id == disk_id)
-        .options(selectinload(Disk.labels), selectinload(Disk.volumes))
+        .options(
+            selectinload(Disk.labels), selectinload(Disk.volumes),
+            selectinload(Disk.last_client).selectinload(Client.user),
+        )
     )
     if visible is not None:
         stmt = stmt.where(Disk.id.in_(visible))
@@ -126,6 +187,8 @@ def filter_disks(disks: list[Disk], flt: DiskFilter) -> list[Disk]:
         if flt.connected == "no" and disk.is_connected:
             continue
         if flt.label_id and flt.label_id not in {lab.id for lab in disk.labels}:
+            continue
+        if not client_matches(disk, flt.client):
             continue
         if flt.fs == NO_FS and disk.fs_types:
             continue
@@ -147,6 +210,7 @@ def filter_disks(disks: list[Disk], flt: DiskFilter) -> list[Disk]:
                     disk.notes,
                     disk.location,
                     disk.last_host,
+                    disk.last_client_label,
                     *[v.label for v in disk.volumes],
                     *disk.fs_types,
                     *[lab.name for lab in disk.labels],
@@ -191,6 +255,8 @@ def _group_names(disk: Disk, by: str) -> list[str]:
         return sorted(cats) or ["(ohne Label)"]
     if by == "host":
         return [disk.last_host or "(unbekannt)"]
+    if by == "client":
+        return [disk.last_client_label or "(unbekannt)"]
     if by == "transport":
         return [(disk.transport or "unbekannt").upper()]
     if by == "media":
@@ -288,6 +354,7 @@ class FileQuery:
     offset: int = 0
     exclude_disk_ids: tuple[int, ...] = ()
     visible: Select | None = None  # Unterabfrage der erlaubten Platten-IDs
+    client: str = ""  # "", NO_CLIENT oder Client-ID: Client, an dem die Platte zuletzt hing
 
 
 def _escape_like(term: str) -> str:
@@ -316,6 +383,8 @@ def _file_base_query(fq: FileQuery) -> Select:
         stmt = stmt.where(Disk.id.notin_(fq.exclude_disk_ids))
     if fq.visible is not None:
         stmt = stmt.where(Disk.id.in_(fq.visible))
+    if (condition := client_condition(fq.client)) is not None:
+        stmt = stmt.where(condition)
     for term in fq.q.split():
         stmt = stmt.where(_term_condition(term))
     if fq.extension:

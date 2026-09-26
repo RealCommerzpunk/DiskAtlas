@@ -83,10 +83,15 @@ class Disk(Base):
     # Verbindungsstatus
     is_connected: Mapped[bool] = mapped_column(default=False)
     last_host: Mapped[str | None] = mapped_column(String(200))
+    # Client, dessen Agent die Platte zuletzt gemeldet hat (NULL: unbekannt bzw. lokaler Betrieb)
+    last_client_id: Mapped[int | None] = mapped_column(
+        ForeignKey("clients.id", ondelete="SET NULL"), index=True
+    )
     last_device: Mapped[str | None] = mapped_column(String(200))
     first_seen: Mapped[datetime | None]
     last_seen: Mapped[datetime | None]
 
+    last_client: Mapped[Client | None] = relationship()
     labels: Mapped[list[Label]] = relationship(
         secondary=disk_labels, back_populates="disks", order_by="Label.name"
     )
@@ -103,6 +108,12 @@ class Disk(Base):
         order_by="SmartSnapshot.taken_at.desc()",
         lazy="noload",
     )
+
+    @property
+    def last_client_label(self) -> str | None:
+        """„Benutzer / Client“, an dem die Platte zuletzt hing (nur Namen)."""
+        client = self.last_client
+        return f"{client.user.nickname} / {client.nickname}" if client else None
 
     @property
     def present_volumes(self) -> list[Volume]:

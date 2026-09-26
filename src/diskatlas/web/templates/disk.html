@@ -23,6 +23,7 @@
       <dt>Typ / Anschluss</dt><dd>{{ disk.media_type or '–' }} · {{ (disk.transport or '–') | upper }}{% if disk.removable %} · wechselbar{% endif %}{% if disk.is_system %} · Systemplatte{% endif %}</dd>
       <dt>WWN</dt><dd>{{ disk.wwn or '–' }}</dd>
       <dt>Zuletzt an</dt><dd>{{ disk.last_host or '–' }} ({{ disk.last_device or '–' }})</dd>
+      {% if disk.last_client_label %}<dt>Zuletzt an Client</dt><dd><a href="/?client={{ disk.last_client_id }}">{{ disk.last_client_label }}</a></dd>{% endif %}
       <dt>Erstmals erfasst</dt><dd>{{ disk.first_seen | dt }}</dd>
       <dt>Zuletzt gesehen</dt><dd>{{ disk.last_seen | dt }} ({{ disk.last_seen | ago }})</dd>
       <dt>Belegung</dt><dd>{{ disk.used_bytes | filesize }} belegt · {{ disk.free_bytes | filesize }} frei {{ usage_bar(disk.usage_percent) }}</dd>
