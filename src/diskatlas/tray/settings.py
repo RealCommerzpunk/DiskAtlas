@@ -27,6 +27,7 @@ FIELDS: dict[str, tuple[type, str]] = {
     "index_files": (bool, "Dateien indizieren"),
     "index_system_volumes": (bool, "Systemvolumes indizieren"),
     "auto_mount": (bool, "Automatisch einhängen"),
+    "allow_transfer": (bool, "Dateikopien für angeforderte Dateien erlauben"),
     "smart_use_sudo": (bool, "SMART mit sudo lesen"),
     "tray_icon_color": (str, "Farbe des Symbols"),
 }

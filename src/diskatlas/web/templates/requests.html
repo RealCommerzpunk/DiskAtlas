@@ -5,6 +5,17 @@
 <p class="muted">Dateien, die du anforderst, und Anforderungen anderer an deine Platten.</p>
 {% if msg %}<p class="notice ok" role="status">{{ msg }}</p>{% endif %}
 
+{% if connect %}
+<section class="card">
+  <h2>Bitte Platte anschließen</h2>
+  <ul>
+  {% for m in connect %}
+    <li><strong>{{ m.disk.display_name }}</strong> – {{ m.count }} Datei(en) warten{% if m.requesters | length > 1 or (m.requesters | first) != user_name %} (angefordert von {{ m.requesters | sort | join(', ') }}){% endif %}. Sobald sie angeschlossen ist, geht es automatisch weiter.</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Zustimmung nötig{% if approvals %} ({{ approvals | length }}){% endif %}</h2>
   {% if approvals %}

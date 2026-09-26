@@ -171,3 +171,11 @@ class AgentController:
 
     def status(self) -> TrayStatus:
         return self.tracker.snapshot()
+
+    def pop_notices(self) -> list[str]:
+        """Neue Hinweise des Servers (z. B. „Bitte Platte anschließen“), einmalig."""
+        agent = self._agent
+        if agent is None or not agent.notices:
+            return []
+        notices, agent.notices = agent.notices, []
+        return notices

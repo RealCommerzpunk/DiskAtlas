@@ -10,7 +10,17 @@ from sqlalchemy.orm import Session
 from diskatlas import __version__
 from diskatlas.db.models import Client, Disk, Label, User
 from diskatlas.probe.types import FileRecord
-from diskatlas.services import authz, commands, copies, duplicates, hosts, ingest, labels, queries
+from diskatlas.services import (
+    authz,
+    commands,
+    copies,
+    duplicates,
+    hosts,
+    ingest,
+    labels,
+    queries,
+    transfers,
+)
 from diskatlas.services import lookup as lookup_service
 from diskatlas.services.authz import Viewer
 from diskatlas.web.deps import (
@@ -45,6 +55,9 @@ from diskatlas.web.schemas import (
     LookupOut,
     RunningIndexOut,
     StatsOut,
+    TransferDone,
+    TransferFail,
+    TransferProgress,
     UserOut,
 )
 
@@ -420,6 +433,8 @@ def ingest_connected(
 ):
     ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client),
                           client_id=client.id if client else None)
+    if client is not None:
+        transfers.register_capabilities(session, client, body.transfer, body.pubkey)
     copies.sweep(session)  # wartende Kopieraufträge: eine Platte ist jetzt (nicht mehr) da
     hosts.record(session, hosts.state_key(client, body.host), body.ports_info,
                  user_id=_owner(client))
@@ -438,6 +453,59 @@ def ingest_commands(
 ):
     """Offene Aufträge des Benutzers für den Agenten `host` (werden als „läuft“ markiert)."""
     return commands.claim_pending(session, host, user_id=_owner(client))
+
+
+@ingest_router.get("/transfers")
+def ingest_transfers(
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    """Neue Übertragungsaufträge für diesen Client (werden als „läuft“ übernommen)."""
+    return transfers.jobs_for(session, client) if client is not None else []
+
+
+def _transfer(func, session: Session, client: Client | None, *args, **kwargs):
+    if client is None:
+        raise HTTPException(404, "Ohne Anmeldung gibt es keine Übertragungen.")
+    try:
+        return func(session, client, *args, **kwargs)
+    except transfers.TransferError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@ingest_router.post("/transfers/{item_id}/progress")
+def ingest_transfer_progress(
+    item_id: str,
+    body: TransferProgress,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    if client is None:
+        raise HTTPException(404, "Ohne Anmeldung gibt es keine Übertragungen.")
+    return transfers.progress(session, client, item_id, body.bytes_done)
+
+
+@ingest_router.post("/transfers/{item_id}/done")
+def ingest_transfer_done(
+    item_id: str,
+    body: TransferDone,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    _transfer(transfers.finish, session, client, item_id, body.sha256, body.size,
+              body.result_name, body.message)
+    return {"ok": True}
+
+
+@ingest_router.post("/transfers/{item_id}/fail")
+def ingest_transfer_fail(
+    item_id: str,
+    body: TransferFail,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    _transfer(transfers.fail, session, client, item_id, body.message, body.retry)
+    return {"ok": True}
 
 
 @ingest_router.post("/commands/{command_id}/result")

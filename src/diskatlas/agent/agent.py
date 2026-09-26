@@ -10,6 +10,7 @@ import threading
 import time
 from collections.abc import Callable
 
+from diskatlas.agent import transfer
 from diskatlas.agent.sinks import Sink
 from diskatlas.config import AgentConfig
 from diskatlas.probe import list_disks
@@ -90,6 +91,10 @@ class Agent:
         self.stop_event = threading.Event()
         self.mounter = mounter or mounting.mount
         self._enqueue: Callable[[str, str], None] | None = None
+        # Hinweise des Servers (z. B. „Platte anschließen“); der Tray zeigt sie an
+        self.notices: list[str] = []
+        self.progress_interval = 2.0  # Sekunden zwischen Fortschrittsmeldungen einer Übertragung
+        self.sink.capabilities = {"transfer": bool(config.allow_transfer)}
         self._mount_enabled = config.auto_mount and (mounter is not None or mounting.available())
 
     # ------------------------------------------------------------------ Einmal-Scan
@@ -225,6 +230,12 @@ class Agent:
             target=self._command_loop, name="diskatlas-commands", daemon=True
         )
         command_thread.start()
+        transfer_thread = None
+        if self.config.allow_transfer:
+            transfer_thread = threading.Thread(
+                target=self._transfer_loop, name="diskatlas-transfer", daemon=True
+            )
+            transfer_thread.start()
 
         signatures: dict[str, tuple] = {}
         last_full: dict[str, float] = {}
@@ -292,6 +303,8 @@ class Agent:
 
         worker_thread.join(timeout=10)
         command_thread.join(timeout=10)
+        if transfer_thread is not None:
+            transfer_thread.join(timeout=10)
 
     # ------------------------------------------------------------------ Aufträge vom Server
     def _command_loop(self) -> None:
@@ -312,6 +325,56 @@ class Agent:
                 except Exception:
                     log.exception("Ergebnis von Auftrag %s nicht übermittelt", command.get("id"))
             self.stop_event.wait(min(max(self.config.poll_interval, 1.0), 3.0))
+
+    # ------------------------------------------------------------------ Übertragungen
+    def _transfer_loop(self) -> None:
+        """Holt „Datei anfordern“-Aufträge ab und führt sie nacheinander aus."""
+        log.info("Dateikopien für angeforderte Dateien sind erlaubt.")
+        while not self.stop_event.is_set():
+            try:
+                jobs = self.sink.fetch_transfers()
+            except Exception:
+                log.debug("Übertragungsaufträge konnten nicht abgeholt werden", exc_info=True)
+                jobs = []
+            for job in jobs:
+                if self.stop_event.is_set():
+                    break
+                self.run_transfer(job)
+            self.stop_event.wait(min(max(self.config.poll_interval, 1.0), 5.0) if not jobs else 0.5)
+
+    def run_transfer(self, job: dict) -> None:
+        item = str(job.get("id", ""))
+        last_report = [0.0]
+
+        def progress(done: int) -> bool:
+            now = time.monotonic()
+            if now - last_report[0] < self.progress_interval:
+                return True
+            last_report[0] = now
+            return self.sink.transfer_progress(item, done)
+
+        try:
+            if job.get("role") != "local":
+                raise transfer.TransferFailed("Diese Übertragungsart wird nicht unterstützt.")
+            digest, size, name, note = transfer.copy_local(
+                job, self.prober(), progress, self.stop_event.is_set
+            )
+            self.sink.transfer_done(item, digest, size, name, note)
+            log.info("Datei kopiert: %s → %s", job.get("source", {}).get("path"), name)
+        except transfer.TransferAborted:
+            log.info("Übertragung %s abgebrochen", item)
+        except transfer.TransferFailed as exc:
+            log.warning("Übertragung %s fehlgeschlagen: %s", item, exc)
+            self._report_transfer_failure(item, str(exc), exc.retry)
+        except Exception as exc:  # ein Fehler darf die Schleife nie beenden
+            log.exception("Übertragung %s fehlgeschlagen", item)
+            self._report_transfer_failure(item, f"Unerwarteter Fehler: {exc}", True)
+
+    def _report_transfer_failure(self, item: str, message: str, retry: bool) -> None:
+        try:
+            self.sink.transfer_fail(item, message, retry)
+        except Exception:
+            log.exception("Fehlschlag von %s nicht gemeldet", item)
 
     def _find_volume(self, disk_key: str, volume_key: str):
         for disk in self.prober():
@@ -352,6 +415,13 @@ class Agent:
                 self.scan_disk(refreshed, index_files=False, read_smart=False)
             done = f"Bezeichnung geändert: „{written}“." if written else "Bezeichnung entfernt."
             return True, done
+        if kind == "notice":
+            text = str(payload.get("text", ""))[:300]
+            if text:
+                log.warning("Hinweis vom Server: %s", text)
+                self.notices.append(text)
+                del self.notices[:-20]
+            return True, "Hinweis angezeigt."
         return False, f"Unbekannter Auftrag: {kind}"
 
     def _mountable(self, volume: VolumeInfo) -> bool:

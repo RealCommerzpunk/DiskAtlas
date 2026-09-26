@@ -22,6 +22,7 @@
 # index_files = true              # Dateien indizieren
 # index_system_volumes = false    # auch "/" bzw. "C:\" indizieren
 # auto_mount = true               # Linux: nicht eingehängte Dateisysteme automatisch einhängen (udisks2)
+# allow_transfer = false          # angeforderte Dateien auf Anweisung des Servers kopieren (Standard aus)
 # exclude_dirs = ["$RECYCLE.BIN", "System Volume Information", ".Trash-*", ".Trashes", "lost+found"]
 # smartctl_path = "smartctl"
 # smart_use_sudo = true           # unter Linux ohne root: "sudo -n smartctl" versuchen

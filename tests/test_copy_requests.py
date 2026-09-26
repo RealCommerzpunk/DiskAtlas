@@ -297,3 +297,26 @@ def test_preview_page_lists_what_will_happen(world):
     assert bob_vol
     denied = world.web["bob"].post("/requests/preview", data={"sel": ["f:999:x"]})
     assert denied.status_code == 400
+
+
+def test_progress_tells_the_agent_to_stop_when_permission_is_revoked(world):
+    from diskatlas.db.models import Client
+    from diskatlas.services import transfers
+
+    src, _ = setup_anna(world)
+    bob_vol = setup_bob_target(world)
+    share(world, "sn:A1", "bob", "always")
+    request_files(world, "bob", [f"f:{src}:doc.txt"], bob_vol)
+    with world.db.session() as s:
+        bob_client = s.scalar(select(Client).where(Client.user_id == world.ids["bob"]))
+        item = s.scalar(select(CopyItem))
+        item.state, item.claimed_by_client_id = "running", bob_client.id
+        s.commit()
+        assert transfers.progress(s, bob_client, item.id, 1) == {"abort": False}
+        s.commit()
+        share_row = s.get(DiskShare, (world.disk_id("sn:A1"), world.ids["bob"]))
+        share_row.copy_mode = "never"
+        s.commit()
+        assert transfers.progress(s, bob_client, item.id, 2) == {"abort": True}
+        s.commit()
+    assert items(world)["doc.txt"][0] == "cancelled"

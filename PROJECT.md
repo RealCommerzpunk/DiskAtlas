@@ -51,7 +51,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Dashboard | Kennzahlen, Suche, Filter, Gruppierung, Sortierung, Detailseite | ✅ 0.1.0 |
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
 | Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser) | ✅ |
-| Datei anfordern | Kopierberechtigung je Freigabe (nie/nachfragen/immer), Anfragen mit Zustandsmaschine und Zustimmung des Besitzers; Ausführung durch den Agenten (lokal/Relay) folgt; Schalter `copy_enabled` | 🚧 |
+| Datei anfordern | Kopierberechtigung je Freigabe (nie/nachfragen/immer), Anfragen mit Zustandsmaschine und Zustimmung des Besitzers; Ausführung durch den Agenten: lokal ✅ (`agent/transfer.py`, `agent/safepath.py`, nur mit `allow_transfer`), Relay folgt; Schalter `copy_enabled` | 🚧 |
 | iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ 0.3.0 |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |

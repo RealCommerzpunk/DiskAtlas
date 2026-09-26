@@ -271,7 +271,7 @@ def _active_keys(session, user_id, client_id, volume_id, path) -> set[tuple[int,
 
 
 # ------------------------------------------------------------------ Zustandsmaschine
-def _set(item: CopyItem, state: str, now: datetime, reason: str | None = None) -> None:
+def set_state(item: CopyItem, state: str, now: datetime, reason: str | None = None) -> None:
     item.state = state
     item.wait_reason = reason
     item.updated_at = now
@@ -286,24 +286,24 @@ def advance(session: Session, item: CopyItem, now: datetime | None = None) -> No
         return
     request = item.request
     if request.cancelled_at is not None:
-        return _set(item, "cancelled", now)
+        return set_state(item, "cancelled", now)
     if item.expires_at is not None and item.expires_at < now:
-        return _set(item, "expired", now, "Nicht rechtzeitig beantwortet oder Platte fehlte.")
+        return set_state(item, "expired", now, "Nicht rechtzeitig beantwortet oder Platte fehlte.")
     mode = permission(session, request.requester_user_id, item.source_disk)
     if mode == "never":
-        return _set(item, "denied", now, "Keine Kopierberechtigung (mehr) für diese Platte.")
+        return set_state(item, "denied", now, "Keine Kopierberechtigung (mehr) für diese Platte.")
     if mode == "ask" and item.approved_at is None:
         item.expires_at = item.expires_at or now + ASK_TTL
-        return _set(item, "waiting_approval", now, "Der Besitzer muss zustimmen.")
+        return set_state(item, "waiting_approval", now, "Der Besitzer muss zustimmen.")
     if item.expires_at is None or item.state == "waiting_approval":
         item.expires_at = now + WAIT_TTL
     source, target = item.source_disk, request.target_disk
     if not source.is_connected or not target.is_connected:
         reason = "Quellplatte nicht angeschlossen" if not source.is_connected \
             else "Zielplatte nicht angeschlossen"
-        return _set(item, "waiting_disk", now, reason)
+        return set_state(item, "waiting_disk", now, reason)
     item.phase = "local" if source.last_client_id == request.target_client_id else "upload"
-    _set(item, "queued", now)
+    set_state(item, "queued", now)
 
 
 def sweep(session: Session, now: datetime | None = None) -> int:
@@ -316,15 +316,74 @@ def sweep(session: Session, now: datetime | None = None) -> int:
     ).all()
     for item in items:
         advance(session, item, now)
+    notify_missing_disks(session, now)
     for item in session.scalars(select(CopyItem).where(
             CopyItem.state == "running", CopyItem.lease_until.is_not(None),
             CopyItem.lease_until < now)):
         item.attempts += 1
         if item.attempts >= MAX_ATTEMPTS:
-            _set(item, "failed", now, "Der Agent hat die Übertragung nicht abgeschlossen.")
+            set_state(item, "failed", now, "Der Agent hat die Übertragung nicht abgeschlossen.")
         else:
-            _set(item, "queued", now)
+            set_state(item, "queued", now)
     return len(items)
+
+
+# ------------------------------------------------------------------ Platten anschließen
+NOTICE_INTERVAL = timedelta(hours=24)
+
+
+@dataclass
+class MissingDisk:
+    disk: Disk
+    owner_user_id: int | None
+    count: int = 0
+    requesters: set[str] = field(default_factory=set)
+
+
+def missing_disks(session: Session) -> list[MissingDisk]:
+    """Platten, die nicht angeschlossen sind und auf die wartende Dateien warten."""
+    items = session.scalars(
+        select(CopyItem).where(CopyItem.state == "waiting_disk")
+        .options(selectinload(CopyItem.request).selectinload(CopyRequest.requester),
+                 selectinload(CopyItem.request).selectinload(CopyRequest.target_disk),
+                 selectinload(CopyItem.source_disk))
+    )
+    found: dict[int, MissingDisk] = {}
+    for item in items:
+        who = item.request.requester
+        for disk, owner in ((item.source_disk, item.source_disk.owner_user_id),
+                            (item.request.target_disk, who.id)):
+            if disk.is_connected:
+                continue
+            row = found.setdefault(disk.id, MissingDisk(disk, owner))
+            row.count += 1
+            row.requesters.add(who.nickname)
+    return list(found.values())
+
+
+def notify_missing_disks(session: Session, now: datetime | None = None) -> int:
+    """Bittet die Besitzer per Hinweis an ihren Agenten, fehlende Platten anzuschließen
+    (höchstens ein Hinweis je Platte und 24 Stunden)."""
+    from diskatlas.db.models import Command
+    from diskatlas.services import commands
+
+    now = now or utcnow()
+    sent = 0
+    for row in missing_disks(session):
+        disk = row.disk
+        if row.owner_user_id is None or not disk.last_host:
+            continue
+        recent = session.scalar(select(Command.id).where(
+            Command.kind == "notice", Command.disk_key == disk.disk_key,
+            Command.created_at > now - NOTICE_INTERVAL,
+        ).limit(1))
+        if recent is not None:
+            continue
+        text = f"Bitte Platte „{disk.display_name}“ anschließen: {row.count} Datei(en) warten."
+        commands.enqueue(session, disk.last_host, "notice", {"text": text},
+                         disk_key=disk.disk_key, user_id=row.owner_user_id, now=now)
+        sent += 1
+    return sent
 
 
 # ------------------------------------------------------------------ Entscheidungen
@@ -343,7 +402,7 @@ def decide(
             item.expires_at = now + WAIT_TTL
             advance(session, item, now)
         else:
-            _set(item, "denied", now, "Der Besitzer hat abgelehnt.")
+            set_state(item, "denied", now, "Der Besitzer hat abgelehnt.")
         done += 1
     return done
 
@@ -353,7 +412,7 @@ def cancel(session: Session, request: CopyRequest, now: datetime | None = None) 
     request.cancelled_at = request.cancelled_at or now
     for item in request.items:
         if item.state in ("waiting_approval", "waiting_disk", "queued", "running"):
-            _set(item, "cancelled", now, "Vom Anfordernden abgebrochen.")
+            set_state(item, "cancelled", now, "Vom Anfordernden abgebrochen.")
 
 
 # ------------------------------------------------------------------ Abfragen
@@ -382,8 +441,15 @@ def approvals_for(session: Session, owner_user_id: int) -> list[CopyItem]:
     ))
 
 
+def disks_to_connect(session: Session, user_id: int) -> list[MissingDisk]:
+    """Platten des Benutzers, die er anschließen soll, weil Dateien darauf oder dahin warten."""
+    return [m for m in missing_disks(session) if m.owner_user_id == user_id]
+
+
 def pending_approval_count(session: Session, owner_user_id: int) -> int:
-    return len(approvals_for(session, owner_user_id))
+    """Offene Aufgaben im Menü: Zustimmungen und anzuschließende Platten."""
+    return (len(approvals_for(session, owner_user_id))
+            + len(disks_to_connect(session, owner_user_id)))
 
 
 def counts(request: CopyRequest) -> dict[str, int]:
