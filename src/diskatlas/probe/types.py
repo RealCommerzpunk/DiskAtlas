@@ -52,6 +52,7 @@ class DiskInfo(BaseModel):
     rotational: bool | None = None
     removable: bool = False
     is_system: bool = False
+    port: str | None = None  # SATA-Port (Linux), z. B. "ata3"
     volumes: list[VolumeInfo] = Field(default_factory=list)
     smart: SmartInfo | None = None
 

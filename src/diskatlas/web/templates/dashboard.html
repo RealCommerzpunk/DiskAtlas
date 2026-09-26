@@ -46,6 +46,7 @@
         {% if bay.state == 'disk' %}{{ disk_cells(d) }}
         {% elif bay.state == 'unknown' %}<td colspan="8" class="bay-empty">Platte erkannt ({{ bay.device }}) – wird erfasst …</td>
         {% elif bay.state == 'empty' %}<td colspan="8" class="bay-empty">Leer</td>
+        {% elif bay.state == 'offline' %}<td colspan="8" class="bay-empty">Agent des Rechners meldet sich nicht</td>
         {% else %}<td colspan="8" class="bay-empty"><a href="/bays/setup">Schächte einrichten</a></td>{% endif %}
       </tr>
     {% endfor %}

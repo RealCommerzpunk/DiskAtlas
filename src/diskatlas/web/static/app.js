@@ -46,14 +46,18 @@
         .catch(function () { return null; });
     };
     var check = function () {
-      Promise.all([getJson("/api/v1/disks"), getJson("/api/v1/bays/live")]).then(function (res) {
-        var disks = res[0], bays = res[1];
+      Promise.all([
+        getJson("/api/v1/disks"), getJson("/api/v1/bays/live"), getJson("/api/v1/commands/recent"),
+      ]).then(function (res) {
+        var disks = res[0], bays = res[1], cmds = res[2];
         if (!disks) { return; }  // Server kurz nicht erreichbar – beim nächsten Tick erneut
         var sig = JSON.stringify([
           disks.map(function (d) {
             return [d.id, d.is_connected, d.health, d.used_bytes, d.file_count, d.custom_name];
           }),
           bays ? bays.occupied.map(function (o) { return [o.port, o.serial]; }) : null,
+          bays ? bays.online : null,
+          cmds ? cmds.map(function (c) { return [c.id, c.status]; }) : null,
         ]);
         if (known !== null && sig !== known && !userEdited) {
           window.location.reload();

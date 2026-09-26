@@ -68,6 +68,10 @@ class ServerConfig:
     port: int = 8765
     # Wenn gesetzt, müssen Agenten sich mit "Authorization: Bearer <token>" ausweisen.
     api_token: str = ""
+    # Passwort der Weboberfläche. Pflicht, sobald der Server nicht nur lokal lauscht.
+    password: str = ""
+    # Nur für Tests/Sonderfälle: Betrieb im Netz ohne Passwort/Token erlauben (nicht empfohlen).
+    allow_insecure: bool = False
 
 
 @dataclass
@@ -89,6 +93,8 @@ ENV_MAP: dict[str, list[tuple[str | None, str]]] = {
     "DISKATLAS_DATABASE_URL": [(None, "database_url")],
     "DISKATLAS_SERVER_URL": [("agent", "server_url")],
     "DISKATLAS_API_TOKEN": [("agent", "api_token"), ("server", "api_token")],
+    "DISKATLAS_PASSWORD": [("server", "password")],
+    "DISKATLAS_ALLOW_INSECURE": [("server", "allow_insecure")],
     "DISKATLAS_HOST": [("server", "host")],
     "DISKATLAS_PORT": [("server", "port")],
     "DISKATLAS_HOST_NAME": [("agent", "host_name")],

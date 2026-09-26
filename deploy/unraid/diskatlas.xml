@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!-- Unraid-Vorlage für DiskAtlas. Installation: siehe docs/UNRAID.md -->
+<Container version="2">
+  <Name>DiskAtlas</Name>
+  <Repository>ghcr.io/realcommerzpunk/diskatlas:latest</Repository>
+  <Registry>https://github.com/RealCommerzpunk/DiskAtlas/pkgs/container/diskatlas</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/RealCommerzpunk/DiskAtlas/issues</Support>
+  <Project>https://github.com/RealCommerzpunk/DiskAtlas</Project>
+  <Overview>Festplatteninventar: Weboberfläche, API und Datenbank. Die Festplatten werden von Agenten auf deinen Rechnern gemeldet (diskatlas agent). Mit installierbarer Web-App fürs iPhone.</Overview>
+  <Category>Tools: Status:Stable</Category>
+  <WebUI>http://[IP]:[PORT:8765]/</WebUI>
+  <ExtraParams>--health-start-period=20s</ExtraParams>
+  <Config Name="Web-Port" Target="8765" Default="8765" Mode="tcp" Description="Port der Weboberfläche und API" Type="Port" Display="always" Required="true" Mask="false">8765</Config>
+  <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/diskatlas" Mode="rw" Description="Datenbank (SQLite)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/diskatlas</Config>
+  <Config Name="Passwort" Target="DISKATLAS_PASSWORD" Default="" Mode="" Description="Passwort der Weboberfläche (Pflicht)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="API-Token" Target="DISKATLAS_API_TOKEN" Default="" Mode="" Description="Token, mit dem sich die Agenten ausweisen (Pflicht, langer Zufallswert)" Type="Variable" Display="always" Required="true" Mask="true"/>
+</Container>

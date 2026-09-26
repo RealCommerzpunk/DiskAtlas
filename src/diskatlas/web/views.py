@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import contextlib
-import socket
+import time
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -16,10 +16,9 @@ from sqlalchemy.orm import Session
 
 from diskatlas import __version__
 from diskatlas.db.models import Disk, FileEntry, Label, Volume
-from diskatlas.probe import ports as sata
 from diskatlas.services import bays as bay_service
-from diskatlas.services import duplicates, fslabel, queries
-from diskatlas.web import formatting
+from diskatlas.services import commands, duplicates, fslabel, hosts, queries
+from diskatlas.web import auth, formatting
 from diskatlas.web.deps import get_session
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -29,6 +28,9 @@ templates.env.globals.update(
     HEALTH_LABELS=queries.HEALTH_LABELS,
     GROUP_OPTIONS=queries.GROUP_OPTIONS,
     SORT_OPTIONS={k: v[0] for k, v in queries.SORT_OPTIONS.items()},
+)
+templates.env.globals["auth_enabled"] = (
+    lambda request: bool(request.app.state.config.server.password)
 )
 
 router = APIRouter(include_in_schema=False)
@@ -73,6 +75,47 @@ def _redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
 
+# ------------------------------------------------------------------ Anmeldung
+def _local_target(target: str) -> str:
+    """Nur lokale Pfade als Weiterleitungsziel zulassen (kein Open-Redirect)."""
+    return target if target.startswith("/") and not target.startswith("//") else "/"
+
+
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, next: str = "/", err: str = ""):
+    if not request.app.state.config.server.password:
+        return _redirect("/")
+    return templates.TemplateResponse(
+        request, "login.html", {"next": _local_target(next), "error": err}
+    )
+
+
+@router.post("/login")
+def login(request: Request, password: str = Form(""), next: str = Form("/")):
+    server = request.app.state.config.server
+    throttle = request.app.state.login_throttle
+    client = request.client.host if request.client else "?"
+    target = _local_target(next)
+    if throttle.blocked(client):
+        too_many = "Zu viele Fehlversuche – bitte in einigen Minuten erneut versuchen."
+        return _redirect("/login?" + urlencode({"next": target, "err": too_many}))
+    if not auth.password_ok(password, server.password):
+        throttle.fail(client)
+        time.sleep(0.4)  # bremst automatisiertes Raten
+        return _redirect("/login?" + urlencode({"next": target, "err": "Falsches Passwort."}))
+    throttle.reset(client)
+    response = _redirect(target)
+    auth.set_session(request, response, server.password)
+    return response
+
+
+@router.post("/logout")
+def logout():
+    response = _redirect("/login")
+    response.delete_cookie(auth.COOKIE)
+    return response
+
+
 # ------------------------------------------------------------------ Dashboard
 @router.get("/", response_class=HTMLResponse)
 def dashboard(
@@ -93,7 +136,7 @@ def dashboard(
     flt = queries.DiskFilter(
         q=q, health=health, connected=connected, label_id=_int_or_none(label), fs=fs, usage=usage
     )
-    bays = _bays(request, session)
+    bays = _bays(session)
     in_bay = {b.disk.id for b in bays or [] if b.disk}  # stehen als Schachtzeilen oben
     disks = queries.sort_disks(
         queries.filter_disks([d for d in all_disks if d.id not in in_bay], flt), sort, desc
@@ -117,26 +160,39 @@ def dashboard(
     )
 
 
-def _bays(request: Request, session: Session):
-    """Schachtansicht; None, wenn dieser Rechner keine SATA-Ports hat (Windows, Docker …)."""
-    if not sata.all_ports():
+def _bay_snapshot(session: Session, config, host: str = ""):
+    """Rechner, dessen Schächte gezeigt werden: gewählter, konfigurierter oder erster mit Ports."""
+    for candidate in (host, config.host):
+        if candidate and (snap := hosts.get(session, candidate)):
+            return snap
+    return next((h for h in hosts.known_hosts(session) if h.all_ports), None)
+
+
+def _bays(session: Session):
+    """Schachtansicht; None, wenn kein Agent SATA-Ports meldet (Windows, nur NAS …)."""
+    config = bay_service.load_config(session)
+    snapshot = _bay_snapshot(session, config)
+    if snapshot is None or not snapshot.all_ports:
         return None
-    path = request.app.state.bays_path
-    result = bay_service.build_bays(session, bay_service.load_assignment(path), sata.sata_ports())
-    return result[::-1] if bay_service.load_reverse(path) else result
+    return bay_service.build_bays(session, config, snapshot)
 
 
 @router.get("/bays/setup", response_class=HTMLResponse)
-def bays_setup(request: Request, err: str = ""):
-    assignment = bay_service.load_assignment(request.app.state.bays_path)
+def bays_setup(
+    request: Request, host: str = "", err: str = "", session: Session = Depends(get_session)
+):
+    config = bay_service.load_config(session)
+    snapshot = _bay_snapshot(session, config, host)
     return templates.TemplateResponse(
         request,
         "bays_setup.html",
         {
-            "assignment": assignment,
-            "reverse": bay_service.load_reverse(request.app.state.bays_path),
-            "all_ports": sata.all_ports(),
-            "live": sata.sata_ports(),
+            "host": snapshot.host if snapshot else "",
+            "online": bool(snapshot and snapshot.is_online),
+            "assignment": config.ports,
+            "reverse": config.reverse,
+            "all_ports": snapshot.all_ports if snapshot else [],
+            "live": snapshot.by_port() if snapshot else {},
             "bay_count": bay_service.BAY_COUNT,
             "flash_err": err,
         },
@@ -145,13 +201,19 @@ def bays_setup(request: Request, err: str = ""):
 
 @router.post("/bays/setup")
 def bays_save(
-    request: Request, port: list[str] = Form(default=[]), reverse: bool = Form(False)
+    host: str = Form(""),
+    port: list[str] = Form(default=[]),
+    reverse: bool = Form(False),
+    session: Session = Depends(get_session),
 ):
-    valid = set(sata.all_ports())
+    snapshot = hosts.get(session, host)
+    valid = set(snapshot.all_ports) if snapshot else set()
     chosen = [p if p in valid else None for p in port]
     try:
-        bay_service.save_assignment(request.app.state.bays_path, chosen, reverse)
-    except (ValueError, OSError) as exc:
+        bay_service.save_config(
+            session, bay_service.BayConfig(host=host or None, ports=chosen, reverse=reverse)
+        )
+    except ValueError as exc:
         return _redirect("/bays/setup?" + urlencode({"err": str(exc)}))
     return _redirect("/")
 
@@ -181,7 +243,8 @@ def disk_detail(
             "disk": disk,
             "flash_ok": msg,
             "flash_err": err,
-            "relabel_block": _relabel_block_reason(request, disk),
+            "relabel_block": _relabel_block_reason(session, disk),
+            "commands": commands.recent(session, disk.disk_key, 5),
             "history": queries.smart_history(session, disk_id),
             "health_reasons": (
                 queries.health_reasons(session, disk_id) if disk.health != "ok" else []
@@ -199,10 +262,12 @@ def disk_update(
     disk_id: int,
     custom_name: str = Form(""),
     notes: str = Form(""),
+    location: str = Form(""),
     session: Session = Depends(get_session),
 ):
     disk = _disk_or_404(session, disk_id)
     disk.custom_name = custom_name.strip() or None
+    disk.location = location.strip()[:500] or None
     disk.notes = notes.strip() or None
     return _redirect(f"/disks/{disk_id}")
 
@@ -244,22 +309,18 @@ def disk_delete(disk_id: int, session: Session = Depends(get_session)):
     return _redirect("/")
 
 
-def _relabel_block_reason(request: Request, disk: Disk) -> str:
-    """Leer, wenn das Umbenennen hier möglich ist; sonst der Grund (für die Oberfläche)."""
-    config = request.app.state.config
-    if config.server.host not in ("127.0.0.1", "::1", "localhost"):
-        return "Umbenennen ist nur möglich, wenn der Server ausschließlich lokal erreichbar ist."
+def _relabel_block_reason(session: Session, disk: Disk) -> str:
+    """Leer, wenn das Umbenennen möglich ist; sonst der Grund (für die Oberfläche)."""
     if not disk.is_connected:
         return "Die Festplatte ist nicht angeschlossen."
-    local = config.agent.host_name or socket.gethostname()
-    if disk.last_host and disk.last_host != local:
-        return f"Die Festplatte hängt an „{disk.last_host}“ – dort umbenennen."
+    snapshot = hosts.get(session, disk.last_host)
+    if snapshot is None or not snapshot.is_online:
+        return f"Der Agent von „{disk.last_host or '?'}“ meldet sich gerade nicht."
     return ""
 
 
 @router.post("/volumes/{volume_id}/label")
 def volume_label(
-    request: Request,
     volume_id: int,
     label: str = Form(""),
     session: Session = Depends(get_session),
@@ -273,19 +334,22 @@ def volume_label(
     def back(kind: str, text: str) -> RedirectResponse:
         return _redirect(f"{base}?{urlencode({kind: text})}#volumes")
 
-    if reason := _relabel_block_reason(request, disk):
+    if reason := _relabel_block_reason(session, disk):
         return back("err", reason)
     if not volume.present:
         return back("err", "Das Volume ist nicht mehr vorhanden.")
     if volume.index_status == "running":
         return back("err", "Das Volume wird gerade indiziert – bitte danach erneut versuchen.")
     try:
-        written = fslabel.set_label(volume.device, volume.fs_type, volume.mountpoint, label)
+        written = fslabel.normalize_label(volume.fs_type, label)
     except fslabel.LabelError as exc:
         return back("err", str(exc))
-    volume.label = written or None
-    done = f"Bezeichnung geändert: „{written}“." if written else "Bezeichnung entfernt."
-    return back("msg", done)
+    commands.enqueue(
+        session, disk.last_host, "rename_label",
+        {"disk_key": disk.disk_key, "volume_key": volume.volume_key, "label": written},
+        disk_key=disk.disk_key,
+    )
+    return back("msg", f"Auftrag an „{disk.last_host}“ gesendet – das Ergebnis erscheint hier.")
 
 
 @router.post("/volumes/{volume_id}/delete")
@@ -355,6 +419,28 @@ def files(
             "labels": [lab for lab, _ in queries.list_labels(session)],
         },
     )
+
+
+# ------------------------------------------------------------------ iPhone-Web-App
+@router.get("/scan", response_class=HTMLResponse)
+def scan_page(request: Request):
+    return templates.TemplateResponse(request, "scan.html", {})
+
+
+@router.get("/manifest.webmanifest")
+def manifest():
+    icons = [
+        {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png",
+         "purpose": "maskable"},
+    ]
+    body = {
+        "name": "DiskAtlas", "short_name": "DiskAtlas", "start_url": "/scan", "scope": "/",
+        "display": "standalone", "background_color": "#000000", "theme_color": "#000000",
+        "lang": "de", "icons": icons,
+    }
+    return JSONResponse(body, media_type="application/manifest+json")
 
 
 # ------------------------------------------------------------------ Doubletten

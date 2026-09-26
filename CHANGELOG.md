@@ -11,6 +11,57 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **iPhone-Web-App:** installierbar über „Zum Home-Bildschirm“ (Manifest, Icons, Apple-Metadaten).
+  Neue Seite **Scannen** (`/scan`): Kamera-Barcode-Scanner mit lokal ausgelieferter ZXing-Bibliothek
+  (Apache-2.0, kein Internet/CDN nötig; Code128, Code39, DataMatrix, QR u. a.) und Handeingabe.
+  Der Treffer zeigt die Platte und ihren Ort: „Steckt in Schacht N“, „Angeschlossen an …“ oder bei
+  abgesteckten Platten der **Lagerort**. Der Lagerort lässt sich direkt am Handy eintragen
+  (`PATCH /api/v1/disks/{id}`, Detailseite, Suche; sichtbar im Dashboard bei Offline-Platten).
+  Abgleich über Seriennummer oder WWN, tolerant gegenüber Trennzeichen, Etikett-Zusatztext und
+  Prüfziffern (`GET /api/v1/lookup?code=`). Die Kamera braucht HTTPS (Anleitung: `docs/UNRAID.md`).
+- Neue Spalte `disks.location` (Migration 0003).
+- Server-Paket für Unraid/Docker: `docker-compose.yml` verlangt Passwort und Token,
+  Unraid-Vorlage `deploy/unraid/diskatlas.xml`, GitHub-Actions-Workflow, der das Image bei
+  `v*`-Tags nach `ghcr.io/realcommerzpunk/diskatlas` veröffentlicht, systemd-User-Dienst für den
+  Agenten (`deploy/linux/diskatlas-agent.service`) und die Anleitung `docs/UNRAID.md`
+  (Container, Tailscale-HTTPS, Agent, Schächte, Update, Sicherung).
+
+### Behoben
+- Tests hängen nicht mehr von der lokalen Laufwerksdatenbank `drivedb.h` (smartmontools) ab; auf
+  den CI-Rechnern fehlt sie, dort schlug `test_catalog` fehl. Die CI läuft jetzt auch auf
+  `feature/**`- und `fix/**`-Branches.
+- Ein ohne Testpfad gestarteter Server (`diskatlas serve`) stürzte beim Umbau ab
+  (`default_bays_path` fehlte); durch Regressionstest abgesichert.
+
+### Sicherheit
+- **Anmeldung:** Die Weboberfläche und die API sind jetzt per Passwort geschützt
+  (`DISKATLAS_PASSWORD` bzw. `[server] password`, Anmeldeseite `/login`, signiertes
+  HttpOnly-Cookie, 30 Tage, Abmelden in der Kopfzeile; Passwortwechsel meldet alle ab;
+  Fehlversuche werden gebremst). Agenten nutzen weiter das API-Token (`/api/v1/ingest/*`),
+  dasselbe Token darf Skripte für die übrige API authentifizieren.
+- Ein Server, der nicht nur lokal lauscht (`host` ≠ 127.0.0.1), startet **nur noch mit Passwort und
+  API-Token** – sonst bricht er mit einer verständlichen Meldung ab (Ausnahme:
+  `allow_insecure = true`). Lokaler Betrieb (GUI, `run` auf Loopback) bleibt ohne Passwort möglich.
+- Das GUI-Fenster speichert die Sitzung dauerhaft (Anmeldung am Server nur einmal nötig).
+
+### Geändert
+- **Architektur Agent ↔ Server:** Alles, was einen Rechner betrifft, läuft im Agenten; der Server
+  (Docker/Unraid) hält nur Weboberfläche, API und Datenbank.
+  - Schachtbelegung: Der Agent meldet beim Heartbeat die SATA-Ports (`ports_info`); der Server
+    speichert sie je Rechner (Tabelle `host_states`) und zeigt die Schächte daraus – ohne selbst
+    auf sysfs zuzugreifen. Die Zuordnung Port → Schacht liegt jetzt in der Datenbank
+    (Tabelle `settings`); eine vorhandene lokale `bays.json` wird einmalig übernommen.
+  - Umbenennen der Bezeichnung ist jetzt ein **Auftrag** an den Agenten (Tabelle `commands`,
+    `GET /api/v1/ingest/commands`, `POST …/commands/{id}/result`). Der Agent prüft den Auftrag
+    gegen seinen eigenen Festplattenstand, ignoriert vom Server mitgeschickte Gerätepfade und
+    meldet das Ergebnis zurück; die Festplattendetails zeigen den Status (wartet/läuft/fertig).
+    Der Server führt nie selbst etwas auf Platten aus. Auch im Betrieb ohne Docker (`run`) läuft
+    das über denselben Weg.
+  - Neuer Befehl `diskatlas agent` (Agent für den Betrieb mit zentralem Server).
+- Schema-Migration 0003: Tabellen `host_states`, `settings`, `commands`; Spalte `disks.location`
+  (Lagerort, für die geplante iPhone-App).
+
 ## [0.2.0] - 2026-09-26
 
 ### Hinzugefügt

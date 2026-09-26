@@ -67,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     _server_args(p)
     p.set_defaults(func=cmd_serve)
 
+    p = sub.add_parser(
+        "agent", help="Agent für den Betrieb mit zentralem Server (Docker/Unraid): überwacht "
+        "Festplatten, sendet an [agent] server_url und führt Aufträge des Servers aus"
+    )
+    p.set_defaults(func=cmd_agent)
     p = sub.add_parser("watch", help="nur Agent: Festplatten überwachen und bei Hot-Plug scannen")
     p.set_defaults(func=cmd_watch)
 
@@ -128,6 +133,17 @@ def cmd_scan(config: Config, args) -> int:
         agent.sink.close()
     log.info("%d Festplatte(n) gescannt", count)
     return 0
+
+
+def cmd_agent(config: Config, args) -> int:
+    if not config.agent.server_url:
+        log.error(
+            "Kein Server konfiguriert. In der Konfiguration unter [agent] server_url und "
+            "api_token eintragen (siehe config.example.toml) – oder `diskatlas run` für den "
+            "Betrieb ohne Server nutzen."
+        )
+        return 2
+    return cmd_watch(config, args)
 
 
 def cmd_watch(config: Config, args) -> int:

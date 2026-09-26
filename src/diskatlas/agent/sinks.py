@@ -8,7 +8,7 @@ import httpx
 
 from diskatlas.db import Database
 from diskatlas.probe.types import DiskInfo, FileRecord
-from diskatlas.services import ingest
+from diskatlas.services import commands, hosts, ingest
 
 
 class Sink(ABC):
@@ -16,7 +16,15 @@ class Sink(ABC):
     def report_disk(self, host: str, disk: DiskInfo) -> None: ...
 
     @abstractmethod
-    def report_connected(self, host: str, disk_keys: list[str]) -> None: ...
+    def report_connected(
+        self, host: str, disk_keys: list[str], ports_info: dict | None = None
+    ) -> None: ...
+
+    @abstractmethod
+    def fetch_commands(self, host: str) -> list[dict]: ...
+
+    @abstractmethod
+    def report_command(self, command_id: int, ok: bool, message: str) -> None: ...
 
     @abstractmethod
     def begin_index(self, disk_key: str, volume_key: str) -> str: ...
@@ -43,9 +51,20 @@ class DatabaseSink(Sink):
         with self.db.session() as s:
             ingest.upsert_disk(s, host, disk)
 
-    def report_connected(self, host: str, disk_keys: list[str]) -> None:
+    def report_connected(
+        self, host: str, disk_keys: list[str], ports_info: dict | None = None
+    ) -> None:
         with self.db.session() as s:
             ingest.mark_connected(s, host, disk_keys)
+            hosts.record(s, host, ports_info)
+
+    def fetch_commands(self, host: str) -> list[dict]:
+        with self.db.session() as s:
+            return commands.claim_pending(s, host)
+
+    def report_command(self, command_id: int, ok: bool, message: str) -> None:
+        with self.db.session() as s:
+            commands.finish(s, command_id, ok, message)
 
     def begin_index(self, disk_key: str, volume_key: str) -> str:
         with self.db.session() as s:
@@ -77,8 +96,21 @@ class HttpSink(Sink):
     def report_disk(self, host: str, disk: DiskInfo) -> None:
         self._post("/ingest/disk", {"host": host, "disk": disk.model_dump(mode="json")})
 
-    def report_connected(self, host: str, disk_keys: list[str]) -> None:
-        self._post("/ingest/connected", {"host": host, "disk_keys": disk_keys})
+    def report_connected(
+        self, host: str, disk_keys: list[str], ports_info: dict | None = None
+    ) -> None:
+        self._post(
+            "/ingest/connected",
+            {"host": host, "disk_keys": disk_keys, "ports_info": ports_info},
+        )
+
+    def fetch_commands(self, host: str) -> list[dict]:
+        response = self.client.get("/ingest/commands", params={"host": host})
+        response.raise_for_status()
+        return response.json()
+
+    def report_command(self, command_id: int, ok: bool, message: str) -> None:
+        self._post(f"/ingest/commands/{command_id}/result", {"ok": ok, "message": message})
 
     def begin_index(self, disk_key: str, volume_key: str) -> str:
         data = self._post("/ingest/index/begin", {"disk_key": disk_key, "volume_key": volume_key})

@@ -50,6 +50,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Eigene Angaben | Anzeigename, Notizen | ✅ 0.1.0 |
 | Dashboard | Kennzahlen, Suche, Filter, Gruppierung, Sortierung, Detailseite | ✅ 0.1.0 |
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
+| iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ Unreleased |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |
 | Auto-Einhängen | Linux: nicht eingehängte Dateisysteme selbst einhängen (`auto_mount`, udisks2), damit Belegung/Index möglich sind | ✅ 0.2.0 |
@@ -123,6 +124,8 @@ src/diskatlas/
     ingest.py           Upsert von Festplatten, Heartbeat, Dateiindex-Transaktionen
     queries.py          Dashboard-Statistik, Filter/Sortierung/Gruppierung, Dateisuche
     bays.py             Schachtzuordnung (SATA-Port → Schacht, bays.json) und Belegung
+    lookup.py           Platte per Seriennummer/WWN finden, Ort ermitteln (iPhone-Scanner)
+    hosts.py / commands.py   Heartbeat und Aufträge je Agent (Server ↔ Agent)
     (probe/catalog.py   Hersteller + Verkaufsbezeichnung aus Modellnummer)
     mounting.py         Ein-/Aushängen über udisksctl, Sperr-Marker gegen Auto-Einhängen
     fslabel.py          Dateisystem-Bezeichnung ändern (udisks2 / Set-Volume), Prüfung je Dateisystem
@@ -143,6 +146,9 @@ scripts/              Versionierung, sudoers-Helfer für smartctl
 | Tabelle | Inhalt | Schlüssel |
 |---|---|---|
 | `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben | `disk_key` (eindeutig) |
+| `host_states` | Heartbeat je Agenten-Rechner: belegte SATA-Ports (Grundlage der Schachtansicht) | `host` |
+| `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
+| `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
 | `files` | Dateiindex (Pfad relativ zum Volume, Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
 | `smart_snapshots` | SMART-Verlauf inkl. Roh-JSON | `disk_id`, `taken_at` |
@@ -180,6 +186,9 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-23 | **Neu formatiert = gleiche Partition mit neuer Dateisystem-UUID → Index verwerfen; neue Partitions-GUID = neues Volume** | Volumes werden über die GPT-GUID identifiziert (MBR: Dateisystem-UUID); ein Neupartitionieren erzeugt also neue Volumes, das alte bleibt als „nicht mehr vorhanden“ stehen und kann manuell gelöscht werden. |
 | 2026-09-23 | **Auto-Einhängen standardmäßig an, über udisks2 (schreibbar wie im Dateimanager)** | Ohne Einhängen sind Belegung und Dateiindex nicht erfassbar. Schreibgeschützt einhängen wurde verworfen, weil Daten zwischen Platten verschoben werden sollen. Abschaltbar mit `auto_mount = false`. |
 | 2026-09-23 | **Hersteller/Serie aus smartmontools-`drivedb.h` statt eigener Datenpflege** | Die Liste wird von der Community gepflegt und liegt mit smartmontools bereits auf dem Rechner; `sudo update-smart-drivedb` aktualisiert sie. Ergänzt um eine kleine Präfix-Tabelle für den Hersteller. Grenzen: Familien sind teils technisch (Enterprise-Reihen) oder fehlen (neue Modelle) – dann bleibt die Serie leer. |
+| 2026-09-26 | **Server führt nichts auf Platten aus; Agenten holen Aufträge ab (Polling)** | Der Server läuft auf einem anderen Rechner (Unraid) und darf keine Kommandos an Rechner „durchreichen“. Der Agent verbindet sich ausgehend (NAT/Firewall-freundlich), prüft jeden Auftrag gegen seinen eigenen Stand und ignoriert Gerätepfade aus dem Auftrag. Aufträge sind auf eine feste Liste (`rename_label`, `rescan`) beschränkt. |
+| 2026-09-26 | **Ein Passwort + signiertes Cookie statt Benutzerverwaltung; Server im Netz nur mit Passwort und Token** | Einzelnutzer-Heimnetz (Unraid, Tailscale). Kein Benutzerkonzept nötig; ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Das Passwort steckt in der Cookie-Signatur, ein Wechsel invalidiert alle Sitzungen. |
+| 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |
 | 2026-09-23 | **Schächte über den SATA-Port (`/sys/block/sdX → ataN`), live aus sysfs, Zuordnung in `bays.json`** | Port ist an den Anschluss gebunden und ändert sich beim Plattenwechsel nicht (Gerätename/Mountpunkt schon). Keine Schemaänderung nötig; gilt nur für den Rechner, an dem die Schächte sitzen. |
 | 2026-09-23 | **„Systemdatenträger ignorieren“ ist eine reine UI-Einstellung (Cookie), Kriterium = Label „System“** | Die API bleibt vollständig; das Label ist bereits das vorhandene Ordnungsmittel des Nutzers. |
 
@@ -201,7 +210,11 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 **Docker / Unraid**
 - Container betreibt nur den Server. Scans erfolgen durch Agenten auf den Rechnern
   (`[agent] server_url = "http://unraid:8765"`, `api_token` wie im Container).
+- Der Container startet **nur mit `DISKATLAS_PASSWORD` und `DISKATLAS_API_TOKEN`**.
 - Daten unter `/data` (SQLite) oder PostgreSQL per `DISKATLAS_DATABASE_URL`.
+- Image: `ghcr.io/realcommerzpunk/diskatlas` (GitHub Actions bei `v*`-Tags), Unraid-Vorlage
+  `deploy/unraid/diskatlas.xml`. Einrichtung, Tailscale-HTTPS (Voraussetzung für die iPhone-
+  Kamera) und Agent: [docs/UNRAID.md](docs/UNRAID.md).
 
 ## 7. Konfiguration
 

@@ -2,6 +2,10 @@
 # Festplatten-Scans laufen per Agent auf den jeweiligen Rechnern und senden an diesen Server.
 FROM python:3.12-slim
 
+LABEL org.opencontainers.image.source="https://github.com/RealCommerzpunk/DiskAtlas" \
+      org.opencontainers.image.description="DiskAtlas – Festplatteninventar (Weboberfläche, API, Datenbank)" \
+      org.opencontainers.image.licenses="NOASSERTION"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DISKATLAS_DATABASE_URL=sqlite:////data/diskatlas.db \
