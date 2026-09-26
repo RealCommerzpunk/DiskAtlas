@@ -10,19 +10,16 @@ from __future__ import annotations
 import argparse
 import contextlib
 import logging
-import socket
 import threading
-import time
 from dataclasses import dataclass
 
 from diskatlas import __version__
 from diskatlas.config import Config, default_config_path, default_data_dir, load_config
-from diskatlas.runtime import make_agent, redact_url
+from diskatlas.runtime import make_agent, redact_url, start_local_server
 
 log = logging.getLogger("diskatlas.gui")
 
 WINDOW_TITLE = "DiskAtlas"
-STARTUP_TIMEOUT = 15.0
 
 
 @dataclass
@@ -50,17 +47,6 @@ class Session:
             self.agent.sink.close()
 
 
-def _free_port(host: str, preferred: int) -> int:
-    """Bevorzugten Port versuchen, sonst einen freien vergeben."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            s.bind((host, preferred))
-        except OSError:
-            s.bind((host, 0))
-        return s.getsockname()[1]
-
-
 def start_session(config: Config) -> Session:
     """Baut Agent (und ggf. lokalen Server) auf und startet sie im Hintergrund."""
     if config.agent.server_url:
@@ -70,36 +56,13 @@ def start_session(config: Config) -> Session:
         thread.start()
         return Session(url=config.agent.server_url, agent=agent, agent_thread=thread)
 
-    import uvicorn
-
-    from diskatlas.web.app import create_app
-
-    port = _free_port(config.server.host, config.server.port)
-    if port != config.server.port:
-        log.warning("Port %d belegt, verwende %d", config.server.port, port)
-    app = create_app(config)  # legt/aktualisiert die lokale Datenbank an
-    server = uvicorn.Server(
-        uvicorn.Config(
-            app, host=config.server.host, port=port, log_level="warning",
-            ws="none",  # WebSockets unnötig; vermeidet Konflikte mit System-websockets
-        )
-    )
-    server_thread = threading.Thread(target=server.run, name="diskatlas-server", daemon=True)
-    server_thread.start()
-    deadline = time.monotonic() + STARTUP_TIMEOUT
-    while not server.started and time.monotonic() < deadline:
-        time.sleep(0.05)
-    if not server.started:
-        raise RuntimeError("Server ist innerhalb der Frist nicht gestartet")
-
+    local = start_local_server(config)
     agent = make_agent(config)
     agent_thread = threading.Thread(target=agent.watch, name="diskatlas-agent", daemon=True)
     agent_thread.start()
-
-    host_for_url = "127.0.0.1" if config.server.host in ("0.0.0.0", "::") else config.server.host
     return Session(
-        url=f"http://{host_for_url}:{port}",
-        agent=agent, agent_thread=agent_thread, server=server, server_thread=server_thread,
+        url=local.url, agent=agent, agent_thread=agent_thread,
+        server=local.server, server_thread=local.thread,
     )
 
 

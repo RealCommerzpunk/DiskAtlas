@@ -6,6 +6,7 @@ import argparse
 import contextlib
 import logging
 import logging.handlers
+import os
 import socket
 import subprocess
 import sys
@@ -22,6 +23,8 @@ log = logging.getLogger("diskatlas.tray")
 
 INSTANCE_PORT = 48653
 REFRESH_SECONDS = 2.0
+TRAY_LOG = "agent-tray.log"
+SETTINGS_LOG = "agent-settings.log"
 DOT_COLORS = {
     "online": (34, 197, 94),
     "starting": (245, 158, 11),
@@ -104,6 +107,9 @@ class Tray:
         if url:
             webbrowser.open(url)
 
+    def open_logs(self, *_args) -> None:
+        open_folder(default_data_dir())
+
     def quit(self, *_args) -> None:
         self._stop.set()
         if self._icon is not None:
@@ -119,12 +125,28 @@ class Tray:
                 "Dashboard öffnen", self.open_dashboard,
                 enabled=lambda _i: bool(self.controller.status().server_url),
             ),
+            pystray.MenuItem("Protokolle anzeigen", self.open_logs),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Beenden", self.quit),
         )
 
     # ---------------------------------------------------------------- Hintergrund
+    def _check_window(self) -> None:
+        """Meldet, wenn das Einstellungsfenster mit Fehler endet (sonst sieht man nichts)."""
+        if self._window is None or self._window.poll() is None:
+            return
+        code, self._window = self._window.returncode, None
+        if code != 0 and self._icon is not None:
+            log.error("Einstellungsfenster mit Code %s beendet", code)
+            with contextlib.suppress(Exception):
+                self._icon.notify(
+                    f"Das Einstellungsfenster ließ sich nicht öffnen. Details: {SETTINGS_LOG} "
+                    "(Menü → Protokolle anzeigen).",
+                    "DiskAtlas Agent",
+                )
+
     def _tick(self) -> None:
+        self._check_window()
         stamp = config_mtime(self.controller.config_path)
         if stamp != self._config_stamp:
             self._config_stamp = stamp
@@ -173,14 +195,23 @@ class Tray:
         return 0
 
 
-def setup_logging(verbose: bool, to_file: bool) -> None:
-    handlers: list[logging.Handler] = []
-    if to_file:
-        log_dir = default_data_dir()
-        log_dir.mkdir(parents=True, exist_ok=True)
-        handlers.append(logging.handlers.RotatingFileHandler(
-            log_dir / "agent-tray.log", maxBytes=512_000, backupCount=2, encoding="utf-8"
-        ))
+def open_folder(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        if sys.platform == "win32":
+            os.startfile(path)
+        else:
+            subprocess.Popen(["xdg-open", str(path)])
+    except OSError:
+        log.exception("Ordner %s lässt sich nicht öffnen", path)
+
+
+def setup_logging(verbose: bool, log_name: str) -> None:
+    log_dir = default_data_dir()
+    log_dir.mkdir(parents=True, exist_ok=True)
+    handlers: list[logging.Handler] = [logging.handlers.RotatingFileHandler(
+        log_dir / log_name, maxBytes=512_000, backupCount=2, encoding="utf-8"
+    )]
     if sys.stderr is not None:  # Windows-Programm ohne Konsole hat keinen stderr
         handlers.append(logging.StreamHandler())
     logging.basicConfig(
@@ -188,8 +219,9 @@ def setup_logging(verbose: bool, to_file: bool) -> None:
         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
         handlers=handlers, force=True,
     )
-    # httpx meldet sonst jede Anfrage (alle paar Sekunden) im Log.
-    logging.getLogger("httpx").setLevel(logging.DEBUG if verbose else logging.WARNING)
+    # httpx meldet sonst jede Anfrage (alle paar Sekunden), Alembic jeden Start.
+    for name in ("httpx", "alembic"):
+        logging.getLogger(name).setLevel(logging.DEBUG if verbose else logging.WARNING)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -209,12 +241,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    setup_logging(args.verbose, to_file=not args.settings)
+    setup_logging(args.verbose, SETTINGS_LOG if args.settings else TRAY_LOG)
     config_path = resolve_config_path(args.config)
     if args.settings:
         from diskatlas.tray.window import run_settings_window
 
-        return run_settings_window(config_path)
+        try:
+            return run_settings_window(config_path)
+        except Exception:
+            log.exception("Einstellungsfenster fehlgeschlagen")
+            return 3
     try:
         import pystray  # noqa: F401
         from PIL import Image  # noqa: F401

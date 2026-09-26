@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import webbrowser
 from dataclasses import asdict
 from pathlib import Path
 
+from diskatlas.probe.smart import bundled_smartctl
 from diskatlas.tray import autostart, settings
 from diskatlas.tray.status import age_text, read_status
 
@@ -29,6 +32,8 @@ h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;
 .dot.online{background:var(--ok)}.dot.offline,.dot.auth_error,.dot.error,.dot.config_error,
 .dot.stopped{background:var(--bad)}.dot.starting,.dot.unconfigured{background:var(--warn)}
 .meta{color:var(--muted);margin-top:6px;word-break:break-all}
+.hint{margin-top:8px;color:var(--warn)}.hint:empty{display:none}
+a{color:var(--accent);cursor:pointer}
 label{display:block;margin:10px 0 3px;font-weight:600}
 input[type=text],input[type=password],input[type=number]{width:100%;padding:7px 9px;
 border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
@@ -46,14 +51,20 @@ small{color:var(--muted)}
 </style></head><body>
 <div class="card"><h2>Verbindung</h2>
 <div class="state"><span id="dot" class="dot"></span><span id="label">…</span></div>
-<div class="meta" id="detail"></div><div class="meta" id="facts"></div></div>
+<div class="meta" id="detail"></div><div class="meta" id="facts"></div>
+<div class="hint" id="hint"></div></div>
 
 <div class="card"><h2>Einstellungen</h2>
+<label class="check"><input type="radio" name="mode" id="mode_server" value="server">
+Mit DiskAtlas-Server verbinden (z. B. Docker auf dem NAS)</label>
+<label class="check"><input type="radio" name="mode" id="mode_local" value="local">
+Nur dieser PC – Oberfläche und Datenbank laufen lokal</label>
+<div id="server_fields">
 <label for="server_url">Server-Adresse</label>
 <input type="text" id="server_url" placeholder="http://unraid:8765" spellcheck="false">
 <label for="api_token">API-Token</label>
 <div class="row"><input type="password" id="api_token" spellcheck="false" autocomplete="off">
-<button type="button" id="toggle">Zeigen</button></div>
+<button type="button" id="toggle">Zeigen</button></div></div>
 <label for="host_name">Rechnername (leer = automatisch)</label>
 <input type="text" id="host_name" spellcheck="false">
 <label class="check"><input type="checkbox" id="autostart">
@@ -79,7 +90,7 @@ SMART mit sudo lesen (Linux)</label>
 <button type="button" class="primary" id="save">Speichern</button>
 <button type="button" id="dash">Dashboard öffnen</button></div>
 <div id="msg"></div>
-<p><small id="path"></small></p></div>
+<p><small id="path"></small></p><p><small id="notice"></small></p></div>
 
 <script>
 const TEXT = ["server_url","api_token","host_name","smartctl_path"];
@@ -89,11 +100,16 @@ const $ = id => document.getElementById(id);
 function say(text, ok){const m=$("msg");m.textContent=text;m.className=ok?"ok":"bad";}
 function fill(v){TEXT.forEach(k=>$(k).value=v[k]??"");NUM.forEach(k=>$(k).value=v[k]);
 BOOL.forEach(k=>$(k).checked=!!v[k]);}
+let current={};
+const local=()=>$("mode_local").checked;
+function showMode(){$("server_fields").hidden=local();$("test").hidden=local();}
 function collect(){const v={};TEXT.forEach(k=>v[k]=$(k).value);
-NUM.forEach(k=>v[k]=$(k).value);BOOL.forEach(k=>v[k]=$(k).checked);return v;}
-function render(s){$("dot").className="dot "+s.state;$("label").textContent=s.label;
-$("detail").textContent=s.detail;
-const f=[];if(s.server_url)f.push("Server: "+s.server_url);if(s.host)f.push("Rechner: "+s.host);
+NUM.forEach(k=>v[k]=$(k).value);BOOL.forEach(k=>v[k]=$(k).checked);
+if(local())v.server_url="";return v;}
+function render(s){current=s;$("dot").className="dot "+s.state;$("label").textContent=s.label;
+$("detail").textContent=s.detail;const f=[];
+if(s.server_url)f.push((s.mode==="local"?"Oberfläche: ":"Server: ")+s.server_url);
+if(s.host)f.push("Rechner: "+s.host);
 if(s.state!=="stopped"){f.push("Letzte erfolgreiche Antwort: "+s.last_ok_ago);
 f.push("Angeschlossene Datenträger: "+s.disks);}
 $("facts").textContent=f.join("  ·  ");}
@@ -101,6 +117,12 @@ async function busy(id,fn){const b=$(id);b.disabled=true;try{await fn();}finally
 window.addEventListener("pywebviewready",async()=>{
 const s=await pywebview.api.get_state();fill(s.values);render(s.status);
 $("path").textContent="Konfigurationsdatei: "+s.config_path;
+$((s.configured&&!s.values.server_url)?"mode_local":"mode_server").checked=true;showMode();
+document.getElementsByName("mode").forEach(r=>r.onchange=showMode);
+if(s.admin===false)$("hint").textContent="Ohne Administratorrechte liefert Windows keine "+
+"SMART-Werte. Wie der Agent mit Adminrechten startet, steht in docs/AGENT.md.";
+if(s.smartctl_bundled){$("notice").innerHTML="Enthält smartctl aus smartmontools (GNU GPL v2) – "+
+"<a id='lic'>Lizenz und Quellcode</a>";$("lic").onclick=()=>pywebview.api.show_licenses();}
 $("autostart").checked=s.autostart;
 $("autostart").onchange=async e=>{const r=await pywebview.api.set_autostart(e.target.checked);
 say(r.message,r.ok);if(!r.ok)e.target.checked=!e.target.checked;};
@@ -112,7 +134,8 @@ const r=await pywebview.api.check_connection($("server_url").value,$("api_token"
 say(r.message,r.ok);});
 $("save").onclick=()=>busy("save",async()=>{const r=await pywebview.api.save(collect());
 say(r.message,r.ok);});
-$("dash").onclick=()=>pywebview.api.open_dashboard($("server_url").value);
+$("dash").onclick=()=>pywebview.api.open_dashboard(
+local()?(current.mode==="local"?current.server_url:""):$("server_url").value);
 });
 </script></body></html>"""
 
@@ -133,7 +156,10 @@ class SettingsApi:
             "values": values,
             "status": self.get_status(),
             "config_path": str(self._config_path),
+            "configured": self._config_path.is_file(),
             "autostart": autostart.is_enabled(),
+            "admin": windows_admin(),
+            "smartctl_bundled": bundled_smartctl() is not None,
         }
 
     def get_status(self) -> dict:
@@ -170,6 +196,23 @@ class SettingsApi:
         if server_url.startswith(("http://", "https://")):
             webbrowser.open(server_url)
 
+    def show_licenses(self) -> None:
+        exe = bundled_smartctl()
+        if exe is not None:
+            os.startfile(exe.parent / "LIESMICH.txt")
+
+
+def windows_admin() -> bool | None:
+    """Läuft das Programm unter Windows mit Administratorrechten? (None auf anderen Systemen)"""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except (AttributeError, OSError):
+        return None
+
 
 def run_settings_window(config_path: Path) -> int:
     try:
@@ -179,7 +222,7 @@ def run_settings_window(config_path: Path) -> int:
         return 2
     webview.create_window(
         "DiskAtlas Agent", html=HTML, js_api=SettingsApi(config_path),
-        width=560, height=680, min_size=(460, 520),
+        width=560, height=760, min_size=(460, 520),
     )
     icon = Path(__file__).resolve().parent.parent / "web" / "static" / "icon_256.png"
     webview.start(icon=str(icon) if icon.is_file() else None)

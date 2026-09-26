@@ -19,7 +19,14 @@ Details zu Architektur, Entscheidungen und Roadmap: **[PROJECT.md](PROJECT.md)**
 
 ## Installation
 
-### Linux Mint / Ubuntu
+### Fertiges Programm (empfohlen)
+
+Unter *Releases* liegt der Agent als einzelne Datei für Windows und Linux: Symbol im
+Infobereich, Einstellungsfenster, wahlweise **nur auf diesem PC** (Oberfläche und Datenbank im
+Programm) oder **mit einem DiskAtlas-Server** (Docker/Unraid). Anleitung:
+**[docs/AGENT.md](docs/AGENT.md)**.
+
+### Aus dem Quellcode: Linux Mint / Ubuntu
 
 ```bash
 sudo apt install python3-venv smartmontools git
@@ -32,7 +39,7 @@ python3 -m venv .venv
 
 Dann im Browser **http://127.0.0.1:8765** öffnen.
 
-### Windows 10/11
+### Aus dem Quellcode: Windows 10/11
 
 1. [Python 3.11+](https://www.python.org/downloads/) installieren (Haken bei *Add to PATH*).
 2. [smartmontools für Windows](https://www.smartmontools.org/wiki/Download) installieren.

@@ -42,6 +42,8 @@ jobs:
           python -m venv .venv
           .venv\Scripts\python -m pip install --upgrade pip
           .venv\Scripts\python -m pip install -e ".[tray,build]"
+          # smartctl.exe (smartmontools, GPL) mitliefern; Quellcode wird mitveröffentlicht.
+          .venv\Scripts\python packaging/fetch_smartctl.py
 
       # Unter Linux kommen GTK, WebKit und AppIndicator aus den Systempaketen (python3-gi),
       # daher die System-Python mit Zugriff auf deren Pakete.
@@ -67,14 +69,52 @@ jobs:
         if: runner.os == 'Linux'
         run: dist/${{ matrix.asset }} --version
 
+      # Echter Start: Tray im lokalen Betrieb (Oberfläche muss antworten) und das
+      # Einstellungsfenster (muss offen bleiben). Die Protokolle landen im Build-Log.
+      - name: Starttest (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe = "dist/${{ matrix.asset }}"
+          $data = "$env:LOCALAPPDATA\diskatlas"
+          $cfgDir = "$env:APPDATA\diskatlas"
+          New-Item -ItemType Directory -Force $cfgDir | Out-Null
+          Set-Content "$cfgDir\config.toml" "[agent]`nserver_url = `"`"`nindex_files = false`n[server]`nport = 18766`n"
+          $tray = Start-Process $exe -ArgumentList "-v" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 90 -and -not $ok; $i++) {
+            Start-Sleep 1
+            try { $ok = (Invoke-RestMethod http://127.0.0.1:18766/api/v1/health).status -eq "ok" } catch {}
+          }
+          $settings = Start-Process $exe -ArgumentList "--settings", "-v" -PassThru
+          Start-Sleep 30
+          $windowOpen = -not $settings.HasExited
+          Write-Host "--- agent-status.json"; Get-Content "$data\agent-status.json" -ErrorAction SilentlyContinue
+          Write-Host "--- agent-tray.log"; Get-Content "$data\agent-tray.log" -ErrorAction SilentlyContinue
+          Write-Host "--- agent-settings.log"; Get-Content "$data\agent-settings.log" -ErrorAction SilentlyContinue
+          Stop-Process -Id $settings.Id, $tray.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "Die lokale Oberfläche antwortet nicht." }
+          if (-not $windowOpen) { throw "Das Einstellungsfenster wurde vorzeitig beendet (Code $($settings.ExitCode))." }
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
           if-no-files-found: error
 
+      # GPL: Der Quellcode des mitgelieferten smartctl liegt neben der .exe.
+      - name: smartmontools-Quellcode als Artefakt
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartmontools-quellcode
+          path: build/smartmontools-*.tar.gz
+          if-no-files-found: error
+
       - name: An Release hängen
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.asset }}
+          files: |
+            dist/${{ matrix.asset }}
+            build/smartmontools-*.tar.gz

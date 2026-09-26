@@ -27,6 +27,28 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   `agent.yml`: baut die Programme für Windows (x64) und Linux (x86_64, Ubuntu 24.04/Mint 22) und
   hängt sie bei Versions-Tags an das Release.
 - Neue optionale Abhängigkeitsgruppe `tray` (pystray, Pillow, pywebview).
+- **Lokaler Betrieb im Agent-Programm**: Im Einstellungsfenster wählbar zwischen *Mit
+  DiskAtlas-Server verbinden* und *Nur dieser PC*. Lokal startet das Programm Weboberfläche und
+  SQLite-Datenbank selbst (`http://127.0.0.1:8765`, *Dashboard öffnen*); Status „Läuft lokal“.
+  Ohne Konfigurationsdatei gilt das Programm als nicht eingerichtet und fragt nach der Betriebsart.
+- Die Windows-Datei bringt **`smartctl.exe`** (smartmontools 7.5, GPL v2) mit; genutzt, wenn
+  kein installiertes smartctl gefunden wird. Lizenztext und Herkunft liegen bei und sind im
+  Einstellungsfenster verlinkt, der Quellcode wird bei jedem Release mitveröffentlicht
+  (`packaging/fetch_smartctl.py` lädt und prüft beides per SHA-256).
+- Einstellungsfenster weist unter Windows darauf hin, wenn SMART mangels Administratorrechten
+  nicht lesbar ist; neue Anleitung [docs/AGENT.md](docs/AGENT.md) (Betriebsarten, geplante Aufgabe
+  mit Adminrechten, SmartScreen, Protokolle).
+- Tray-Menü *Protokolle anzeigen*; das Einstellungsfenster schreibt eigene Protokolle
+  (`agent-settings.log`), und das Tray meldet per Benachrichtigung, wenn es sich nicht öffnen lässt.
+- Build: Starttest unter Windows (lokale Oberfläche muss antworten, Einstellungsfenster offen
+  bleiben; Protokolle im Build-Log).
+
+### Geändert
+- Linux-Programmdatei nutzt GTK, AppIndicator und WebKit des Systems statt eigener Kopien:
+  **ca. 18 statt 55–70 MB**, und die Bibliotheken passen sicher zusammen (vorher: eigenes GTK,
+  aber System-WebKit). Unnötige Pakete (pygments, rich, cryptography, greenlet …) ausgeschlossen.
+- Der Start der lokalen Weboberfläche ist nach `runtime.start_local_server` gewandert
+  (gemeinsam für `diskatlas-gui` und Tray).
 
 ## [0.3.0] - 2026-09-26
 

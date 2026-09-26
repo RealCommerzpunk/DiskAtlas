@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 
 from diskatlas.config import default_config_path, load_config
-from diskatlas.runtime import make_agent
+from diskatlas.runtime import LocalServer, make_agent, start_local_server
 from diskatlas.tray.status import TrayStatus, strip_credentials
 
 log = logging.getLogger("diskatlas.tray")
@@ -29,10 +29,13 @@ def resolve_config_path(path: str | Path | None = None) -> Path:
 class StatusTracker:
     """Sammelt den Verbindungsstatus (thread-sicher)."""
 
-    def __init__(self, server_url: str = "", host: str = "", config_path: str = ""):
+    def __init__(
+        self, server_url: str = "", host: str = "", config_path: str = "", mode: str = "server"
+    ):
         self._lock = threading.Lock()
         self._status = TrayStatus(
-            server_url=strip_credentials(server_url), host=host, config_path=config_path
+            server_url=strip_credentials(server_url), host=host, config_path=config_path,
+            mode=mode,
         )
 
     def set(self, state: str, detail: str = "") -> None:
@@ -98,6 +101,7 @@ class AgentController:
         self.tracker = StatusTracker(config_path=str(self.config_path))
         self._agent = None
         self._thread: threading.Thread | None = None
+        self._local: LocalServer | None = None
 
     def start(self) -> None:
         try:
@@ -108,12 +112,28 @@ class AgentController:
             log.error("Konfiguration nicht lesbar: %s", exc)
             return
         server_url = config.agent.server_url
-        if not server_url:
+        if not server_url and not self.config_path.is_file():
             self.tracker = StatusTracker("", config.agent.host_name, str(self.config_path))
-            self.tracker.set("unconfigured", "Server-Adresse in den Einstellungen eintragen.")
+            self.tracker.set("unconfigured", "Betriebsart in den Einstellungen wählen.")
             return
-        agent = make_agent(config)
-        self.tracker = StatusTracker(server_url, agent.host, str(self.config_path))
+        try:
+            if server_url:
+                agent = make_agent(config)
+                self.tracker = StatusTracker(server_url, agent.host, str(self.config_path))
+            else:
+                # Lokaler Betrieb: Weboberfläche und Datenbank laufen in diesem Programm.
+                self._local = start_local_server(config)
+                agent = make_agent(config)
+                self.tracker = StatusTracker(
+                    self._local.url, agent.host, str(self.config_path), mode="local"
+                )
+        except Exception as exc:
+            log.exception("Start fehlgeschlagen")
+            self._stop_local()
+            self.tracker = StatusTracker(server_url, config.agent.host_name, str(self.config_path),
+                                         mode="server" if server_url else "local")
+            self.tracker.set("error", str(exc) or type(exc).__name__)
+            return
         agent.sink = StatusSink(agent.sink, self.tracker)
         self._agent = agent
         self._thread = threading.Thread(target=self._run, name="diskatlas-agent", daemon=True)
@@ -134,7 +154,13 @@ class AgentController:
             if thread is not None:
                 thread.join(timeout=10)
             agent.sink.close()
+        self._stop_local()
         self.tracker.set("stopped", "Der Agent wurde beendet.")
+
+    def _stop_local(self) -> None:
+        local, self._local = self._local, None
+        if local is not None:
+            local.stop()
 
     def restart(self) -> None:
         log.info("Konfiguration geändert – starte Agent neu")
