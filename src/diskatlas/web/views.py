@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from diskatlas import __version__
 from diskatlas.db.models import Disk, FileEntry, Label, Volume
 from diskatlas.services import bays as bay_service
-from diskatlas.services import commands, duplicates, fslabel, hosts, queries
+from diskatlas.services import commands, duplicates, fslabel, hosts, queries, users
 from diskatlas.web import auth, formatting
 from diskatlas.web.deps import get_session
 
@@ -29,9 +29,8 @@ templates.env.globals.update(
     GROUP_OPTIONS=queries.GROUP_OPTIONS,
     SORT_OPTIONS={k: v[0] for k, v in queries.SORT_OPTIONS.items()},
 )
-templates.env.globals["auth_enabled"] = (
-    lambda request: bool(request.app.state.config.server.password)
-)
+templates.env.globals["auth_enabled"] = lambda request: request.app.state.auth_enabled
+templates.env.globals["identity"] = lambda request: getattr(request.state, "identity", None)
 
 router = APIRouter(include_in_schema=False)
 PAGE_SIZE = 100
@@ -83,7 +82,7 @@ def _local_target(target: str) -> str:
 
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: str = "/", err: str = ""):
-    if not request.app.state.config.server.password:
+    if not request.app.state.auth_enabled:
         return _redirect("/")
     return templates.TemplateResponse(
         request, "login.html", {"next": _local_target(next), "error": err}
@@ -91,21 +90,31 @@ def login_page(request: Request, next: str = "/", err: str = ""):
 
 
 @router.post("/login")
-def login(request: Request, password: str = Form(""), next: str = Form("/")):
-    server = request.app.state.config.server
+def login(
+    request: Request,
+    nickname: str = Form(""),
+    password: str = Form(""),
+    next: str = Form("/"),
+    session: Session = Depends(get_session),
+):
     throttle = request.app.state.login_throttle
     client = request.client.host if request.client else "?"
     target = _local_target(next)
     if throttle.blocked(client):
         too_many = "Zu viele Fehlversuche – bitte in einigen Minuten erneut versuchen."
         return _redirect("/login?" + urlencode({"next": target, "err": too_many}))
-    if not auth.password_ok(password, server.password):
+    user = users.authenticate(session, nickname, password)
+    if user is None:
         throttle.fail(client)
         time.sleep(0.4)  # bremst automatisiertes Raten
-        return _redirect("/login?" + urlencode({"next": target, "err": "Falsches Passwort."}))
+        error = "Falscher Name oder falsches Passwort."
+        return _redirect("/login?" + urlencode({"next": target, "err": error}))
     throttle.reset(client)
+    if user.status != "active":
+        pending = "Dein Antrag wartet noch auf Freischaltung durch den Master."
+        return _redirect("/login?" + urlencode({"next": target, "err": pending}))
     response = _redirect(target)
-    auth.set_session(request, response, server.password)
+    auth.set_session(request, response, user)
     return response
 
 

@@ -17,11 +17,15 @@
     {% if error %}<p class="notice health-reasons failed" role="alert">{{ error }}</p>{% endif %}
     <form method="post" action="/login">
       <input type="hidden" name="next" value="{{ next }}">
+      <label>Name
+        <input name="nickname" autocomplete="username" autofocus required>
+      </label>
       <label>Passwort
-        <input type="password" name="password" autocomplete="current-password" autofocus required>
+        <input type="password" name="password" autocomplete="current-password" required>
       </label>
       <button type="submit">Anmelden</button>
     </form>
+    <p class="muted"><a href="/register">Zugang beantragen</a></p>
   </main>
 </body>
 </html>

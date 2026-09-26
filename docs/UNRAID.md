@@ -19,8 +19,12 @@ Du brauchst zwei Werte, beide geheim:
 
 | Wert | Wofür | Beispiel erzeugen |
 |---|---|---|
-| `DISKATLAS_PASSWORD` | Anmeldung an der Weboberfläche | ein Passwort, das du dir merkst |
+| `DISKATLAS_PASSWORD` | Startpasswort des Benutzers **Master** (Anmeldung mit Name „Master“) | ein Passwort, das du dir merkst |
 | `DISKATLAS_API_TOKEN` | Ausweis der Agenten (und Skripte) | `openssl rand -hex 32` |
+
+Das Passwort wird nur beim allerersten Start übernommen; danach ändert der Master es unter
+*Konto*. Weitere Benutzer beantragen den Zugang unter `/register`, der Master schaltet sie unter
+*Verwaltung* frei.
 
 Der Container **startet nicht**, wenn eines davon fehlt – bewusst, damit die Oberfläche nie
 unbeabsichtigt offen im Netz steht.

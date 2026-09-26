@@ -65,7 +65,8 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy` | ✅ 0.1.0 |
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
-| Sicherheit | Login für das Dashboard | ⏳ geplant |
+| Benutzer | Benutzerkonten mit Freischaltung durch den Master (Antrag unter `/register`), Anmeldung mit Name + Passwort, pro Benutzer beliebig viele Clients mit eigenem Token (Konto-Seite) | ✅ Unreleased (Phase 1) |
+| Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer, Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung; Ingest mit Client-Token | ⏳ in Arbeit (Phase 2–3, siehe Changelog) |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
 | Export | CSV/JSON-Export von Festplatten und Dateilisten | ⏳ geplant |
@@ -158,6 +159,8 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 | `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben | `disk_key` (eindeutig) |
 | `host_states` | Heartbeat je Agenten-Rechner: belegte SATA-Ports (Grundlage der Schachtansicht) | `host` |
 | `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
+| `users` | Benutzerkonten: Name (ohne Beachtung der Groß-/Kleinschreibung eindeutig), PBKDF2-Passwort-Hash, `is_master`, `status` (`pending` = Antrag, `active`) | `nickname` |
+| `clients` | Agent-Installation eines Benutzers, Token nur als SHA-256-Hash, `last_seen` | (`user_id`, `nickname`), `token_hash` |
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
 | `files` | Dateiindex (Pfad relativ zum Volume, Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
@@ -201,7 +204,10 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-26 | **MIT-Lizenz; Windows-Signatur über SignPath Foundation** | Kostenlose Signatur für Open-Source-Projekte, Signieren direkt aus GitHub Actions mit manueller Freigabe je Release. Voraussetzung ist eine OSI-Lizenz; MIT ist die einfachste und verträgt sich mit dem mitgelieferten (eigenständigen, GPL-lizenzierten) smartctl. Signiert wird nur die eigene .exe, smartctl bleibt Upstream-Binärdatei. |
 | 2026-09-26 | **README und Code-Signing-Richtlinie auf Englisch (README.de.md als deutsche Fassung), Rest bleibt deutsch** | Die SignPath-Prüfung und Nutzer außerhalb des deutschen Sprachraums sehen zuerst README und Richtlinie. GitHub kennt keine Sprachumschaltung; üblich ist `README.md` englisch plus `README.<sprache>.md` mit Links oben. Oberfläche und ausführliche Anleitungen bleiben vorerst deutsch (Übersetzung wäre ein eigenes Vorhaben). |
 | 2026-09-26 | **Server führt nichts auf Platten aus; Agenten holen Aufträge ab (Polling)** | Der Server läuft auf einem anderen Rechner (Unraid) und darf keine Kommandos an Rechner „durchreichen“. Der Agent verbindet sich ausgehend (NAT/Firewall-freundlich), prüft jeden Auftrag gegen seinen eigenen Stand und ignoriert Gerätepfade aus dem Auftrag. Aufträge sind auf eine feste Liste (`rename_label`, `rescan`) beschränkt. |
-| 2026-09-26 | **Ein Passwort + signiertes Cookie statt Benutzerverwaltung; Server im Netz nur mit Passwort und Token** | Einzelnutzer-Heimnetz (Unraid, Tailscale). Kein Benutzerkonzept nötig; ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Das Passwort steckt in der Cookie-Signatur, ein Wechsel invalidiert alle Sitzungen. |
+| 2026-09-26 | ~~Ein Passwort + signiertes Cookie statt Benutzerverwaltung~~ (ersetzt, s. u.); **Server im Netz nur mit Passwort und Token** | Ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Bleibt bestehen: `DISKATLAS_PASSWORD` ist Pflicht bei Betrieb im Netz. |
+| 2026-09-26 | **Benutzer mit Antrag und Master-Freischaltung; Clients mit eigenem Token** | Der Server soll über einen Reverse-Proxy im Internet erreichbar sein und mehrere Personen bedienen. `DISKATLAS_PASSWORD` legt nur noch den Master an (nur beim allerersten Start, danach zählt das Passwort in der Datenbank). Jeder darf einen Antrag stellen, aber erst der Master schaltet frei; abgelehnte Anträge werden gelöscht. |
+| 2026-09-26 | **PBKDF2 aus der Standardbibliothek statt bcrypt/argon2** | Das Projekt hält die Abhängigkeiten bewusst klein (PyInstaller-Größe). 600 000 Runden SHA-256 mit Salt je Passwort (Wert steht im Hash, kann später erhöht werden). Client-Tokens sind zufällig und lang, dort genügt SHA-256. |
+| 2026-09-26 | **Sitzung pro Benutzer, Passwort-Hash in der Cookie-Signatur** | Passwortwechsel meldet alle Sitzungen dieses Benutzers ab, ohne Sitzungstabelle. Namen werden ohne Beachtung der Groß-/Kleinschreibung verglichen („Anna“ vs. „anna“ wären verwechselbar). |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |
 | 2026-09-23 | **Schächte über den SATA-Port (`/sys/block/sdX → ataN`), live aus sysfs, Zuordnung in `bays.json`** | Port ist an den Anschluss gebunden und ändert sich beim Plattenwechsel nicht (Gerätename/Mountpunkt schon). Keine Schemaänderung nötig; gilt nur für den Rechner, an dem die Schächte sitzen. |
 | 2026-09-23 | **„Systemdatenträger ignorieren“ ist eine reine UI-Einstellung (Cookie), Kriterium = Label „System“** | Die API bleibt vollständig; das Label ist bereits das vorhandene Ordnungsmittel des Nutzers. |
@@ -234,6 +240,8 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 - Container betreibt nur den Server. Scans erfolgen durch Agenten auf den Rechnern
   (`[agent] server_url = "http://unraid:8765"`, `api_token` wie im Container).
 - Der Container startet **nur mit `DISKATLAS_PASSWORD` und `DISKATLAS_API_TOKEN`**.
+  `DISKATLAS_PASSWORD` ist das Startpasswort des Benutzers „Master“ (wird beim allerersten Start
+  in die Datenbank übernommen). Weitere Benutzer beantragen den Zugang unter `/register`.
 - Daten unter `/data` (SQLite) oder PostgreSQL per `DISKATLAS_DATABASE_URL`.
 - Image: `ghcr.io/realcommerzpunk/diskatlas` (GitHub Actions bei `v*`-Tags), Unraid-Vorlage
   `deploy/unraid/diskatlas.xml`. Einrichtung, Tailscale-HTTPS (Voraussetzung für die iPhone-
@@ -256,7 +264,7 @@ einem Fehler, damit Tippfehler auffallen.
 - [ ] Anzeige des Agenten-Status (letzter Heartbeat je Rechner)
 
 **0.3 – Zentraler Server**
-- [ ] Login für Dashboard/API (Benutzer + Passwort, Session)
+- [x] Login für Dashboard/API (Benutzer + Passwort, Session) – Phase 1 der Mehrbenutzer-Umstellung
 - [ ] Veröffentlichtes Docker-Image (GitHub Container Registry) + Unraid-Template
 - [ ] Volltextsuche (FTS5 / PostgreSQL) für Indizes mit vielen Millionen Dateien
 

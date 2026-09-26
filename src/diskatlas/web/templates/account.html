@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Konto{% endblock %}
+{% block content %}
+<h1>Konto von {{ user.nickname }}{% if user.is_master %} <span class="chip" style="background:var(--accent);color:var(--accent-text)">Master</span>{% endif %}</h1>
+{% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+{% if info %}<p class="notice ok" role="status">{{ info }}</p>{% endif %}
+
+<section class="card">
+  <h2>Meine Clients</h2>
+  <p class="muted">Ein Client ist ein Agent-Programm auf einem deiner Rechner. Jeder bekommt ein eigenes Token; damit meldet er Festplatten in dein Konto. Trage das Token in der Konfiguration des Agenten unter <code>api_token</code> ein.</p>
+  {% if new_token %}
+  <div class="notice ok" role="status">
+    <strong>Token für „{{ new_client }}“ – wird nur jetzt angezeigt:</strong>
+    <p><code id="new-token">{{ new_token }}</code></p>
+    <p class="muted">Bitte jetzt kopieren. Später ist es nicht mehr abrufbar; bei Verlust legst du den Client neu an.</p>
+  </div>
+  {% endif %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Angelegt</th><th>Zuletzt gemeldet</th><th></th></tr></thead>
+    <tbody>
+    {% for c in user.clients %}
+      <tr>
+        <td>{{ c.nickname }}</td>
+        <td>{{ c.created_at.strftime('%d.%m.%Y') }}</td>
+        <td>{{ c.last_seen.strftime('%d.%m.%Y %H:%M') if c.last_seen else '–' }}</td>
+        <td>
+          <form method="post" action="/account/clients/{{ c.id }}/delete" data-confirm="Client „{{ c.nickname }}“ löschen? Der Agent mit diesem Token kann sich danach nicht mehr melden.">
+            <button class="link danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Noch kein Client angelegt.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <form method="post" action="/account/clients" class="inline">
+    <input name="nickname" placeholder="Name, z. B. Arbeits-PC" maxlength="40" required>
+    <button type="submit">Client anlegen</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Passwort ändern</h2>
+  <form method="post" action="/account/password" class="inline">
+    <input type="password" name="current" placeholder="Aktuelles Passwort" autocomplete="current-password" required>
+    <input type="password" name="new" placeholder="Neues Passwort (min. 10 Zeichen)" autocomplete="new-password" minlength="10" required>
+    <input type="password" name="repeat" placeholder="Neues Passwort wiederholen" autocomplete="new-password" required>
+    <button type="submit">Ändern</button>
+  </form>
+</section>
+{% endblock %}

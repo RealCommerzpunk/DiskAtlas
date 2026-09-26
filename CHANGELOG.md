@@ -11,6 +11,25 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Benutzerkonten** (Phase 1 der Mehrbenutzer-Umstellung). Die Anmeldung an der Weboberfläche
+  läuft jetzt mit **Name und Passwort**. Beim allerersten Start legt `DISKATLAS_PASSWORD` den
+  Benutzer **„Master“** an (danach gilt sein Passwort in der Datenbank, die Variable wird nicht
+  mehr ausgewertet – bestehende Installationen melden sich also mit „Master“ und dem bisherigen
+  Passwort an). Neue Benutzer stellen unter `/register` einen **Antrag** (Name, Passwort, optionale
+  Nachricht); der Master schaltet sie unter **Verwaltung** frei oder lehnt ab (Antrag wird
+  gelöscht). Bis zur Freischaltung ist keine Anmeldung möglich. Namen sind ohne Beachtung der
+  Groß-/Kleinschreibung eindeutig; Passwörter mindestens 10 Zeichen, PBKDF2-SHA256 mit Salt (nur
+  Standardbibliothek). Registrierungen werden je Adresse gebremst wie Anmeldeversuche.
+- **Konto-Seite** (`/account`): Passwort ändern (meldet die anderen Sitzungen des Benutzers ab) und
+  **Clients** verwalten. Ein Client steht für ein Agent-Programm auf einem Rechner und bekommt ein
+  eigenes Token, das nur beim Anlegen im Klartext erscheint (gespeichert wird nur der Hash). Ein
+  Client-Token authentifiziert – wie bisher der globale Token – Skripte an der übrigen API, und
+  zwar als sein Besitzer. Für den Ingest der Agenten gilt vorerst weiter der globale
+  `DISKATLAS_API_TOKEN`; er wird in Phase 2 durch die Client-Tokens ersetzt.
+- Neue Tabellen `users` und `clients` (Migration `0004`). Ohne Passwort (lokaler Betrieb, Tray-
+  Programm „Nur dieser PC“) bleibt alles offen, Benutzerseiten sind dort nicht vorhanden.
+
 ### Geändert
 - **README auf Englisch** (`README.md`), deutsche Fassung in `README.de.md`; beide mit
   Sprachumschaltung. Veraltete Stellen korrigiert (Platzhalter-URL beim `git clone`, Hinweis „kein

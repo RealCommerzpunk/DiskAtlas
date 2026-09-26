@@ -12,8 +12,8 @@ from starlette.responses import Response
 from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
-from diskatlas.services import bays
-from diskatlas.web import api, auth, views
+from diskatlas.services import bays, users
+from diskatlas.web import accounts, api, auth, views
 
 
 class _RevalidatingStaticFiles(StaticFiles):
@@ -39,6 +39,9 @@ def create_app(
     )
     app.state.config = config
     app.state.db = db
+    with db.session() as session:
+        users.bootstrap_master(session, config.server.password)
+        app.state.auth_enabled = users.has_users(session)
     legacy = bays_path or bays.default_bays_path()
     if legacy.is_file():  # frühere lokale Schachtzuordnung einmalig übernehmen
         with db.session() as session:
@@ -49,4 +52,5 @@ def create_app(
     app.middleware("http")(auth.auth_middleware)
     app.include_router(api.router, prefix="/api/v1")
     app.include_router(views.router)
+    app.include_router(accounts.router)
     return app

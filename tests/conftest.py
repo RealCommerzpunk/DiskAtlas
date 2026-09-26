@@ -34,6 +34,14 @@ def _isolated_drivedb(monkeypatch):
     monkeypatch.setattr(catalog, "_drivedb", lambda: fake)
 
 
+@pytest.fixture(autouse=True)
+def _fast_password_hashing(monkeypatch):
+    """PBKDF2 mit 600 000 Runden dauert je Aufruf Sekundenbruchteile – für Tests unnötig."""
+    from diskatlas.web import security
+
+    monkeypatch.setattr(security, "ITERATIONS", 1000)
+
+
 @pytest.fixture
 def db(tmp_path) -> Database:
     database = Database(f"sqlite:///{(tmp_path / 'test.db').as_posix()}")
