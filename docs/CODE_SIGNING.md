@@ -3,37 +3,42 @@
 Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
 [SignPath Foundation](https://signpath.org/).
 
-*Deutsch:* Die Windows-Programmdatei des DiskAtlas-Agenten wird kostenlos über SignPath.io
-signiert; das Zertifikat stellt die SignPath Foundation aus.
+## What is signed
 
-## Was signiert wird
+- `DiskAtlas-Agent-windows-x64.exe`, built by GitHub Actions
+  ([`.github/workflows/agent.yml`](../.github/workflows/agent.yml)) from the source code in this
+  repository, for version tags (`v*`) only. Every signing request is approved manually.
+- Not signed by this project: the bundled `smartctl.exe` from
+  [smartmontools](https://www.smartmontools.org/) (GPL v2), taken unmodified from the official
+  Windows installer (see [THIRD_PARTY.md](../THIRD_PARTY.md)).
 
-- `DiskAtlas-Agent-windows-x64.exe`, gebaut von GitHub Actions
-  ([`.github/workflows/agent.yml`](../.github/workflows/agent.yml)) aus dem Quellcode dieses
-  Repositorys, ausschließlich für Versions-Tags (`v*`). Jede Signatur wird einzeln von Hand
-  freigegeben.
-- Nicht von diesem Projekt signiert wird das enthaltene `smartctl.exe` aus
-  [smartmontools](https://www.smartmontools.org/) (GPL v2, unverändert aus dem offiziellen
-  Windows-Installer übernommen, siehe [AGENT.md](AGENT.md#enthaltene-fremdsoftware)).
+## Team roles
 
-## Rollen
-
-| Rolle | Personen |
+| Role | Members |
 |---|---|
-| Autoren (Committer) | [RealCommerzpunk](https://github.com/RealCommerzpunk) |
-| Prüfer (Reviewer) | [RealCommerzpunk](https://github.com/RealCommerzpunk) |
-| Freigabe (Approver) | [RealCommerzpunk](https://github.com/RealCommerzpunk) |
+| Authors (committers) | [RealCommerzpunk](https://github.com/RealCommerzpunk) |
+| Reviewers | [RealCommerzpunk](https://github.com/RealCommerzpunk) |
+| Approvers | [RealCommerzpunk](https://github.com/RealCommerzpunk) |
 
-Änderungen von Personen außerhalb dieser Liste werden nur per Pull Request nach Prüfung
-übernommen. Für GitHub und SignPath ist bei allen Beteiligten die Zwei-Faktor-Anmeldung aktiv.
+Contributions from people not listed here are only accepted as pull requests after review. All
+team members use multi-factor authentication for GitHub and SignPath.
 
-## Datenschutz
+## Privacy policy
 
-Dieses Programm überträgt keine Informationen an andere vernetzte Systeme, außer an den
-DiskAtlas-Server, den der Benutzer selbst in den Einstellungen einträgt (Betriebsart *Mit
-DiskAtlas-Server verbinden*). Im Betrieb *Nur dieser PC* bleiben alle Daten auf dem Rechner;
-die Weboberfläche ist dann nur lokal (`127.0.0.1`) erreichbar.
+This program will not transfer any information to other networked systems unless specifically
+requested by the user or the person installing or operating it: it only sends data to the
+DiskAtlas server that the user enters in its settings (mode *Connect to a DiskAtlas server*). In
+the mode *This PC only*, all data stays on the computer and the web interface is only reachable
+locally (`127.0.0.1`).
 
-*English:* This program will not transfer any information to other networked systems unless
-specifically requested by the user: it only sends data to the DiskAtlas server the user enters in
-its settings.
+---
+
+## Deutsch (Kurzfassung)
+
+Die Windows-Programmdatei des DiskAtlas-Agenten wird kostenlos über SignPath.io signiert, das
+Zertifikat stellt die SignPath Foundation aus. Signiert wird nur die aus diesem Repository per
+GitHub Actions gebaute `.exe`, nur für Versions-Tags und jeweils nach manueller Freigabe; das
+enthaltene `smartctl.exe` (smartmontools, GPL v2) bleibt unverändert. Alle Rollen (Autor, Prüfer,
+Freigabe) liegen bei RealCommerzpunk. Datenschutz: Das Programm überträgt Daten nur an den
+DiskAtlas-Server, den der Benutzer selbst einträgt; im Betrieb *Nur dieser PC* bleibt alles auf
+dem Rechner.
