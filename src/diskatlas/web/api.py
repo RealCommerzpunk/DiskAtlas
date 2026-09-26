@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from diskatlas import __version__
 from diskatlas.db.models import Client, Disk, Label, User
 from diskatlas.probe.types import FileRecord
-from diskatlas.services import authz, commands, duplicates, hosts, ingest, labels, queries
+from diskatlas.services import authz, commands, copies, duplicates, hosts, ingest, labels, queries
 from diskatlas.services import lookup as lookup_service
 from diskatlas.services.authz import Viewer
 from diskatlas.web.deps import (
@@ -420,6 +420,7 @@ def ingest_connected(
 ):
     ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client),
                           client_id=client.id if client else None)
+    copies.sweep(session)  # wartende Kopieraufträge: eine Platte ist jetzt (nicht mehr) da
     hosts.record(session, hosts.state_key(client, body.host), body.ports_info,
                  user_id=_owner(client))
     if client is not None and body.ports_info:

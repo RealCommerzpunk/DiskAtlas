@@ -426,6 +426,75 @@ class ClientCopyTarget(Base):
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
+class CopyRequest(Base):
+    """Eine Anfrage, Dateien auf eine Platte des Anfordernden kopieren zu lassen."""
+
+    __tablename__ = "copy_requests"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)  # uuid4().hex
+    requester_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    target_client_id: Mapped[int] = mapped_column(ForeignKey("clients.id", ondelete="CASCADE"))
+    target_disk_id: Mapped[int] = mapped_column(ForeignKey("disks.id", ondelete="CASCADE"))
+    target_volume_id: Mapped[int | None] = mapped_column(
+        ForeignKey("volumes.id", ondelete="SET NULL")
+    )
+    target_path: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    cancelled_at: Mapped[datetime | None]
+
+    requester: Mapped[User] = relationship()
+    target_client: Mapped[Client] = relationship()
+    target_disk: Mapped[Disk] = relationship()
+    items: Mapped[list[CopyItem]] = relationship(
+        back_populates="request", cascade="all, delete-orphan", order_by="CopyItem.created_at"
+    )
+
+
+class CopyItem(Base):
+    """Eine einzelne Datei einer Anfrage (Ordner werden beim Anlegen zu Dateien aufgelöst)."""
+
+    __tablename__ = "copy_items"
+    __table_args__ = (Index("ix_copy_items_state", "state"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    request_id: Mapped[str] = mapped_column(
+        ForeignKey("copy_requests.id", ondelete="CASCADE"), index=True
+    )
+    source_disk_id: Mapped[int] = mapped_column(ForeignKey("disks.id", ondelete="CASCADE"))
+    source_volume_id: Mapped[int] = mapped_column(ForeignKey("volumes.id", ondelete="CASCADE"))
+    source_path: Mapped[str] = mapped_column(Text)  # relativ zum Volume, Stand des Index
+    name: Mapped[str] = mapped_column(String(1024))
+    size: Mapped[int] = mapped_column(BigInteger, default=0)
+    mtime: Mapped[datetime | None]
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )  # Besitzer der Quellplatte beim Anlegen (entscheidet bei „nachfragen“)
+    # waiting_approval | waiting_disk | queued | running | done | failed | denied | cancelled
+    # | expired
+    state: Mapped[str] = mapped_column(String(20))
+    phase: Mapped[str] = mapped_column(String(10), default="local", server_default="local")
+    wait_reason: Mapped[str | None] = mapped_column(String(200))
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    lease_until: Mapped[datetime | None]
+    bytes_done: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    message: Mapped[str | None] = mapped_column(Text)
+    result_name: Mapped[str | None] = mapped_column(String(1024))
+    approved_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    approved_at: Mapped[datetime | None]
+    expires_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+    request: Mapped[CopyRequest] = relationship(back_populates="items")
+    source_disk: Mapped[Disk] = relationship()
+    source_volume: Mapped[Volume] = relationship()
+
+
 class DiskTransferRequest(Base):
     """Antrag auf eine schon vergebene Platte; nur der bisherige Besitzer entscheidet."""
 

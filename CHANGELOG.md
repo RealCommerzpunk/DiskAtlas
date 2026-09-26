@@ -12,6 +12,15 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **„Datei anfordern“ (Server-Seite, Migration `0010`)**, hinter dem Schalter `copy_enabled` /
+  `DISKATLAS_COPY_ENABLED` (Standard aus, bis die Agenten-Seite folgt): Aus dem Dateibrowser und den
+  Suchergebnissen lassen sich Dateien und ganze Ordner (bis 2000 Dateien je Anfrage) anfordern. Ziel
+  ist ein Ordner auf einer angeschlossenen, eigenen Nicht-System-Platte eines eigenen Clients (als
+  Standard je Client merkbar). Eigene Dateien werden direkt eingeplant, sonst entscheidet die
+  Kopierberechtigung der Freigabe: *nie* → abgelehnt, *nachfragen* → der Besitzer stimmt unter
+  *Anfragen* je Datei zu, *immer* → eingeplant. Ist eine Platte nicht angeschlossen, wartet die Datei
+  (bis 14 Tage) und geht beim nächsten Heartbeat weiter. Der Admin hat keinen Sonderstatus; fremde
+  Platten ohne Freigabe sind nicht auswählbar. Neuer Menüpunkt *Anfragen* mit Zähler.
 - **Kopierberechtigung je Freigabe** (Migration `0009`): Neben der Lesefreigabe legt der Besitzer je
   Benutzer fest, ob Dateien der Platte angefordert (kopiert) werden dürfen – *nie erlauben*
   (Standard, auch für bestehende Freigaben), *immer nachfragen* oder *immer erlauben*. Vorbereitung
