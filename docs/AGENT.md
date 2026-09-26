@@ -87,6 +87,17 @@ Unter Windows `%LOCALAPPDATA%\diskatlas`, unter Linux `~/.local/share/diskatlas`
 Die Konfiguration steht in `%APPDATA%\diskatlas\config.toml` bzw. `~/.config/diskatlas/config.toml`;
 beim Speichern bleibt die vorherige Fassung als `config.toml.bak` erhalten.
 
+### Meldungen mit Server
+
+- **„Client-Token abgelehnt“:** Das Token stimmt nicht oder der Client wurde gelöscht. In der
+  Weboberfläche unter *Konto* einen neuen Client anlegen und dessen Token eintragen.
+- **„gehört einem anderen Benutzer des Servers“ (Protokoll):** Die Platte ist schon einem anderen
+  Benutzer zugeordnet. Der Agent ändert nichts; der bisherige Besitzer bekommt einen
+  Übernahmeantrag (Menüpunkt *Übernahmen*) und entscheidet. Bis dahin wird sie hier nicht indiziert.
+- **Rechner taucht bei einem anderen Benutzer auf:** Rechnernamen gehören dem Benutzer, der sie
+  zuerst gemeldet hat. Bei Namensgleichheit im Einstellungsfenster einen eindeutigen
+  *Rechnernamen* eintragen.
+
 ## Entfernen
 
 Das Programm installiert nichts. Zum Entfernen:
