@@ -162,7 +162,7 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 | `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben, `owner_user_id` (NULL = herrenlos), `last_client_id` (Client, der sie zuletzt meldete) | `disk_key` (eindeutig) |
 | `host_states` | Heartbeat je Agenten-Rechner: belegte SATA-Ports (Grundlage der Schachtansicht) | `host` |
 | `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
-| `disk_shares` | Lesefreigabe einer Platte für einen Benutzer | (`disk_id`, `viewer_user_id`) |
+| `disk_shares` | Lesefreigabe einer Platte für einen Benutzer, `copy_mode` (`never`/`ask`/`always`) = Kopierberechtigung | (`disk_id`, `viewer_user_id`) |
 | `disk_transfer_requests` | Übernahmeantrag (von/an Benutzer, Client, Status `pending`/`approved`/`rejected`) | `id` |
 | `clients` (Schächte) | `has_bays`, `bay_count` (1–24), `bay_ports` (JSON: SATA-Port je Schacht), `bay_reverse`; Standard keine Wechselschächte | – |
 | `users` | Benutzerkonten: Name (ohne Beachtung der Groß-/Kleinschreibung eindeutig), PBKDF2-Passwort-Hash, `is_master`, `status` (`pending` = Antrag, `active`) | `nickname` |
@@ -170,6 +170,7 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
 | `files` | Dateiindex (Pfad relativ zum Volume, `parent` = Ordner (vom Server berechnet), Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
+| `client_copy_targets` | Standard-Zielordner (Platte, Volume, Pfad) für angeforderte Dateien je Client | `client_id` |
 | `directories` | Ordnerindex je Scan für den Dateibrowser (Pfad, Elternordner, Dateizahl und Größe samt Unterordnern); entsteht bei `finish_index`, `volumes.dirs_scan_id` merkt den Stand | `volume_id` + `scan_id` + `path` |
 | `smart_snapshots` | SMART-Verlauf inkl. Roh-JSON | `disk_id`, `taken_at` |
 | `labels` | Name (je Besitzer eindeutig), Kategorie, Farbe, `owner_user_id` | (`owner_user_id`, `name`) |

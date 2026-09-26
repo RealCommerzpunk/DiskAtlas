@@ -38,6 +38,7 @@ def _back(disk_id: int, error: str = "") -> RedirectResponse:
 def share_add(
     disk_id: int,
     user_id: int = Form(...),
+    copy_mode: str = Form("never"),
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
     _: User = Depends(get_current_user),
@@ -47,7 +48,24 @@ def share_add(
     if target is None:
         raise HTTPException(404, "Benutzer nicht gefunden")
     try:
-        ownership.share(session, disk, target)
+        ownership.share(session, disk, target, copy_mode)
+    except ownership.OwnershipError as exc:
+        return _back(disk_id, str(exc))
+    return _back(disk_id)
+
+
+@router.post("/disks/{disk_id}/shares/{user_id}/copy-mode")
+def share_copy_mode(
+    disk_id: int,
+    user_id: int,
+    copy_mode: str = Form(...),
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+    _: User = Depends(get_current_user),
+):
+    disk = disk_or_404(session, viewer, disk_id, write=True)
+    try:
+        ownership.set_copy_mode(session, disk, user_id, copy_mode)
     except ownership.OwnershipError as exc:
         return _back(disk_id, str(exc))
     return _back(disk_id)

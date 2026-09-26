@@ -311,3 +311,4 @@ nav { flex: 1; }
 .selection-bar button[disabled] { opacity: .5; cursor: not-allowed; }
 table.files th.pick, table.files td.pick { width: 2rem; text-align: center; }
 table.browser td.filename a { color: var(--text); font-weight: 500; }
+.share-row { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin: .3rem 0; }

@@ -12,6 +12,10 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Kopierberechtigung je Freigabe** (Migration `0009`): Neben der Lesefreigabe legt der Besitzer je
+  Benutzer fest, ob Dateien der Platte angefordert (kopiert) werden dürfen – *nie erlauben*
+  (Standard, auch für bestehende Freigaben), *immer nachfragen* oder *immer erlauben*. Vorbereitung
+  für „Datei anfordern“; die Tabelle `client_copy_targets` (Standard-Zielordner je Client) ist angelegt.
 - **Dateibrowser** (Migration `0008`): Unter *Dateien* lassen sich Festplatten durchklicken (Ordner und
   Unterordner mit Anzahl und Größe, Pfadleiste, Dateien seitenweise nach Name). Bei Suchergebnissen und
   im Browser steht vor jeder Datei (im Browser auch vor Ordnern) eine Checkbox samt Knopf
