@@ -261,3 +261,10 @@ table.disks th.rail, table.disks td.rail { width: 74px; min-width: 74px; padding
 .badge.cmd-done { color: var(--ok); }
 .badge.cmd-failed { color: var(--bad); }
 .badge.cmd-pending, .badge.cmd-running { color: var(--warn); }
+
+.login-page { display: grid; place-items: center; min-height: 100vh; }
+.login-card { width: min(22rem, 92vw); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.6rem; display: flex; flex-direction: column; gap: .8rem; align-items: stretch; text-align: center; }
+.login-card form { display: flex; flex-direction: column; gap: .8rem; text-align: left; }
+.login-card label { display: flex; flex-direction: column; gap: .3rem; }
+.login-logo { margin: 0 auto; border-radius: 12px; }
+.logout-form { display: inline; margin: 0 0 0 auto; }

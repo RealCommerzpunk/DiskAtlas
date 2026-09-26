@@ -11,6 +11,17 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Sicherheit
+- **Anmeldung:** Die Weboberfläche und die API sind jetzt per Passwort geschützt
+  (`DISKATLAS_PASSWORD` bzw. `[server] password`, Anmeldeseite `/login`, signiertes
+  HttpOnly-Cookie, 30 Tage, Abmelden in der Kopfzeile; Passwortwechsel meldet alle ab;
+  Fehlversuche werden gebremst). Agenten nutzen weiter das API-Token (`/api/v1/ingest/*`),
+  dasselbe Token darf Skripte für die übrige API authentifizieren.
+- Ein Server, der nicht nur lokal lauscht (`host` ≠ 127.0.0.1), startet **nur noch mit Passwort und
+  API-Token** – sonst bricht er mit einer verständlichen Meldung ab (Ausnahme:
+  `allow_insecure = true`). Lokaler Betrieb (GUI, `run` auf Loopback) bleibt ohne Passwort möglich.
+- Das GUI-Fenster speichert die Sitzung dauerhaft (Anmeldung am Server nur einmal nötig).
+
 ### Geändert
 - **Architektur Agent ↔ Server:** Alles, was einen Rechner betrifft, läuft im Agenten; der Server
   (Docker/Unraid) hält nur Weboberfläche, API und Datenbank.

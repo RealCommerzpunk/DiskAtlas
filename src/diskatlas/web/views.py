@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import time
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
@@ -17,7 +18,7 @@ from diskatlas import __version__
 from diskatlas.db.models import Disk, FileEntry, Label, Volume
 from diskatlas.services import bays as bay_service
 from diskatlas.services import commands, duplicates, fslabel, hosts, queries
-from diskatlas.web import formatting
+from diskatlas.web import auth, formatting
 from diskatlas.web.deps import get_session
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -27,6 +28,9 @@ templates.env.globals.update(
     HEALTH_LABELS=queries.HEALTH_LABELS,
     GROUP_OPTIONS=queries.GROUP_OPTIONS,
     SORT_OPTIONS={k: v[0] for k, v in queries.SORT_OPTIONS.items()},
+)
+templates.env.globals["auth_enabled"] = (
+    lambda request: bool(request.app.state.config.server.password)
 )
 
 router = APIRouter(include_in_schema=False)
@@ -69,6 +73,47 @@ def _safe_back(referer: str) -> str:
 
 def _redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
+
+
+# ------------------------------------------------------------------ Anmeldung
+def _local_target(target: str) -> str:
+    """Nur lokale Pfade als Weiterleitungsziel zulassen (kein Open-Redirect)."""
+    return target if target.startswith("/") and not target.startswith("//") else "/"
+
+
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, next: str = "/", err: str = ""):
+    if not request.app.state.config.server.password:
+        return _redirect("/")
+    return templates.TemplateResponse(
+        request, "login.html", {"next": _local_target(next), "error": err}
+    )
+
+
+@router.post("/login")
+def login(request: Request, password: str = Form(""), next: str = Form("/")):
+    server = request.app.state.config.server
+    throttle = request.app.state.login_throttle
+    client = request.client.host if request.client else "?"
+    target = _local_target(next)
+    if throttle.blocked(client):
+        too_many = "Zu viele Fehlversuche – bitte in einigen Minuten erneut versuchen."
+        return _redirect("/login?" + urlencode({"next": target, "err": too_many}))
+    if not auth.password_ok(password, server.password):
+        throttle.fail(client)
+        time.sleep(0.4)  # bremst automatisiertes Raten
+        return _redirect("/login?" + urlencode({"next": target, "err": "Falsches Passwort."}))
+    throttle.reset(client)
+    response = _redirect(target)
+    auth.set_session(request, response, server.password)
+    return response
+
+
+@router.post("/logout")
+def logout():
+    response = _redirect("/login")
+    response.delete_cookie(auth.COOKIE)
+    return response
 
 
 # ------------------------------------------------------------------ Dashboard

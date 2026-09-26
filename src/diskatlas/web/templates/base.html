@@ -21,6 +21,7 @@
       <a href="/duplicates" class="{{ 'active' if path.startswith('/duplicates') }}">Doubletten</a>
       <a href="/labels" class="{{ 'active' if path.startswith('/labels') }}">Labels</a>
       <a href="/docs">API</a>
+      {% if auth_enabled(request) %}<form method="post" action="/logout" class="logout-form"><button class="link" title="Abmelden">Abmelden</button></form>{% endif %}
     </nav>
   </header>
   <div id="activity" class="activity" role="status" aria-live="polite" hidden></div>

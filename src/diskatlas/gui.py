@@ -16,7 +16,7 @@ import time
 from dataclasses import dataclass
 
 from diskatlas import __version__
-from diskatlas.config import Config, default_config_path, load_config
+from diskatlas.config import Config, default_config_path, default_data_dir, load_config
 from diskatlas.runtime import make_agent, redact_url
 
 log = logging.getLogger("diskatlas.gui")
@@ -114,7 +114,10 @@ def run_window(config: Config) -> int:
     )
     window.events.closed += session.shutdown
     start_kwargs = {"icon": str(icon)} if icon else {}
-    webview.start(**start_kwargs)
+    # Sitzung dauerhaft speichern, damit die Anmeldung am Server nur einmal nötig ist.
+    storage = default_data_dir() / "webview"
+    storage.mkdir(parents=True, exist_ok=True)
+    webview.start(private_mode=False, storage_path=str(storage), **start_kwargs)
     return 0
 
 
