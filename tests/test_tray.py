@@ -393,8 +393,7 @@ def test_settings_api_state(tmp_path):
 
 
 def test_window_icon_is_ico_on_windows(tmp_path, monkeypatch):
-    from PIL import Image
-
+    Image = pytest.importorskip("PIL.Image")  # Pillow gehört zum Extra "tray"
     from diskatlas import runtime
 
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
