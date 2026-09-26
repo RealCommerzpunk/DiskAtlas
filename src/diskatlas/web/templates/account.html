@@ -5,7 +5,7 @@
 {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
 {% if info %}<p class="notice ok" role="status">{{ info }}</p>{% endif %}
 
-<section class="card">
+<section class="card" id="clients">
   <h2>Meine Clients</h2>
   <p class="muted">Ein Client ist ein Agent-Programm auf einem deiner Rechner. Jeder bekommt ein eigenes Token; damit meldet er Festplatten in dein Konto. Trage das Token in der Konfiguration des Agenten unter <code>api_token</code> ein.</p>
   {% if new_token %}
@@ -17,7 +17,7 @@
   {% endif %}
   <div class="table-wrap">
   <table>
-    <thead><tr><th>Name</th><th>Angelegt</th><th>Zuletzt gemeldet</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Angelegt</th><th>Zuletzt gemeldet</th><th>Wechselschächte</th><th></th></tr></thead>
     <tbody>
     {% for c in user.clients %}
       <tr>
@@ -25,13 +25,24 @@
         <td>{{ c.created_at.strftime('%d.%m.%Y') }}</td>
         <td>{{ c.last_seen.strftime('%d.%m.%Y %H:%M') if c.last_seen else '–' }}</td>
         <td>
+          {% set cfg = bay_configs[c.id] %}
+          <form method="post" action="/account/clients/{{ c.id }}/bays" class="inline">
+            <label class="check"><input type="checkbox" name="no_bays" value="true" {{ 'checked' if not c.has_bays }}> Keine Wechselschächte</label>
+            <input type="number" name="bay_count" min="1" max="{{ max_bays }}" value="{{ cfg.count }}" aria-label="Anzahl Schächte" style="width: 4.5rem">
+            <button type="submit" class="secondary">Speichern</button>
+          </form>
+          {% if c.has_bays %}
+          <div class="small muted">{{ cfg.assigned }} von {{ cfg.count }} Schächten zugeordnet · <a href="/clients/{{ c.id }}/bays">Schächte einrichten</a></div>
+          {% endif %}
+        </td>
+        <td>
           <form method="post" action="/account/clients/{{ c.id }}/delete" data-confirm="Client „{{ c.nickname }}“ löschen? Der Agent mit diesem Token kann sich danach nicht mehr melden.">
             <button class="link danger">Löschen</button>
           </form>
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="4" class="muted">Noch kein Client angelegt.</td></tr>
+      <tr><td colspan="5" class="muted">Noch kein Client angelegt.</td></tr>
     {% endfor %}
     </tbody>
   </table>

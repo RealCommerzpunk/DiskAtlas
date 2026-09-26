@@ -12,6 +12,13 @@ from diskatlas.db.models import HostState
 from diskatlas.services.ingest import utcnow
 
 FRESH_SECONDS = 180  # so lange gilt ein Agent als online (Heartbeat alle 60 s)
+CLIENT_KEY = "client:"
+
+
+def state_key(client, host: str) -> str:
+    """Schlüssel des Portzustands: je Client (Rechnernamen sind frei wählbar und können
+    kollidieren), im lokalen Betrieb ohne Clients der Rechnername."""
+    return f"{CLIENT_KEY}{client.id}" if client is not None else host
 
 
 @dataclass
@@ -86,6 +93,7 @@ def get(
 def known_hosts(session: Session, user_id: int | None = None) -> list[HostSnapshot]:
     """Bekannte Rechner; mit `user_id` nur die, die dieser Benutzer gemeldet hat."""
     query = session.query(HostState.host).order_by(HostState.host)
+    query = query.filter(~HostState.host.like(f"{CLIENT_KEY}%"))  # Clients: siehe bays.py
     if user_id is not None:
         query = query.filter(HostState.user_id == user_id)
     return [snap for (host,) in query if (snap := get(session, host))]

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Schächte einrichten{% endblock %}
 {% block content %}
-<h1>Schächte einrichten</h1>
+<h1>{{ heading }}</h1>
 <p class="muted">Jeder Hot-Swap-Schacht hängt an einem festen SATA-Port des Mainboards. Einmal zugeordnet,
 erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhängig von Gerätename und Einhängepunkt.</p>
 {% if flash_err %}<p class="notice health-reasons failed" role="alert">{{ flash_err }}</p>{% endif %}
@@ -16,10 +16,10 @@ erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhä
   </div>
 </section>
 
-<form method="post" action="/bays/setup" class="card" id="bay-form">
-  <h2>Zuordnung{% if host %} <span class="muted small">· Rechner „{{ host }}“{% if not online %} (Agent offline){% endif %}</span>{% endif %}</h2>
-  <input type="hidden" name="host" value="{{ host }}">
-  {% if not all_ports %}<p class="notice">Bisher meldet kein Agent SATA-Ports. Starte den Agenten auf dem Rechner mit den Schächten (Linux, <code>diskatlas agent</code>).</p>{% endif %}
+<form method="post" action="{{ action }}" class="card" id="bay-form">
+  <h2>Zuordnung{% if all_ports or host_field %} <span class="muted small">{% if host_field %}· Rechner „{{ host_field }}“{% endif %}{% if not online %} (Agent offline){% endif %}</span>{% endif %}</h2>
+  {% if host_field %}<input type="hidden" name="host" value="{{ host_field }}">{% endif %}
+  {% if not all_ports %}<p class="notice">Bisher meldet dieser Agent keine SATA-Ports. Starte den Agenten auf dem Rechner mit den Schächten (Linux, <code>diskatlas agent</code>) und lass ihn mindestens eine Minute laufen.</p>{% endif %}
   <div class="bay-assign">
     {% for i in range(bay_count) %}
     <label>Schacht {{ i + 1 }}
@@ -36,7 +36,7 @@ erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhä
     Schacht 1 liegt unten (Anzeige von unten nach oben: Schacht {{ bay_count }} steht oben)</label>
   <p class="muted small">Tipp: Ziehe für jeden Schacht die Platte heraus und stecke sie wieder ein – der Assistent oben
     erkennt den Port automatisch. Alternativ kannst du die Ports hier von Hand wählen.</p>
-  <button type="submit">Speichern</button> <a href="/">Abbrechen</a>
+  <button type="submit">Speichern</button> <a href="{{ back_url }}">Abbrechen</a>
 </form>
 
 <script>
@@ -64,7 +64,7 @@ erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhä
       : "keine");
   }
   function poll() {
-    fetch("/api/v1/bays/live?host=" + encodeURIComponent({{ host | tojson }}), { cache: "no-store" })
+    fetch({{ poll_url | tojson }}, { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var now = data.occupied.map(function (o) { return o.port; });

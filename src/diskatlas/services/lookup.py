@@ -51,11 +51,21 @@ class Whereabouts:
 
 
 def whereabouts(session: Session, disk: Disk) -> Whereabouts:
+    """Wo steckt die Platte? Schächte gehören dem Client, an dem sie zuletzt hing."""
     if not disk.is_connected:
         return Whereabouts("offline", disk.last_host, None, disk.location)
-    config = bays.load_config(session, disk.owner_user_id)  # die Schächte gehören dem Besitzer
-    snapshot = hosts.get(session, disk.last_host)
-    if snapshot is not None and (config.host in (None, disk.last_host)):
+    client = disk.last_client
+    if client is None:  # lokaler Betrieb (oder Client unbekannt): einzige Zuordnung der Datenbank
+        config = bays.load_config(session)
+        snapshot = hosts.get(session, disk.last_host)
+        if config.host not in (None, disk.last_host):
+            snapshot = None
+    elif client.has_bays:
+        config = bays.client_config(client)
+        snapshot = bays.client_snapshot(session, client)
+    else:
+        return Whereabouts("connected", disk.last_host)
+    if snapshot is not None:
         for info in snapshot.present:
             same = info.disk_key == disk.disk_key or (info.serial and info.serial == disk.serial)
             if same and info.port in config.ports:

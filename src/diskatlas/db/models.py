@@ -357,6 +357,14 @@ class Client(Base):
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
     last_seen: Mapped[datetime | None]
 
+    # Hot-Swap-Schächte dieses Rechners (Standard: keine, Laufwerke stehen einfach in der Liste)
+    has_bays: Mapped[bool] = mapped_column(default=False, server_default="0")
+    bay_count: Mapped[int] = mapped_column(default=4, server_default="4")
+    # JSON-Liste der Länge `bay_count` mit dem SATA-Port je Schacht (null = nicht zugeordnet);
+    # NULL = noch nie eingerichtet
+    bay_ports: Mapped[str | None] = mapped_column(Text)
+    bay_reverse: Mapped[bool] = mapped_column(default=False, server_default="0")
+
     user: Mapped[User] = relationship(back_populates="clients")
 
 

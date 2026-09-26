@@ -286,23 +286,52 @@ def activity(session: Session = Depends(get_session), viewer: Viewer = Depends(g
 
 @router.get("/bays/live", tags=["system"])
 def bays_live(
-    host: str = "", session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+    host: str = "",
+    client_id: int | None = None,
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    """Portbelegung des Agenten-Rechners (für den Schacht-Assistenten und die Live-Anzeige)."""
+    """Portbelegung (für den Schacht-Assistenten und die Live-Anzeige).
+
+    Lokal (ohne Anmeldung): der Rechner `host` bzw. der erste, der Ports meldet. Mit Anmeldung:
+    `client_id` (nur eigene Clients, sonst 404) oder ohne Angabe alle eigenen Clients mit
+    Wechselschächten (`clients`; `occupied` ist dann die Vereinigung).
+    """
     from diskatlas.services import bays as bay_service
 
-    chosen = host or bay_service.load_config(session, viewer.user_id).host or ""
-    snapshot = hosts.get(session, chosen, viewer.scope_id) if chosen else None
-    if snapshot is None:  # noch keine Zuordnung: erster Rechner, der Ports meldet
-        known = hosts.known_hosts(session, viewer.scope_id)
-        snapshot = next((h for h in known if h.all_ports), None)
-    if snapshot is None:
-        return {"host": None, "online": False, "ports": [], "occupied": []}
+    def payload(snapshot, label: str | None = None) -> dict:
+        if snapshot is None:
+            return {"host": label, "online": False, "ports": [], "occupied": []}
+        return {
+            "host": label or snapshot.host,
+            "online": snapshot.is_online,
+            "ports": snapshot.all_ports,
+            "occupied": [p.__dict__ for p in snapshot.present],
+        }
+
+    if viewer.user_id is None:
+        config = bay_service.load_config(session)
+        return payload(bay_service.local_snapshot(session, config, host))
+    own = list(session.scalars(
+        select(Client).where(Client.user_id == viewer.user_id).order_by(Client.id)
+    ))
+    if client_id is not None:
+        client = next((c for c in own if c.id == client_id), None)
+        if client is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Client nicht gefunden")
+        one = payload(bay_service.client_snapshot(session, client), client.nickname)
+        return {**one, "clients": {str(client.id): one}}
+    per = {
+        str(c.id): payload(bay_service.client_snapshot(session, c), c.nickname)
+        for c in own if c.has_bays
+    }
     return {
-        "host": snapshot.host,
-        "online": snapshot.is_online,
-        "ports": snapshot.all_ports,
-        "occupied": [p.__dict__ for p in snapshot.present],
+        "host": None,
+        "online": any(p["online"] for p in per.values()),
+        "ports": [],
+        "occupied": [{**o, "client_id": int(cid)} for cid, p in per.items()
+                     for o in p["occupied"]],
+        "clients": per,
     }
 
 
@@ -391,7 +420,12 @@ def ingest_connected(
 ):
     ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client),
                           client_id=client.id if client else None)
-    hosts.record(session, body.host, body.ports_info, user_id=_owner(client))
+    hosts.record(session, hosts.state_key(client, body.host), body.ports_info,
+                 user_id=_owner(client))
+    if client is not None and body.ports_info:
+        from diskatlas.services import bays as bay_service
+
+        bay_service.adopt_legacy(session, client, body.host)
     return {"ok": True}
 
 

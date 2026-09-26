@@ -67,6 +67,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
 | Benutzer | Benutzerkonten mit Freischaltung durch den Master (Antrag unter `/register`), Anmeldung mit Name + Passwort, pro Benutzer beliebig viele Clients mit eigenem Token (Konto-Seite) | ✅ 0.5.0 |
 | Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ Unreleased |
+| Schächte je Client | Anzahl und Port-Zuordnung je Client (Assistent), Haken „Keine Wechselschächte“, Schachtblock je Client im Dashboard | ✅ Unreleased |
 | Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Master), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ 0.5.0 |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
@@ -162,6 +163,7 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 | `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
 | `disk_shares` | Lesefreigabe einer Platte für einen Benutzer | (`disk_id`, `viewer_user_id`) |
 | `disk_transfer_requests` | Übernahmeantrag (von/an Benutzer, Client, Status `pending`/`approved`/`rejected`) | `id` |
+| `clients` (Schächte) | `has_bays`, `bay_count` (1–24), `bay_ports` (JSON: SATA-Port je Schacht), `bay_reverse`; Standard keine Wechselschächte | – |
 | `users` | Benutzerkonten: Name (ohne Beachtung der Groß-/Kleinschreibung eindeutig), PBKDF2-Passwort-Hash, `is_master`, `status` (`pending` = Antrag, `active`) | `nickname` |
 | `clients` | Agent-Installation eines Benutzers, Token nur als SHA-256-Hash, `last_seen` | (`user_id`, `nickname`), `token_hash` |
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
@@ -215,6 +217,8 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-26 | **Freigabe je Platte statt pauschal; Master sieht alles; Herrenloses nur der Master** | Vorgabe des Betreibers. Alt-Platten werden über *Verwaltung → Herrenlose Platten* dem gewünschten Benutzer übergeben. |
 | 2026-09-26 | **Labels und Schachtzuordnung je Benutzer** | Sonst würden Label-Namen zwischen Benutzern sichtbar und änderbar; ein globales `UNIQUE(name)` wich `UNIQUE(owner_user_id, name)`. |
 | 2026-09-26 | **SQLite-Migrationen laufen ohne Fremdschlüsselschutz** | Tabellen-Neuaufbau (DROP/RENAME) löscht sonst per CASCADE abhängige Daten; Regressionstest in `test_config_db.py`. **Jede künftige Migration mit Test an einer Datenbank-Kopie prüfen.** |
+| 2026-09-27 | **Schächte sind Eigenschaft des Clients, Standard: keine** | Schächte sind Hardware eines bestimmten Rechners; ein Benutzer hat mehrere Rechner und nur manche mit Wechselrahmen. Der Portzustand (`host_states`) liegt unter dem Schlüssel `client:<id>` statt unter dem frei wählbaren Rechnernamen (kein Schema-Umbau nötig, keine Namenskollisionen). Alte Zuordnungen übernimmt der passende Client beim ersten Heartbeat mit Ports (Löschen des alten Settings entscheidet atomar). Im lokalen Betrieb ohne Clients bleibt eine einzige Zuordnung in `settings`. |
+| 2026-09-27 | **„Client, der die Platte zuletzt sah“ als einziger Client-Filter** | Gilt für Platten und ihre Dateien; ein zweites Konzept „Client, der indiziert hat“ bringt kaum Nutzen. Bestehende Platten haben den Client erst nach dem nächsten Scan. |
 | 2026-09-26 | **PBKDF2 aus der Standardbibliothek statt bcrypt/argon2** | Das Projekt hält die Abhängigkeiten bewusst klein (PyInstaller-Größe). 600 000 Runden SHA-256 mit Salt je Passwort (Wert steht im Hash, kann später erhöht werden). Client-Tokens sind zufällig und lang, dort genügt SHA-256. |
 | 2026-09-26 | **Sitzung pro Benutzer, Passwort-Hash in der Cookie-Signatur** | Passwortwechsel meldet alle Sitzungen dieses Benutzers ab, ohne Sitzungstabelle. Namen werden ohne Beachtung der Groß-/Kleinschreibung verglichen („Anna“ vs. „anna“ wären verwechselbar). |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |

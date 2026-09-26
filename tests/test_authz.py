@@ -13,7 +13,6 @@ from diskatlas.db.models import (
     Disk,
     DiskShare,
     DiskTransferRequest,
-    HostState,
     Label,
     User,
 )
@@ -176,17 +175,6 @@ def test_spoofed_host_name_cannot_disconnect_foreign_disks_or_steal_commands(wor
     assert [c["id"] for c in got] == [command_id]
 
 
-def test_host_names_belong_to_the_first_reporting_user(world):
-    ports = {"present": [{"port": "ata1", "serial": "S1"}], "all_ports": ["ata1", "ata2"]}
-    world.agent("anna").post("/api/v1/ingest/connected",
-                             json={"host": "nas", "disk_keys": [], "ports_info": ports})
-    world.agent("bob").post("/api/v1/ingest/connected", json={
-        "host": "nas", "disk_keys": [], "ports_info": {"present": [], "all_ports": ["ata9"]}})
-    with world.db.session() as s:
-        state = s.get(HostState, "nas")
-        assert state.user_id == world.ids["anna"] and "ata9" not in state.data
-
-
 # ------------------------------------------------------------------ Sichtbarkeit
 def test_each_user_sees_only_their_own_disks_and_master_sees_all(world):
     world.ingest_disk("anna", "sn:A1", "pc")
@@ -292,7 +280,7 @@ def test_nothing_of_annas_data_leaks_to_bob(world):
     ]
     for url in urls:
         r = bob.get(url)
-        assert r.status_code in (200, 404), (url, r.status_code)
+        assert r.status_code in (200, 303, 404), (url, r.status_code)
         assert MARK not in r.text, f"{url} verrät Annas Daten"
         assert "sn:ANNA1" not in r.text and "ANNA1" not in r.text, url
     assert bob.get("/api/v1/stats").json()["disk_count"] == 1, "nur Bobs eigene Platte"
@@ -436,21 +424,6 @@ def test_user_list_shows_only_names(world):
     assert "hash" not in text.lower() and "token" not in text.lower() and "passwort" not in text
     assert world.agent("anna").get("/api/v1/users").status_code == 200
     assert TestClient(world.app).get("/api/v1/users").status_code == 401
-
-
-# ------------------------------------------------------------------ Schächte je Benutzer
-def test_bay_setup_is_per_user(world):
-    ports = {"present": [], "all_ports": ["ata1", "ata2", "ata3", "ata4"]}
-    world.agent("anna").post("/api/v1/ingest/connected",
-                             json={"host": "anna-nas", "disk_keys": [], "ports_info": ports})
-    anna, bob = world.web["anna"], world.web["bob"]
-    assert anna.post("/bays/setup", data={"host": "anna-nas", "port": ["ata4", "ata3", "", ""]}
-                     ).status_code == 303
-    assert bob.get("/api/v1/bays/live").json()["host"] is None, "Bob kennt Annas Rechner nicht"
-    assert bob.get("/api/v1/bays/live?host=anna-nas").json()["host"] is None
-    assert anna.get("/api/v1/bays/live").json()["host"] == "anna-nas"
-    with world.db.session() as s:
-        assert s.get(User, world.ids["anna"]) is not None
 
 
 # ------------------------------------------------------------------ Grundregeln

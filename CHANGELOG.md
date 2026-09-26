@@ -11,6 +11,29 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert (Achtung, bricht bestehende Einrichtungen)
+- **Schächte gehören zum Client** (Migration `0007`). Statt einer Zuordnung je Benutzer stellt jeder
+  Client unter *Konto → Meine Clients* selbst ein: **Anzahl der Wechselschächte (1–24)** oder den
+  Haken **„Keine Wechselschächte“**, und ordnet die vom Agenten gemeldeten SATA-Ports im
+  **Assistenten** (`/clients/<id>/bays`, Platte ziehen und wieder stecken) den Schächten zu.
+  **Standard für jeden Client: keine Wechselschächte**; die Laufwerke stehen dann einfach in der
+  Liste. Das Dashboard zeigt je Client mit Wechselschächten einen Schachtblock (mit Überschrift,
+  sobald es mehrere gibt); eine Platte, die im Schacht steckt, steht nur dort. Eine Platte, die an
+  einem anderen Client hängt, bleibt in der Liste. Fremde Schachtblöcke, Ports und Client-Ids sieht
+  niemand, auch nicht der Master; den Assistenten eines Clients bedient nur sein Besitzer.
+  Die Anzahl lässt sich nur verringern, wenn dabei keine zugeordneten Ports wegfallen.
+- **Der Portzustand wird je Client statt je Rechnername gespeichert.** Gleiche Rechnernamen bei
+  verschiedenen Clients oder Benutzern stören sich nicht mehr; die bisherige Regel „der erste Benutzer
+  besitzt den Namen“ gilt nur noch im lokalen Betrieb.
+- **Frühere Schachtzuordnung wird übernommen:** Beim ersten Heartbeat mit Ports übernimmt der
+  passende Client (gleicher Rechnername oder keiner hinterlegt) die alte Zuordnung des Benutzers
+  (der Master zusätzlich die verwaiste aus Version 0.4.0), sofern mindestens ein Port zugeordnet
+  war; der Client hat danach Wechselschächte. Andere bleiben bei „keine“.
+- `GET /api/v1/bays/live` kennt den Parameter `client_id` (nur eigene Clients, sonst 404) und liefert
+  ohne Angabe `clients` (eigene Clients mit Wechselschächten); `host` gilt weiter im lokalen Betrieb.
+  `/bays/setup` gibt es nur noch lokal, sonst Weiterleitung zu *Konto*. Die Seriennummer-Suche
+  nennt den Schacht des Clients, an dem die Platte zuletzt hing.
+
 ### Hinzugefügt
 - **„Zuletzt an Client …“** (Migration `0006`): Jede Platte merkt sich den Client, dessen Agent sie
   zuletzt gemeldet hat (beim Scan und beim Heartbeat; nur für Platten des eigenen Benutzers). Auf

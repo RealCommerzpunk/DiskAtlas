@@ -176,8 +176,8 @@ def dashboard(
         client=client,
     )
     client_opts = queries.client_options(session, authz.visible_ids(viewer))
-    bays = _bays(session, viewer)
-    in_bay = {b.disk.id for b in bays or [] if b.disk}  # stehen als Schachtzeilen oben
+    panels = bay_service.panels_for(session, viewer, authz.visible_ids(viewer))
+    in_bay = {b.disk.id for p in panels for b in p.bays if b.disk}  # stehen als Schachtzeilen oben
     disks = queries.sort_disks(
         queries.filter_disks([d for d in all_disks if d.id not in in_bay], flt), sort, desc
     )
@@ -188,7 +188,11 @@ def dashboard(
             "stats": queries.dashboard_stats(all_disks),
             "hide_system": _hide_system(request),
             "hidden_system_count": len(excluded),
-            "bays": bays,
+            "panels": panels,
+            "bays_link": (
+                "/account#clients" if viewer.user_id is not None
+                else ("/bays/setup" if panels else None)
+            ),
             "filtered_count": len(disks),
             "groups": queries.group_disks(disks, group),
             "labels": [lab for lab, _ in queries.list_labels(session, viewer)],
@@ -205,21 +209,25 @@ def dashboard(
     )
 
 
-def _bay_snapshot(session: Session, config, viewer: Viewer, host: str = ""):
-    """Rechner, dessen Schächte gezeigt werden: gewählter, konfigurierter oder erster mit Ports."""
-    for candidate in (host, config.host):
-        if candidate and (snap := hosts.get(session, candidate, viewer.scope_id)):
-            return snap
-    return next((h for h in hosts.known_hosts(session, viewer.scope_id) if h.all_ports), None)
-
-
-def _bays(session: Session, viewer: Viewer):
-    """Schachtansicht; None, wenn kein Agent SATA-Ports meldet (Windows, nur NAS …)."""
-    config = bay_service.load_config(session, viewer.user_id)
-    snapshot = _bay_snapshot(session, config, viewer)
-    if snapshot is None or not snapshot.all_ports:
-        return None
-    return bay_service.build_bays(session, config, snapshot, authz.visible_ids(viewer))
+def setup_context(
+    *, heading: str, action: str, poll_url: str, snapshot, config, host_field: str = "",
+    back_url: str = "/", err: str = "",
+) -> dict:
+    """Gemeinsamer Kontext des Zuordnungs-Assistenten (lokal und je Client)."""
+    return {
+        "heading": heading,
+        "action": action,
+        "poll_url": poll_url,
+        "host_field": host_field,
+        "back_url": back_url,
+        "online": bool(snapshot and snapshot.is_online),
+        "assignment": config.ports,
+        "reverse": config.reverse,
+        "all_ports": snapshot.all_ports if snapshot else [],
+        "live": snapshot.by_port() if snapshot else {},
+        "bay_count": config.count,
+        "flash_err": err,
+    }
 
 
 @router.get("/bays/setup", response_class=HTMLResponse)
@@ -230,22 +238,17 @@ def bays_setup(
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
 ):
-    config = bay_service.load_config(session, viewer.user_id)
-    snapshot = _bay_snapshot(session, config, viewer, host)
-    return templates.TemplateResponse(
-        request,
-        "bays_setup.html",
-        {
-            "host": snapshot.host if snapshot else "",
-            "online": bool(snapshot and snapshot.is_online),
-            "assignment": config.ports,
-            "reverse": config.reverse,
-            "all_ports": snapshot.all_ports if snapshot else [],
-            "live": snapshot.by_port() if snapshot else {},
-            "bay_count": bay_service.BAY_COUNT,
-            "flash_err": err,
-        },
-    )
+    """Schacht-Assistent des lokalen Betriebs; mit Anmeldung gehören Schächte zum Client."""
+    if viewer.user_id is not None:
+        return _redirect("/account#clients")
+    config = bay_service.load_config(session)
+    snapshot = bay_service.local_snapshot(session, config, host)
+    name = snapshot.host if snapshot else ""
+    return templates.TemplateResponse(request, "bays_setup.html", setup_context(
+        heading="Schächte einrichten", action="/bays/setup", host_field=name,
+        poll_url="/api/v1/bays/live?" + urlencode({"host": name}), snapshot=snapshot,
+        config=config, err=err,
+    ))
 
 
 @router.post("/bays/setup")
@@ -256,13 +259,14 @@ def bays_save(
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
 ):
-    snapshot = hosts.get(session, host, viewer.scope_id)
+    if viewer.user_id is not None:
+        return _redirect("/account#clients")
+    snapshot = hosts.get(session, host)
     valid = set(snapshot.all_ports) if snapshot else set()
-    chosen = [p if p in valid else None for p in port]
+    chosen = bay_service.clean_ports([p if p in valid else None for p in port], len(port) or None)
     try:
         bay_service.save_config(
-            session, bay_service.BayConfig(host=host or None, ports=chosen, reverse=reverse),
-            viewer.user_id,
+            session, bay_service.BayConfig(host=host or None, ports=chosen, reverse=reverse)
         )
     except ValueError as exc:
         return _redirect("/bays/setup?" + urlencode({"err": str(exc)}))
