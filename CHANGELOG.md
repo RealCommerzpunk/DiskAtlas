@@ -18,6 +18,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 - `docs/CODE_SIGNING.md` vollständig englisch mit deutscher Kurzfassung.
 - README und Release-Seiten nennen die Code-Signatur über SignPath (Voraussetzung für den Antrag
   bei der SignPath Foundation).
+- Doku: Abschnitt *Datenbank* in beiden READMEs (SQLite überall, optional PostgreSQL) und
+  Anleitung *Lokale Daten übernehmen* in docs/UNRAID.md (Export per `diskatlas db copy`,
+  Übertragung, Rechte 99:100); Sicherungshinweis zu `-wal`/`-shm`.
 
 ### Behoben
 - Unraid zeigte beim Container ein Fragezeichen statt des Programmsymbols: Die Vorlage

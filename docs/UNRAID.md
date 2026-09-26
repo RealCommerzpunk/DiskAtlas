@@ -107,6 +107,53 @@ des Servers; lokal läuft dann nur der Agent. Die Anmeldung wird einmal abgefrag
 Nach dem ersten Start des Agenten in der Weboberfläche auf **⚙ Schächte** klicken und für jeden
 Schacht die Platte ziehen und wieder einstecken. Die Zuordnung liegt auf dem Server.
 
+## Lokale Daten übernehmen
+
+Wer DiskAtlas vorher nur lokal betrieben hat, kann den bisherigen Datenbestand (Platten, Dateien,
+SMART-Verlauf, Labels) in den Container übernehmen. Der Container-Bestand wird dabei **ersetzt**;
+was die Agenten dort schon gemeldet haben, melden sie beim nächsten Scan erneut. Nur im
+Container von Hand Eingetragenes (Lagerorte, Notizen) ginge verloren.
+
+**1. Auf dem PC eine Exportdatei erzeugen.** Die lokale Datenbank liegt unter
+`~/.local/share/diskatlas/diskatlas.db` (Windows: `%LOCALAPPDATA%\diskatlas\diskatlas.db`).
+Nicht einfach die Datei kopieren: Daneben kann eine `diskatlas.db-wal` liegen, in der noch nicht
+übernommene Änderungen stehen. Stattdessen (lokale DiskAtlas-Programme vorher beenden):
+
+```bash
+diskatlas db copy --to "sqlite:///$HOME/diskatlas-export.db"
+```
+
+Das ergibt eine einzelne, verdichtete Datei im aktuellen Datenbankstand. Wer nur das
+Agent-Programm hat (ohne Befehl `diskatlas`): Programm beenden und `diskatlas.db` **zusammen mit**
+`diskatlas.db-wal` (falls vorhanden) übertragen; in Schritt 3 dann beide Dateien kopieren. Eine frühere
+Schachtzuordnung (`bays.json`) wird dabei nicht übernommen; die Schächte danach in der
+Oberfläche neu zuordnen (Abschnitt 5).
+
+**2. Container stoppen** (Unraid → *Docker* → DiskAtlas → *Stop*) und im Unraid-Terminal den
+bisherigen Bestand beiseitelegen:
+
+```bash
+cd /mnt/user/appdata/diskatlas
+mkdir -p vorher && mv diskatlas.db diskatlas.db-wal diskatlas.db-shm vorher/ 2>/dev/null; ls vorher
+```
+
+**3. Datei übertragen**, per SSH vom PC aus (Unraid: *Settings → Management Access → Use SSH*):
+
+```bash
+scp ~/diskatlas-export.db root@<unraid-ip>:/mnt/user/appdata/diskatlas/diskatlas.db
+```
+
+(Alternativ über die SMB-Freigabe `appdata`, falls sie freigegeben ist.)
+
+**4. Rechte setzen und starten.** Der Container läuft als Benutzer `nobody` (99:100):
+
+```bash
+chown 99:100 /mnt/user/appdata/diskatlas/diskatlas.db && chmod 664 /mnt/user/appdata/diskatlas/diskatlas.db
+```
+
+Dann den Container starten. Er bringt die Datenbank bei Bedarf selbst auf den neuesten Stand.
+Passt alles, kann der Ordner `vorher` gelöscht werden.
+
 ## Aktualisieren
 
 Neue Version: Tag `vX.Y.Z` pushen → GitHub baut das Image → in Unraid den Container *aktualisieren*.
@@ -116,4 +163,6 @@ Release ersetzen (bzw. aus dem Quellcode: `git pull` und `pip install -e .`). **
 ## Sicherung
 
 Alles Wichtige liegt in `/mnt/user/appdata/diskatlas/diskatlas.db` (SQLite). Diese Datei in die
-Unraid-Sicherung aufnehmen (z. B. mit dem Plugin *Appdata Backup*).
+Unraid-Sicherung aufnehmen (z. B. mit dem Plugin *Appdata Backup*, das den Container dafür kurz
+stoppt). Bei laufendem Container gehören `diskatlas.db-wal` und `diskatlas.db-shm` dazu; einzeln
+kopiert fehlen sonst die jüngsten Änderungen.
