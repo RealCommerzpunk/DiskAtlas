@@ -16,6 +16,7 @@ from pathlib import Path
 
 from diskatlas import __version__
 from diskatlas.config import default_config_path, default_data_dir
+from diskatlas.tray import icon as tray_icon
 from diskatlas.tray.controller import AgentController, resolve_config_path
 from diskatlas.tray.status import TrayStatus, write_status
 
@@ -25,12 +26,6 @@ INSTANCE_PORT = 48653
 REFRESH_SECONDS = 2.0
 TRAY_LOG = "agent-tray.log"
 SETTINGS_LOG = "agent-settings.log"
-DOT_COLORS = {
-    "online": (34, 197, 94),
-    "starting": (245, 158, 11),
-    "unconfigured": (245, 158, 11),
-}
-DEFAULT_DOT = (239, 68, 68)
 
 
 class SingleInstance:
@@ -53,25 +48,6 @@ def config_mtime(path: Path) -> float | None:
         return None
 
 
-def render_icon(state: str, size: int = 64):
-    """Programmsymbol mit farbigem Statuspunkt (grün verbunden, gelb wartend, rot gestört)."""
-    from PIL import Image, ImageDraw
-
-    logo = Path(__file__).resolve().parent.parent / "web" / "static" / "icon_256.png"
-    if logo.is_file():
-        image = Image.open(logo).convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
-    else:
-        image = Image.new("RGBA", (size, size), (60, 70, 90, 255))
-    radius = size * 0.22
-    cx = cy = size - radius - 1
-    draw = ImageDraw.Draw(image)
-    draw.ellipse((cx - radius - 2, cy - radius - 2, cx + radius + 2, cy + radius + 2),
-                 fill=(255, 255, 255, 255))
-    draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius),
-                 fill=DOT_COLORS.get(state, DEFAULT_DOT) + (255,))
-    return image
-
-
 def tooltip(status: TrayStatus) -> str:
     text = f"DiskAtlas Agent – {status.label}"
     return text[:120]
@@ -90,7 +66,8 @@ class Tray:
         self._window: subprocess.Popen | None = None
         self._stop = threading.Event()
         self._icon = None
-        self._shown_state = ""
+        self._shown: tuple[str, str] = ("", "")
+        self._size = tray_icon.tray_size()
         self._config_stamp = config_mtime(controller.config_path)
 
     # ---------------------------------------------------------------- Menü
@@ -156,9 +133,11 @@ class Tray:
             write_status(status)
         except OSError:
             log.exception("Statusdatei nicht schreibbar")
-        if self._icon is not None and status.state != self._shown_state:
-            self._shown_state = status.state
-            self._icon.icon = render_icon(status.state)
+        # Neu zeichnen bei anderem Zustand oder anderer Farbe (Windows: Taskleiste hell/dunkel).
+        shown = (status.state, tray_icon.resolve_color(self.controller.icon_color))
+        if self._icon is not None and shown != self._shown:
+            self._shown = shown
+            self._icon.icon = tray_icon.render_icon(*shown, size=self._size)
             self._icon.title = tooltip(status)
             self._icon.update_menu()
 
@@ -176,8 +155,10 @@ class Tray:
 
         self.controller.start()
         status = self.controller.status()
+        self._shown = (status.state, tray_icon.resolve_color(self.controller.icon_color))
         self._icon = pystray.Icon(
-            "diskatlas-agent", render_icon(status.state), tooltip(status), self._menu()
+            "diskatlas-agent", tray_icon.render_icon(*self._shown, size=self._size),
+            tooltip(status), self._menu(),
         )
         if status.state == "unconfigured":
             self.open_settings()  # Erststart: gleich zur Einrichtung führen
@@ -264,6 +245,8 @@ def main(argv: list[str] | None = None) -> int:
     if not instance.acquired:
         log.error("Der DiskAtlas-Agent läuft bereits (Symbol im Systembereich).")
         return 1
+    tray_icon.enable_dpi_awareness()
+    tray_icon.patch_pystray_win32()
     return Tray(AgentController(config_path)).run()
 
 

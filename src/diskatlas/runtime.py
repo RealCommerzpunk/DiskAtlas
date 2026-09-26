@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from diskatlas.config import Config, default_data_dir
+from diskatlas.config import Config
 
 log = logging.getLogger("diskatlas")
 
@@ -104,22 +104,8 @@ def window_icon() -> Path | None:
     """Programmsymbol für pywebview-Fenster.
 
     Unter Windows verlangt WinForms eine .ico-Datei (bei einer PNG stürzt der Prozess mit einem
-    .NET-Fehler ab); sie wird einmalig aus der PNG erzeugt. Ohne Pillow: kein eigenes Symbol.
+    .NET-Fehler ab), sonst genügt die PNG. Beide erzeugt scripts/build_icons.py.
     """
-    png = Path(__file__).parent / "web" / "static" / "icon_256.png"
-    if not png.is_file():
-        return None
-    if sys.platform != "win32":
-        return png
-    ico = default_data_dir() / "diskatlas.ico"
-    if not ico.is_file():
-        try:
-            from PIL import Image
-
-            ico.parent.mkdir(parents=True, exist_ok=True)
-            sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (256, 256)]
-            Image.open(png).save(ico, format="ICO", sizes=sizes)
-        except (ImportError, OSError):
-            log.warning("Fenstersymbol (.ico) konnte nicht erzeugt werden", exc_info=True)
-            return None
-    return ico
+    static = Path(__file__).parent / "web" / "static"
+    icon = static / ("favicon.ico" if sys.platform == "win32" else "icon_256.png")
+    return icon if icon.is_file() else None

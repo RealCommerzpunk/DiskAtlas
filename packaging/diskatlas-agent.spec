@@ -42,6 +42,7 @@ else:
 datas = [
     (str(PKG / "web" / "static"), "diskatlas/web/static"),
     (str(PKG / "web" / "templates"), "diskatlas/web/templates"),
+    (str(PKG / "tray" / "icons"), "diskatlas/tray/icons"),
     # Alembic liest die Migrationsskripte als Dateien.
     (str(PKG / "db" / "migrations" / "env.py"), "diskatlas/db/migrations"),
     (str(PKG / "db" / "migrations" / "script.py.mako"), "diskatlas/db/migrations"),
@@ -124,7 +125,7 @@ exe = EXE(
     a.datas,
     name="DiskAtlas-Agent" if IS_WIN else "diskatlas-agent",
     console=False,
-    icon=str(ROOT / "packaging" / "windows" / "app.ico") if IS_WIN else None,
+    icon=str(PKG / "web" / "static" / "favicon.ico") if IS_WIN else None,
     upx=False,
     version=version_info,
 )

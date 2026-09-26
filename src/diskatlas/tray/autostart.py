@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,20 @@ def autostart_dir() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "autostart"
 
 
+def desktop_icon() -> str:
+    """Symbol für den Autostart-Eintrag an einem festen Ort (Datenverzeichnis)."""
+    from diskatlas.config import default_data_dir
+
+    source = Path(__file__).resolve().parent.parent / "web" / "static" / "icon_256.png"
+    target = default_data_dir() / "diskatlas.png"
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+    except OSError:
+        return "drive-harddisk"  # Standardsymbol des Systems
+    return str(target)
+
+
 def _desktop_entry(command: list[str]) -> str:
     return "\n".join([
         "[Desktop Entry]",
@@ -32,7 +47,7 @@ def _desktop_entry(command: list[str]) -> str:
         "Name=DiskAtlas Agent",
         "Comment=Meldet Festplatten an den DiskAtlas-Server",
         f"Exec={shlex.join(command)}",
-        "Icon=diskatlas",
+        f"Icon={desktop_icon()}",
         "Terminal=false",
         "X-GNOME-Autostart-enabled=true",
         "",

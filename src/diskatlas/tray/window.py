@@ -36,7 +36,7 @@ h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;
 .hint{margin-top:8px;color:var(--warn)}.hint:empty{display:none}
 a{color:var(--accent);cursor:pointer}
 label{display:block;margin:10px 0 3px;font-weight:600}
-input[type=text],input[type=password],input[type=number]{width:100%;padding:7px 9px;
+input[type=text],input[type=password],input[type=number],select{width:100%;padding:7px 9px;
 border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
 .row{display:flex;gap:8px}.row input{flex:1}
 .check{display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:400}
@@ -78,6 +78,10 @@ Datenträger automatisch einhängen (Linux)</label>
 Systemvolumes indizieren</label>
 <label class="check"><input type="checkbox" id="smart_use_sudo">
 SMART mit sudo lesen (Linux)</label>
+<label for="tray_icon_color">Farbe des Symbols im Infobereich</label>
+<select id="tray_icon_color"><option value="auto">Automatisch</option>
+<option value="light">Hell (für dunkle Leisten)</option>
+<option value="dark">Dunkel (für helle Leisten)</option></select>
 <label for="smartctl_path">Pfad zu smartctl</label>
 <input type="text" id="smartctl_path" spellcheck="false">
 <label for="poll_interval">Festplatten prüfen alle (Sekunden)</label>
@@ -94,7 +98,7 @@ SMART mit sudo lesen (Linux)</label>
 <p><small id="path"></small></p><p><small id="notice"></small></p></div>
 
 <script>
-const TEXT = ["server_url","api_token","host_name","smartctl_path"];
+const TEXT = ["server_url","api_token","host_name","smartctl_path","tray_icon_color"];
 const NUM = ["poll_interval","smart_interval_minutes","rescan_interval_hours"];
 const BOOL = ["index_files","auto_mount","index_system_volumes","smart_use_sudo"];
 const $ = id => document.getElementById(id);

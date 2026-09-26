@@ -102,6 +102,7 @@ class AgentController:
         self._agent = None
         self._thread: threading.Thread | None = None
         self._local: LocalServer | None = None
+        self.icon_color = "auto"
 
     def start(self) -> None:
         try:
@@ -111,6 +112,7 @@ class AgentController:
             self.tracker.set("config_error", str(exc))
             log.error("Konfiguration nicht lesbar: %s", exc)
             return
+        self.icon_color = config.agent.tray_icon_color
         server_url = config.agent.server_url
         if not server_url and not self.config_path.is_file():
             self.tracker = StatusTracker("", config.agent.host_name, str(self.config_path))

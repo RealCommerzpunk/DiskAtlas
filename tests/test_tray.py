@@ -276,10 +276,13 @@ def test_autostart_linux(tmp_path, monkeypatch):
     from diskatlas.tray import autostart
 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     assert not autostart.is_enabled()
     autostart.set_enabled(True)
     entry = (tmp_path / "autostart" / autostart.DESKTOP_FILE).read_text(encoding="utf-8")
     assert "Exec=" in entry and "diskatlas.tray.app" in entry
+    icon = tmp_path / "data" / "diskatlas" / "diskatlas.png"
+    assert f"Icon={icon}" in entry and icon.is_file()
     assert autostart.is_enabled()
     autostart.set_enabled(False)
     autostart.set_enabled(False)  # zweimal ausschalten ist kein Fehler
@@ -392,16 +395,38 @@ def test_settings_api_state(tmp_path):
     assert state["configured"] is True and state["values"]["server_url"] == ""
 
 
-def test_window_icon_is_ico_on_windows(tmp_path, monkeypatch):
-    Image = pytest.importorskip("PIL.Image")  # Pillow gehört zum Extra "tray"
+def test_window_icon_matches_platform(monkeypatch):
     from diskatlas import runtime
 
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    if sys.platform != "win32":
-        assert runtime.window_icon().suffix == ".png"  # Linux: PNG direkt
+    assert runtime.window_icon().name == "icon_256.png" or sys.platform == "win32"
     monkeypatch.setattr(sys, "platform", "win32")
     icon = runtime.window_icon()
-    assert icon == tmp_path / "diskatlas" / "diskatlas.ico"
-    with Image.open(icon) as image:
-        assert image.format == "ICO"
-    assert runtime.window_icon() == icon  # wird nur einmal erzeugt
+    assert icon.name == "favicon.ico" and icon.read_bytes()[:4] == b"\x00\x00\x01\x00"
+
+
+def test_tray_icon_rendering():
+    pytest.importorskip("PIL")
+    from diskatlas.tray import icon
+
+    for size in (*icon.GLYPH_SIZES, 18, 96):  # vorhandene Größen und umgerechnete
+        image = icon.render_icon("online", "light", size)
+        assert image.size == (size, size) and image.mode == "RGBA"
+    light = icon.render_icon("offline", "light", 32)
+    dark = icon.render_icon("offline", "dark", 32)
+    corner = (32 - 6, 32 - 6)  # Statuspunkt unten rechts: rot, in beiden Varianten
+    assert light.getpixel(corner)[:3] == dark.getpixel(corner)[:3] == icon.DEFAULT_DOT
+    # Glyphe: hell bzw. dunkel, Hintergrund transparent
+    opaque = [p for p in light.getdata() if p[3] == 255 and p[:3] != icon.DEFAULT_DOT]
+    assert opaque and all(p[:3] == icon.GLYPH_COLORS["light"] for p in opaque)
+    assert light.getpixel((0, 31))[3] == 0 or light.getpixel((0, 0))[3] == 0
+
+
+def test_tray_icon_color_setting(monkeypatch):
+    from diskatlas.tray import icon
+
+    assert icon.resolve_color("dark") == "dark" and icon.resolve_color("light") == "light"
+    monkeypatch.setattr(icon, "taskbar_is_light", lambda: True)
+    assert icon.resolve_color("auto") == "dark"
+    assert settings.validate({"tray_icon_color": "dark"}) == {"tray_icon_color": "dark"}
+    with pytest.raises(ValueError, match="Farbe des Symbols"):
+        settings.validate({"tray_icon_color": "lila"})

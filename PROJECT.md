@@ -142,12 +142,13 @@ src/diskatlas/
     window.py           Einstellungsfenster (pywebview, eigener Prozess)
     settings.py         config.toml lesen/prüfen/schreiben, Verbindungstest
     status.py           Statusdatei zwischen Tray und Fenster
+    icon.py, icons/     Tray-Symbol: Glyphen-Masken je Größe, Farbe hell/dunkel, Statuspunkt
     autostart.py        Start bei Anmeldung (XDG-Autostart / Run-Schlüssel)
   tools/dbcopy.py     Umzug zwischen Datenbanken
 tests/                pytest; Fixtures mit echten lsblk/smartctl/PowerShell-Ausgaben
 deploy/               systemd-Dienst, Windows-Autostart
 packaging/            Icons, PyInstaller-Bauanleitung des Agent-Programms, smartctl-Download (fetch_smartctl.py)
-scripts/              Versionierung, sudoers-Helfer für smartctl
+scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeugen (build_icons.py)
 ```
 
 ## 4. Datenmodell

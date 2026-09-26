@@ -28,7 +28,9 @@ FIELDS: dict[str, tuple[type, str]] = {
     "index_system_volumes": (bool, "Systemvolumes indizieren"),
     "auto_mount": (bool, "Automatisch einhängen"),
     "smart_use_sudo": (bool, "SMART mit sudo lesen"),
+    "tray_icon_color": (str, "Farbe des Symbols"),
 }
+CHOICES = {"tray_icon_color": ("auto", "light", "dark")}
 
 TEST_HOST = "[verbindungstest]"
 _BARE_KEY = re.compile(r"[A-Za-z0-9_-]+")
@@ -76,6 +78,8 @@ def validate(values: dict[str, Any]) -> dict[str, Any]:
                 raise ValueError(f"{label}: Wert ist zu klein")
         else:
             value = str(value).strip()
+            if name in CHOICES and value not in CHOICES[name]:
+                raise ValueError(f"{label}: ungültiger Wert")
         clean[name] = value
     url = clean.get("server_url", "")
     if url:

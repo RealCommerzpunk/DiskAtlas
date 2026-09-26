@@ -25,7 +25,9 @@ Beim ersten Start öffnet sich das Einstellungsfenster. Dort wählst du eine von
   bzw. `~/.local/share/diskatlas/diskatlas.db`.
 
 Der Punkt am Symbol zeigt den Zustand: grün = verbunden bzw. läuft lokal, gelb = wartet bzw.
-nicht eingerichtet, rot = gestört. Änderungen im Einstellungsfenster übernimmt der Agent nach
+nicht eingerichtet, rot = gestört. Das Symbol ist hell (für dunkle Leisten) oder dunkel; unter
+Windows richtet es sich nach der Taskleiste, unter Linux ist es hell. Umstellen im
+Einstellungsfenster unter *Erweitert* → *Farbe des Symbols*. Änderungen im Einstellungsfenster übernimmt der Agent nach
 dem Speichern von selbst.
 
 ## Windows
