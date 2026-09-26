@@ -419,6 +419,10 @@ def test_tray_icon_rendering():
     opaque = [p for p in light.getdata() if p[3] == 255 and p[:3] != icon.DEFAULT_DOT]
     assert opaque and all(p[:3] == icon.GLYPH_COLORS["light"] for p in opaque)
     assert light.getpixel((0, 31))[3] == 0 or light.getpixel((0, 0))[3] == 0
+    # Linux: Glyphe mit Rand (sichtbar so groß wie die 16-px-Systemsymbole im 24er-Feld)
+    padded = icon.render_icon("online", "light", 48, 36)
+    left, top, right, bottom = padded.getchannel("A").getbbox()
+    assert left >= 6 and top >= 6 and right <= 42 and bottom <= 42
 
 
 def test_tray_icon_color_setting(monkeypatch):

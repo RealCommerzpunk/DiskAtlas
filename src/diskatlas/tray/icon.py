@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 GLYPH_DIR = Path(__file__).resolve().parent / "icons"
-GLYPH_SIZES = (16, 20, 24, 32, 40, 48, 64)
+GLYPH_SIZES = (16, 20, 24, 32, 36, 40, 48, 64)
 COLOR_CHOICES = ("auto", "light", "dark")
 # Glyphenfarbe: hell für dunkle Leisten, dunkel für helle Leisten (wie die Systemsymbole).
 # Linux: Farbton der Cinnamon-Symbole (#e1e1e1); Windows-Symbole sind auf dunkler Leiste weiß.
@@ -24,7 +24,11 @@ DOT_COLORS = {
     "unconfigured": (245, 158, 11),
 }
 DEFAULT_DOT = (239, 68, 68)
-LINUX_SIZE = 48  # die Leiste skaliert selbst; 48 = doppelte Größe der üblichen 24 px
+# Linux: Die Leiste zeigt Programmsymbole im 24-px-Feld (auf 48 px geliefert = doppelte Schärfe),
+# ihre eigenen einfarbigen Symbole aber nur 16 px groß. Die Glyphe bekommt deshalb Rand, damit sie
+# sichtbar ebenso groß ist (36 von 48 px → im 24er-Feld ca. 16 px).
+LINUX_SIZE = 48
+LINUX_CONTENT = 36
 
 _WIN_THEME_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 
@@ -72,18 +76,26 @@ def _circle(size: int, cx: float, cy: float, radius: float):
          (cx + radius) * factor, (cy + radius) * factor],
         fill=255,
     )
-    return big.resize((size, size), Image.Resampling.LANCZOS)
+    # Nachschwinger des Lanczos-Filters (Alpha 1–2) entfernen
+    return big.resize((size, size), Image.Resampling.LANCZOS).point(lambda v: v if v > 4 else 0)
 
 
-def render_icon(state: str, color: str = "light", size: int = LINUX_SIZE):
-    """Glyphe in der Glyphenfarbe, Statuspunkt unten rechts (wie Mint- und Windows-Symbole)
-    mit freigestelltem Rand."""
+def render_icon(state: str, color: str = "light", size: int = LINUX_SIZE,
+                content: int | None = None):
+    """Glyphe (`content` px, mittig in `size` px) in der Glyphenfarbe, Statuspunkt bündig unten
+    rechts an der Glyphe (wie der Punkt am Mint-Schild) mit freigestelltem Rand."""
     from PIL import Image, ImageChops
 
-    radius = size * 0.17
-    cx = cy = size - radius
-    gap = max(1.0, size * 0.06)
-    glyph = ImageChops.subtract(glyph_mask(size), _circle(size, cx, cy, radius + gap))
+    content = content or size
+    offset = (size - content) // 2
+    unit = content / 16  # Maske: Glyphe von x 1,875 bis 14,125 und y 1 bis 15 (16er-Raster)
+    radius = 14 * unit * 0.19  # Punkt ≈ 3/8 der Glyphenhöhe
+    cx = offset + 14.125 * unit - radius
+    cy = offset + 15 * unit - radius
+    gap = max(1.0, content * 0.06)
+    mask = Image.new("L", (size, size), 0)
+    mask.paste(glyph_mask(content), (offset, offset))
+    glyph = ImageChops.subtract(mask, _circle(size, cx, cy, radius + gap))
 
     image = Image.new("RGBA", (size, size), GLYPH_COLORS.get(color, GLYPH_COLORS["light"]) + (0,))
     image.putalpha(glyph)
@@ -107,17 +119,19 @@ def enable_dpi_awareness() -> None:
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 
-def tray_size() -> int:
-    """Größe, in der das System das Symbol zeigt (Windows: 16/20/24/32 je nach Skalierung)."""
+def tray_size() -> tuple[int, int]:
+    """(Bildgröße, Glyphengröße) für das System. Windows: exakt die Symbolgröße des Systems
+    (16/20/24/32 je nach Skalierung), die Glyphe füllt sie aus."""
     if sys.platform != "win32":
-        return LINUX_SIZE
+        return LINUX_SIZE, LINUX_CONTENT
     import ctypes
 
     try:
         size = int(ctypes.windll.user32.GetSystemMetrics(49))  # SM_CXSMICON
     except (AttributeError, OSError):
         size = 0
-    return size if 12 <= size <= 128 else 16
+    size = size if 12 <= size <= 128 else 16
+    return size, size
 
 
 def patch_pystray_win32() -> None:

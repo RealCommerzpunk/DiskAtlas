@@ -28,7 +28,7 @@ TRAY = ROOT / "src" / "diskatlas" / "tray" / "icons"
 
 ACCENT = "#3b6cf6"  # --accent aus style.css
 GLYPH_UNITS = 14.0  # viewBox der Glyphe
-TRAY_SIZES = (16, 20, 24, 32, 40, 48, 64)
+TRAY_SIZES = (16, 20, 24, 32, 36, 40, 48, 64)
 ICO_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 
 

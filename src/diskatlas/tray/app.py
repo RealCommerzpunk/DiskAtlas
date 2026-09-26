@@ -67,7 +67,7 @@ class Tray:
         self._stop = threading.Event()
         self._icon = None
         self._shown: tuple[str, str] = ("", "")
-        self._size = tray_icon.tray_size()
+        self._size, self._content = tray_icon.tray_size()
         self._config_stamp = config_mtime(controller.config_path)
 
     # ---------------------------------------------------------------- Menü
@@ -137,7 +137,7 @@ class Tray:
         shown = (status.state, tray_icon.resolve_color(self.controller.icon_color))
         if self._icon is not None and shown != self._shown:
             self._shown = shown
-            self._icon.icon = tray_icon.render_icon(*shown, size=self._size)
+            self._icon.icon = tray_icon.render_icon(*shown, self._size, self._content)
             self._icon.title = tooltip(status)
             self._icon.update_menu()
 
@@ -157,7 +157,7 @@ class Tray:
         status = self.controller.status()
         self._shown = (status.state, tray_icon.resolve_color(self.controller.icon_color))
         self._icon = pystray.Icon(
-            "diskatlas-agent", tray_icon.render_icon(*self._shown, size=self._size),
+            "diskatlas-agent", tray_icon.render_icon(*self._shown, self._size, self._content),
             tooltip(status), self._menu(),
         )
         if status.state == "unconfigured":
