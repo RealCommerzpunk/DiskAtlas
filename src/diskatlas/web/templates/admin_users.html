@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Verwaltung{% endblock %}
+{% block content %}
+<h1>Benutzerverwaltung</h1>
+
+<section class="card">
+  <h2>Offene Anträge{% if pending %} ({{ pending | length }}){% endif %}</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Beantragt</th><th>Nachricht</th><th></th></tr></thead>
+    <tbody>
+    {% for u in pending %}
+      <tr>
+        <td>{{ u.nickname }}</td>
+        <td>{{ u.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+        <td>{{ u.note or '–' }}</td>
+        <td class="inline">
+          <form method="post" action="/admin/users/{{ u.id }}/approve"><button type="submit">Freischalten</button></form>
+          <form method="post" action="/admin/users/{{ u.id }}/reject" data-confirm="Antrag von „{{ u.nickname }}“ ablehnen und löschen?">
+            <button class="link danger">Ablehnen</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Keine offenen Anträge.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Benutzer</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Name</th><th>Rolle</th><th>Seit</th><th class="num">Clients</th></tr></thead>
+    <tbody>
+    {% for u in active %}
+      <tr>
+        <td>{{ u.nickname }}</td>
+        <td>{{ 'Master' if u.is_master else 'Benutzer' }}</td>
+        <td>{{ u.created_at.strftime('%d.%m.%Y') }}</td>
+        <td class="num">{{ u.clients | length }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

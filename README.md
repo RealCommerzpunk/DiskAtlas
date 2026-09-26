@@ -145,8 +145,11 @@ diskatlas db copy --to "postgresql+psycopg://diskatlas:pw@unraid.local:5432/disk
 
 (For PostgreSQL, run `pip install -e ".[postgres]"` once locally.)
 
-The web interface is protected by a password; agents authenticate with the API token. The
-container only starts when both are set.
+The web interface requires a login. On the very first start `DISKATLAS_PASSWORD` becomes the
+password of the user **Master**; other people apply for access at `/register` and the Master
+approves them under *Verwaltung*. Each user creates **clients** (one per computer running an agent)
+with their own token under *Konto*. Until the switch to client tokens is complete, agents still
+use the shared `DISKATLAS_API_TOKEN`. The container only starts when both variables are set.
 
 ## Development
 

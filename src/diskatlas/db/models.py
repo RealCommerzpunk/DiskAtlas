@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -25,6 +25,10 @@ HEALTH_ORDER = {"failed": 0, "warning": 1, "unknown": 2, "ok": 3}
 
 class Base(DeclarativeBase):
     pass
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 disk_labels = Table(
@@ -292,3 +296,37 @@ class Command(Base):
     disk_key: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
+
+
+class User(Base):
+    """Benutzerkonto. `pending` = Antrag wartet auf Freischaltung durch den Master."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nickname: Mapped[str] = mapped_column(String(100), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_master: Mapped[bool] = mapped_column(default=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | active
+    note: Mapped[str | None] = mapped_column(Text)  # Nachricht beim Antrag an den Master
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+    clients: Mapped[list[Client]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", order_by="Client.id"
+    )
+
+
+class Client(Base):
+    """Eine Agent-Installation eines Benutzers; weist sich mit einem eigenen Token aus."""
+
+    __tablename__ = "clients"
+    __table_args__ = (UniqueConstraint("user_id", "nickname"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    nickname: Mapped[str] = mapped_column(String(100))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)  # SHA-256, nie der Klartext
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    last_seen: Mapped[datetime | None]
+
+    user: Mapped[User] = relationship(back_populates="clients")

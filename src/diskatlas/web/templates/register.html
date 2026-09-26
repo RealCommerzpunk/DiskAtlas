@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#000000">
+  <title>Zugang beantragen · DiskAtlas</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v={{ version }}">
+  <link rel="icon" href="{{ url_for('static', path='favicon-32.png') }}" sizes="32x32" type="image/png">
+  <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', path='apple-touch-icon.png') }}">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <img src="{{ url_for('static', path='favicon.svg') }}" alt="" width="64" height="64" class="login-logo">
+    <h1>Zugang beantragen</h1>
+    {% if done %}
+      <p class="notice ok" role="status">Antrag gesendet. Sobald der Master ihn freigeschaltet hat, kannst du dich anmelden.</p>
+      <p><a href="/login">Zur Anmeldung</a></p>
+    {% else %}
+      {% if error %}<p class="notice health-reasons failed" role="alert">{{ error }}</p>{% endif %}
+      <form method="post" action="/register">
+        <label>Name
+          <input name="nickname" value="{{ nickname }}" autocomplete="username" maxlength="40" autofocus required>
+          <small class="muted">Andere Benutzer sehen diesen Namen.</small>
+        </label>
+        <label>Passwort
+          <input type="password" name="password" autocomplete="new-password" minlength="10" required>
+          <small class="muted">Mindestens 10 Zeichen.</small>
+        </label>
+        <label>Nachricht an den Master (optional)
+          <textarea name="note" rows="2" maxlength="500">{{ note }}</textarea>
+        </label>
+        <button type="submit">Antrag senden</button>
+      </form>
+      <p class="muted"><a href="/login">Zurück zur Anmeldung</a></p>
+    {% endif %}
+  </main>
+</body>
+</html>

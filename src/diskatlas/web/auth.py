@@ -1,9 +1,10 @@
-"""Anmeldung an der Weboberfläche: ein Passwort, signierte Sitzungs-Cookies, Anmeldebremse.
+"""Anmeldung an der Weboberfläche: Benutzer, signierte Sitzungs-Cookies, Anmeldebremse.
 
-Ohne konfiguriertes Passwort ist keine Anmeldung nötig – das ist nur erlaubt, solange der Server
-ausschließlich lokal (Loopback) lauscht (siehe `check_exposure`). Agenten weisen sich weiterhin
-mit dem API-Token aus (`/api/v1/ingest/*`); dasselbe Token darf auch Skripte für die übrige API
-authentifizieren (`Authorization: Bearer …`).
+Ohne Benutzerkonten (kein Passwort konfiguriert) ist keine Anmeldung nötig – das ist nur erlaubt,
+solange der Server ausschließlich lokal (Loopback) lauscht (siehe `check_exposure`). Das Passwort
+aus `DISKATLAS_PASSWORD` legt beim ersten Start den Master an. Agenten weisen sich weiterhin mit
+dem globalen API-Token aus (`/api/v1/ingest/*`); dasselbe Token oder das Token eines Clients
+darf auch Skripte für die übrige API authentifizieren (`Authorization: Bearer …`).
 """
 
 from __future__ import annotations
@@ -12,18 +13,21 @@ import hashlib
 import hmac
 import secrets
 import time
+from dataclasses import dataclass
 from urllib.parse import quote
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
+from sqlalchemy.orm import Session
 
 from diskatlas.config import Config
-from diskatlas.db.models import Setting
+from diskatlas.db.models import Setting, User
+from diskatlas.services import users
 
 COOKIE = "diskatlas_session"
 SESSION_SECONDS = 30 * 24 * 3600
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
-OPEN_EXACT = {"/login", "/api/v1/health", "/manifest.webmanifest", "/sw.js"}
+OPEN_EXACT = {"/login", "/register", "/api/v1/health", "/manifest.webmanifest", "/sw.js"}
 OPEN_PREFIX = ("/static/", "/api/v1/ingest/")  # Ingest prüft das Agenten-Token selbst
 MAX_FAILURES, FAILURE_WINDOW = 5, 300.0
 
@@ -63,34 +67,62 @@ def _secret(request: Request) -> bytes:
     return app.state.session_secret
 
 
-def _sign(secret: bytes, password: str, expires: int) -> str:
-    # Das Passwort fließt in die Signatur ein: Wer es ändert, meldet alle Sitzungen ab.
-    key = hashlib.sha256(secret + password.encode()).digest()
-    return hmac.new(key, str(expires).encode(), hashlib.sha256).hexdigest()
+@dataclass(frozen=True)
+class Identity:
+    """Wer eine Anfrage stellt (`client_id` nur bei Anmeldung per Client-Token)."""
+
+    user_id: int
+    nickname: str
+    is_master: bool
+    client_id: int | None = None
 
 
-def make_cookie(request: Request, password: str) -> str:
+def _sign(secret: bytes, user: User, expires: int) -> str:
+    # Der Passwort-Hash fließt in die Signatur ein: Wer sein Passwort ändert, meldet alle
+    # Sitzungen dieses Benutzers ab (ohne Sitzungstabelle).
+    key = hashlib.sha256(secret + user.password_hash.encode()).digest()
+    return hmac.new(key, f"{user.id}:{expires}".encode(), hashlib.sha256).hexdigest()
+
+
+def make_cookie(request: Request, user: User) -> str:
     expires = int(time.time()) + SESSION_SECONDS
-    return f"{expires}.{_sign(_secret(request), password, expires)}"
+    return f"{user.id}.{expires}.{_sign(_secret(request), user, expires)}"
 
 
-def valid_cookie(request: Request, password: str) -> bool:
-    raw = request.cookies.get(COOKIE, "")
-    stamp, _, signature = raw.partition(".")
-    if not stamp.isdigit() or int(stamp) < time.time():
-        return False
-    return hmac.compare_digest(signature, _sign(_secret(request), password, int(stamp)))
+def _user_from_cookie(request: Request, session: Session) -> User | None:
+    user_id, _, rest = request.cookies.get(COOKIE, "").partition(".")
+    stamp, _, signature = rest.partition(".")
+    if not (user_id.isdigit() and stamp.isdigit()) or int(stamp) < time.time():
+        return None
+    user = session.get(User, int(user_id))
+    if user is None or user.status != "active":
+        return None
+    if not hmac.compare_digest(signature, _sign(_secret(request), user, int(stamp))):
+        return None
+    return user
 
 
-def password_ok(supplied: str, expected: str) -> bool:
-    return bool(expected) and hmac.compare_digest(supplied.encode(), expected.encode())
+def _bearer(request: Request) -> str:
+    header = request.headers.get("authorization", "")
+    return header[7:].strip() if header.lower().startswith("bearer ") else ""
 
 
 def _bearer_ok(request: Request, token: str) -> bool:
-    header = request.headers.get("authorization", "")
-    return bool(token) and header.lower().startswith("bearer ") and hmac.compare_digest(
-        header[7:].encode(), token.encode()
-    )
+    supplied = _bearer(request)
+    return bool(token) and bool(supplied) and hmac.compare_digest(supplied.encode(), token.encode())
+
+
+def identify(request: Request) -> Identity | None:
+    """Benutzer der Sitzung bzw. Besitzer des Client-Tokens; None, wenn beides fehlt/ungültig."""
+    with request.app.state.db.session() as session:
+        user = _user_from_cookie(request, session)
+        if user is not None:
+            return Identity(user.id, user.nickname, user.is_master)
+        client = users.find_client_by_token(session, _bearer(request))
+        if client is not None:
+            owner = client.user
+            return Identity(owner.id, owner.nickname, owner.is_master, client.id)
+    return None
 
 
 class LoginThrottle:
@@ -116,23 +148,22 @@ def is_secure(request: Request) -> bool:
     return request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
 
 
-def set_session(request: Request, response: Response, password: str) -> None:
+def set_session(request: Request, response: Response, user: User) -> None:
     response.set_cookie(
-        COOKIE, make_cookie(request, password), max_age=SESSION_SECONDS, httponly=True,
+        COOKIE, make_cookie(request, user), max_age=SESSION_SECONDS, httponly=True,
         samesite="lax", secure=is_secure(request),
     )
 
 
 async def auth_middleware(request: Request, call_next):
-    server = request.app.state.config.server
+    request.state.identity = None
+    if not request.app.state.auth_enabled:
+        return await call_next(request)
     path = request.url.path
-    if (
-        not server.password
-        or path in OPEN_EXACT
-        or path.startswith(OPEN_PREFIX)
-        or valid_cookie(request, server.password)
-        or _bearer_ok(request, server.api_token)
-    ):
+    if path in OPEN_EXACT or path.startswith(OPEN_PREFIX):
+        return await call_next(request)
+    request.state.identity = identify(request)
+    if request.state.identity or _bearer_ok(request, request.app.state.config.server.api_token):
         return await call_next(request)
     if path.startswith("/api/"):
         return JSONResponse({"detail": "Anmeldung erforderlich"}, status_code=401)

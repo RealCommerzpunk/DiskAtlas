@@ -29,6 +29,9 @@
       <a href="/scan" class="{{ 'active' if path.startswith('/scan') }}">Scannen</a>
       <a href="/labels" class="{{ 'active' if path.startswith('/labels') }}">Labels</a>
       <a href="/docs">API</a>
+      {% set who = identity(request) %}
+      {% if who and who.is_master %}<a href="/admin/users" class="{{ 'active' if path.startswith('/admin') }}">Verwaltung</a>{% endif %}
+      {% if who %}<a href="/account" class="{{ 'active' if path.startswith('/account') }}" title="Konto von {{ who.nickname }}">Konto</a>{% endif %}
       {% if auth_enabled(request) %}<form method="post" action="/logout" class="logout-form"><button class="link" title="Abmelden">Abmelden</button></form>{% endif %}
     </nav>
   </header>
