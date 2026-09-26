@@ -4,7 +4,9 @@ FROM python:3.12-slim
 
 LABEL org.opencontainers.image.source="https://github.com/RealCommerzpunk/DiskAtlas" \
       org.opencontainers.image.description="DiskAtlas – Festplatteninventar (Weboberfläche, API, Datenbank)" \
-      org.opencontainers.image.licenses="NOASSERTION"
+      org.opencontainers.image.licenses="MIT" \
+      net.unraid.docker.icon="https://raw.githubusercontent.com/RealCommerzpunk/DiskAtlas/main/src/diskatlas/web/static/icon_256.png" \
+      net.unraid.docker.webui="http://[IP]:[PORT:8765]/"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

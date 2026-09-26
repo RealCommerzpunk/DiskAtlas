@@ -8,7 +8,8 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/RealCommerzpunk/DiskAtlas/issues</Support>
   <Project>https://github.com/RealCommerzpunk/DiskAtlas</Project>
-  <Overview>Festplatteninventar: Weboberfläche, API und Datenbank. Die Festplatten werden von Agenten auf deinen Rechnern gemeldet (diskatlas agent). Mit installierbarer Web-App fürs iPhone.</Overview>
+  <Icon>https://raw.githubusercontent.com/RealCommerzpunk/DiskAtlas/main/src/diskatlas/web/static/icon_256.png</Icon>
+  <Overview>Festplatteninventar: Weboberfläche, API und Datenbank. Die Festplatten meldet das Agent-Programm auf deinen Rechnern (Windows/Linux, siehe Releases). Mit installierbarer Web-App fürs iPhone.</Overview>
   <Category>Tools: Status:Stable</Category>
   <WebUI>http://[IP]:[PORT:8765]/</WebUI>
   <ExtraParams>--health-start-period=20s</ExtraParams>
