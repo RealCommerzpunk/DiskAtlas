@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from diskatlas import __version__
 from diskatlas.config import Config, default_config_path, default_data_dir, load_config
-from diskatlas.runtime import make_agent, redact_url, start_local_server
+from diskatlas.runtime import make_agent, redact_url, start_local_server, window_icon
 
 log = logging.getLogger("diskatlas.gui")
 
@@ -71,7 +71,7 @@ def run_window(config: Config) -> int:
 
     session = start_session(config)
     log.info("Öffne Fenster: %s", session.url)
-    icon = _icon_path()
+    icon = window_icon()
     window = webview.create_window(
         WINDOW_TITLE, session.url, width=1300, height=860, min_size=(900, 600),
     )
@@ -82,13 +82,6 @@ def run_window(config: Config) -> int:
     storage.mkdir(parents=True, exist_ok=True)
     webview.start(private_mode=False, storage_path=str(storage), **start_kwargs)
     return 0
-
-
-def _icon_path():
-    from pathlib import Path
-
-    icon = Path(__file__).parent / "web" / "static" / "icon_256.png"
-    return icon if icon.is_file() else None
 
 
 def build_parser() -> argparse.ArgumentParser:

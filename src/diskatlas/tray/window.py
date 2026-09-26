@@ -10,6 +10,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from diskatlas.probe.smart import bundled_smartctl
+from diskatlas.runtime import window_icon
 from diskatlas.tray import autostart, settings
 from diskatlas.tray.status import age_text, read_status
 
@@ -226,7 +227,7 @@ def run_settings_window(config_path: Path) -> int:
         width=560, height=760, min_size=(460, 520),
     )
     window.events.shown += lambda: log.info("Einstellungsfenster angezeigt")
-    icon = Path(__file__).resolve().parent.parent / "web" / "static" / "icon_256.png"
-    webview.start(icon=str(icon) if icon.is_file() else None)
+    icon = window_icon()
+    webview.start(icon=str(icon) if icon else None)
     log.info("Einstellungsfenster geschlossen")
     return 0

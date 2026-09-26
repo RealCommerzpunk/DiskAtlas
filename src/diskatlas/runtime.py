@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import logging
 import socket
+import sys
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
-from diskatlas.config import Config
+from diskatlas.config import Config, default_data_dir
 
 log = logging.getLogger("diskatlas")
 
@@ -96,3 +98,28 @@ def redact_url(url: str) -> str:
     from sqlalchemy.engine import make_url
 
     return make_url(url).render_as_string(hide_password=True)
+
+
+def window_icon() -> Path | None:
+    """Programmsymbol für pywebview-Fenster.
+
+    Unter Windows verlangt WinForms eine .ico-Datei (bei einer PNG stürzt der Prozess mit einem
+    .NET-Fehler ab); sie wird einmalig aus der PNG erzeugt. Ohne Pillow: kein eigenes Symbol.
+    """
+    png = Path(__file__).parent / "web" / "static" / "icon_256.png"
+    if not png.is_file():
+        return None
+    if sys.platform != "win32":
+        return png
+    ico = default_data_dir() / "diskatlas.ico"
+    if not ico.is_file():
+        try:
+            from PIL import Image
+
+            ico.parent.mkdir(parents=True, exist_ok=True)
+            sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (256, 256)]
+            Image.open(png).save(ico, format="ICO", sizes=sizes)
+        except (ImportError, OSError):
+            log.warning("Fenstersymbol (.ico) konnte nicht erzeugt werden", exc_info=True)
+            return None
+    return ico

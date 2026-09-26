@@ -50,6 +50,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ### Behoben
 - Lokale Weboberfläche startete im Windows-Programm ohne Konsole nicht (uvicorn richtete eigenes
   Logging auf das fehlende `stdout` ein); sie protokolliert jetzt in die Datei des Programms.
+- Windows: Einstellungsfenster (und `diskatlas-gui`) stürzten beim Öffnen ab, weil WinForms als
+  Fenstersymbol nur `.ico` akzeptiert (.NET-Fehler `0xE0434352` ohne Meldung). Das Symbol wird
+  jetzt einmalig als `.ico` erzeugt.
 
 ### Geändert
 - Linux-Programmdatei nutzt GTK, AppIndicator und WebKit des Systems statt eigener Kopien:

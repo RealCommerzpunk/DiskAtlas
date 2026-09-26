@@ -390,3 +390,19 @@ def test_settings_api_state(tmp_path):
     settings.save(path, settings.validate({"server_url": ""}))
     state = SettingsApi(path).get_state()
     assert state["configured"] is True and state["values"]["server_url"] == ""
+
+
+def test_window_icon_is_ico_on_windows(tmp_path, monkeypatch):
+    from PIL import Image
+
+    from diskatlas import runtime
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    if sys.platform != "win32":
+        assert runtime.window_icon().suffix == ".png"  # Linux: PNG direkt
+    monkeypatch.setattr(sys, "platform", "win32")
+    icon = runtime.window_icon()
+    assert icon == tmp_path / "diskatlas" / "diskatlas.ico"
+    with Image.open(icon) as image:
+        assert image.format == "ICO"
+    assert runtime.window_icon() == icon  # wird nur einmal erzeugt
