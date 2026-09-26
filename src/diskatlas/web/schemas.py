@@ -77,6 +77,7 @@ class DiskOut(ORMModel):
     is_connected: bool
     is_system: bool
     last_host: str | None
+    last_client_label: str | None  # „Benutzer / Client“, an dem die Platte zuletzt hing
     first_seen: datetime | None
     last_seen: datetime | None
     labels: list[LabelOut]

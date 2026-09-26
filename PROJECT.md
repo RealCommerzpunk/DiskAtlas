@@ -66,6 +66,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
 | Benutzer | Benutzerkonten mit Freischaltung durch den Master (Antrag unter `/register`), Anmeldung mit Name + Passwort, pro Benutzer beliebig viele Clients mit eigenem Token (Konto-Seite) | ✅ 0.5.0 |
+| Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ Unreleased |
 | Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Master), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ 0.5.0 |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
@@ -156,7 +157,7 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 
 | Tabelle | Inhalt | Schlüssel |
 |---|---|---|
-| `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben, `owner_user_id` (NULL = herrenlos) | `disk_key` (eindeutig) |
+| `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben, `owner_user_id` (NULL = herrenlos), `last_client_id` (Client, der sie zuletzt meldete) | `disk_key` (eindeutig) |
 | `host_states` | Heartbeat je Agenten-Rechner: belegte SATA-Ports (Grundlage der Schachtansicht) | `host` |
 | `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
 | `disk_shares` | Lesefreigabe einer Platte für einen Benutzer | (`disk_id`, `viewer_user_id`) |

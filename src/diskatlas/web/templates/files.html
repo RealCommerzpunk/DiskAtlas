@@ -15,6 +15,12 @@
     <option value="">Jedes Label</option>
     {% for lab in labels %}<option value="{{ lab.id }}" {{ 'selected' if f.label == lab.id|string }}>{{ lab.category ~ ': ' if lab.category }}{{ lab.name }}</option>{% endfor %}
   </select>
+  {% if client_options %}
+  <select name="client" aria-label="Client">
+    <option value="">Jeder Client</option>
+    {% for c in client_options %}<option value="{{ c.id }}" {{ 'selected' if f.client == c.id }}>{{ c.label }}</option>{% endfor %}
+  </select>
+  {% endif %}
   <input name="min_mb" value="{{ f.min_mb }}" placeholder="min. MB" size="7" inputmode="decimal">
   <input type="hidden" name="sort" value="{{ f.sort }}">
   {% if f.desc %}<input type="hidden" name="desc" value="true">{% endif %}

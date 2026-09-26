@@ -100,6 +100,8 @@ def upsert_disk(
     disk.last_seen = now
     disk.last_host = host
     disk.last_device = info.device
+    if client is not None:
+        disk.last_client_id = client.id
 
     if info.smart is not None:
         apply_smart(session, disk, info.smart, now)
@@ -223,7 +225,7 @@ def apply_smart(session: Session, disk: Disk, smart: SmartInfo, now: datetime) -
 
 def mark_connected(
     session: Session, host: str, disk_keys: Iterable[str], now: datetime | None = None,
-    user_id: int | None = None,
+    user_id: int | None = None, client_id: int | None = None,
 ) -> None:
     """Heartbeat eines Agenten: genau diese Festplatten hängen gerade an `host`.
 
@@ -242,7 +244,10 @@ def mark_connected(
         here = update(Disk).where(Disk.disk_key.in_(keys))
         if user_id is not None:
             here = here.where(Disk.owner_user_id == user_id)
-        session.execute(here.values(is_connected=True, last_seen=now, last_host=host))
+        values = {"is_connected": True, "last_seen": now, "last_host": host}
+        if client_id is not None:
+            values["last_client_id"] = client_id
+        session.execute(here.values(**values))
 
 
 def get_volume(

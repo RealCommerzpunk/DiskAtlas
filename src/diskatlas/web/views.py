@@ -160,6 +160,7 @@ def dashboard(
     label: str = "",
     fs: str = "",
     usage: str = "",
+    client: str = "",
     group: str = "none",
     sort: str = "name",
     desc: bool = False,
@@ -171,8 +172,10 @@ def dashboard(
         d for d in queries.load_disks(session, authz.visible_ids(viewer)) if d.id not in excluded
     ]
     flt = queries.DiskFilter(
-        q=q, health=health, connected=connected, label_id=_int_or_none(label), fs=fs, usage=usage
+        q=q, health=health, connected=connected, label_id=_int_or_none(label), fs=fs, usage=usage,
+        client=client,
     )
+    client_opts = queries.client_options(session, authz.visible_ids(viewer))
     bays = _bays(session, viewer)
     in_bay = {b.disk.id for b in bays or [] if b.disk}  # stehen als Schachtzeilen oben
     disks = queries.sort_disks(
@@ -191,8 +194,13 @@ def dashboard(
             "labels": [lab for lab, _ in queries.list_labels(session, viewer)],
             "fs_options": queries.known_fs_types(all_disks),
             "NO_FS": queries.NO_FS,
+            "client_options": client_opts,
+            "group_options": {
+                k: v for k, v in queries.GROUP_OPTIONS.items() if k != "client" or client_opts
+            },
             "f": {"q": q, "health": health, "connected": connected, "label": label,
-                  "fs": fs, "usage": usage, "group": group, "sort": sort, "desc": desc},
+                  "fs": fs, "usage": usage, "client": client, "group": group, "sort": sort,
+                  "desc": desc},
         },
     )
 
@@ -455,6 +463,7 @@ def files(
     disk: str = "",
     label: str = "",
     min_mb: str = "",
+    client: str = "",
     sort: str = "name",
     desc: bool = False,
     page: int = 1,
@@ -467,8 +476,8 @@ def files(
     with contextlib.suppress(ValueError):
         min_mb_value = float(min_mb.replace(",", ".")) if min_mb else None
     params = {"q": q, "ext": ext, "disk": disk, "label": label, "min_mb": min_mb,
-              "sort": sort, "desc": desc}
-    has_query = any([q, ext, disk, label, min_mb])
+              "client": client, "sort": sort, "desc": desc}
+    has_query = any([q, ext, disk, label, min_mb, client])
     rows, total = [], 0
     if has_query:
         rows, total = queries.search_files(
@@ -477,7 +486,7 @@ def files(
                 q=q, extension=ext, disk_id=_int_or_none(disk), label_id=_int_or_none(label),
                 min_size=int(min_mb_value * 1_000_000) if min_mb_value else None,
                 sort=sort, descending=desc, limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE,
-                exclude_disk_ids=excluded, visible=authz.visible_ids(viewer),
+                exclude_disk_ids=excluded, visible=authz.visible_ids(viewer), client=client,
             ),
         )
     pages = max((total + PAGE_SIZE - 1) // PAGE_SIZE, 1)
@@ -504,6 +513,7 @@ def files(
                 key=lambda d: d.display_name.lower(),
             ),
             "labels": [lab for lab, _ in queries.list_labels(session, viewer)],
+            "client_options": queries.client_options(session, authz.visible_ids(viewer)),
         },
     )
 
