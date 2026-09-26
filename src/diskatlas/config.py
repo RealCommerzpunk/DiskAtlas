@@ -60,6 +60,9 @@ class AgentConfig:
     server_url: str = ""
     api_token: str = ""
     host_name: str = ""
+    # Tray-Programm: Farbe des Symbols im Infobereich – "auto" (Windows: nach Taskleiste),
+    # "light" (für dunkle Leisten) oder "dark" (für helle Leisten).
+    tray_icon_color: str = "auto"
 
 
 @dataclass

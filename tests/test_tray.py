@@ -276,10 +276,13 @@ def test_autostart_linux(tmp_path, monkeypatch):
     from diskatlas.tray import autostart
 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     assert not autostart.is_enabled()
     autostart.set_enabled(True)
     entry = (tmp_path / "autostart" / autostart.DESKTOP_FILE).read_text(encoding="utf-8")
     assert "Exec=" in entry and "diskatlas.tray.app" in entry
+    icon = tmp_path / "data" / "diskatlas" / "diskatlas.png"
+    assert f"Icon={icon}" in entry and icon.is_file()
     assert autostart.is_enabled()
     autostart.set_enabled(False)
     autostart.set_enabled(False)  # zweimal ausschalten ist kein Fehler
@@ -295,3 +298,139 @@ def test_autostart_frozen_uses_executable(monkeypatch):
     assert autostart.launch_command() == ["/opt/DiskAtlas Agent/diskatlas-agent"]
     assert settings_command(Path("/x/config.toml"))[:2] == [
         "/opt/DiskAtlas Agent/diskatlas-agent", "--settings"]
+
+
+# ------------------------------------------------------------------ Lokaler Betrieb
+def test_controller_local_mode_runs_web_ui(tmp_path, monkeypatch):
+    monkeypatch.delenv("DISKATLAS_SERVER_URL", raising=False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+
+    class IdleAgent:
+        host = "pc"
+
+        def __init__(self):
+            self.sink = _FakeSink()
+            self.stopped = threading.Event()
+
+        def watch(self):
+            self.sink.report_connected(self.host, ["a", "b"])
+            self.stopped.wait(5)
+
+        def stop(self):
+            self.stopped.set()
+
+    monkeypatch.setattr(ctl, "make_agent", lambda config: IdleAgent())
+    path = tmp_path / "config.toml"
+    db_url = f"sqlite:///{(tmp_path / 'local.db').as_posix()}"
+    path.write_text(f'database_url = "{db_url}"\n[agent]\nserver_url = ""\n[server]\nport = 0\n',
+                    encoding="utf-8")
+    controller = ctl.AgentController(path)
+    controller.start()
+    try:
+        deadline = time.time() + 5
+        while controller.status().state != "online" and time.time() < deadline:
+            time.sleep(0.02)
+        status = controller.status()
+        assert (status.mode, status.state, status.disks) == ("local", "online", 2)
+        assert status.label == "Läuft lokal"
+        assert status.server_url.startswith("http://127.0.0.1:")
+        response = httpx.get(f"{status.server_url}/api/v1/health", timeout=5)
+        assert response.status_code == 200
+        server_thread = controller._local.thread
+    finally:
+        controller.stop()
+    assert not server_thread.is_alive()
+    assert controller.status().state == "stopped"
+
+
+def test_controller_local_mode_start_failure(tmp_path, monkeypatch):
+    monkeypatch.delenv("DISKATLAS_SERVER_URL", raising=False)
+
+    def broken(config):
+        raise RuntimeError("Port kaputt")
+
+    monkeypatch.setattr(ctl, "start_local_server", broken)
+    path = tmp_path / "config.toml"
+    path.write_text("[agent]\nindex_files = false\n", encoding="utf-8")
+    controller = ctl.AgentController(path)
+    controller.start()
+    status = controller.status()
+    assert (status.mode, status.state) == ("local", "error") and "Port kaputt" in status.detail
+
+
+def test_status_mode_survives_file_roundtrip(tmp_path):
+    path = tmp_path / "s.json"
+    write_status(TrayStatus(state="online", mode="local", server_url="http://127.0.0.1:8765"),
+                 path)
+    status = read_status(path)
+    assert (status.mode, status.label) == ("local", "Läuft lokal")
+    assert TrayStatus(state="online").label == "Verbunden"
+
+
+# ------------------------------------------------------------------ smartctl / Fenster
+def test_find_smartctl_uses_bundled_copy_on_windows(tmp_path, monkeypatch):
+    from diskatlas.probe import smart
+
+    exe = tmp_path / "smartmontools" / "smartctl.exe"
+    exe.parent.mkdir()
+    exe.write_bytes(b"")
+    monkeypatch.setattr(smart, "WINDOWS_SMARTCTL", tmp_path / "nicht-installiert.exe")
+    assert smart.bundled_smartctl() is None  # ohne Programmdatei (_MEIPASS) nichts
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    monkeypatch.setattr(smart.shutil, "which", lambda name: None)
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert smart.find_smartctl() == str(exe)
+
+
+def test_settings_api_state(tmp_path):
+    from diskatlas.tray.window import SettingsApi
+
+    path = tmp_path / "config.toml"
+    state = SettingsApi(path).get_state()
+    assert state["configured"] is False and state["smartctl_bundled"] is False
+    if sys.platform != "win32":
+        assert state["admin"] is None
+    settings.save(path, settings.validate({"server_url": ""}))
+    state = SettingsApi(path).get_state()
+    assert state["configured"] is True and state["values"]["server_url"] == ""
+
+
+def test_window_icon_matches_platform(monkeypatch):
+    from diskatlas import runtime
+
+    assert runtime.window_icon().name == "icon_256.png" or sys.platform == "win32"
+    monkeypatch.setattr(sys, "platform", "win32")
+    icon = runtime.window_icon()
+    assert icon.name == "favicon.ico" and icon.read_bytes()[:4] == b"\x00\x00\x01\x00"
+
+
+def test_tray_icon_rendering():
+    pytest.importorskip("PIL")
+    from diskatlas.tray import icon
+
+    for size in (*icon.GLYPH_SIZES, 18, 96):  # vorhandene Größen und umgerechnete
+        image = icon.render_icon("online", "light", size)
+        assert image.size == (size, size) and image.mode == "RGBA"
+    light = icon.render_icon("offline", "light", 32)
+    dark = icon.render_icon("offline", "dark", 32)
+    corner = (32 - 6, 32 - 6)  # Statuspunkt unten rechts: rot, in beiden Varianten
+    assert light.getpixel(corner)[:3] == dark.getpixel(corner)[:3] == icon.DEFAULT_DOT
+    # Glyphe: hell bzw. dunkel, Hintergrund transparent
+    opaque = [p for p in light.getdata() if p[3] == 255 and p[:3] != icon.DEFAULT_DOT]
+    assert opaque and all(p[:3] == icon.GLYPH_COLORS["light"] for p in opaque)
+    assert light.getpixel((0, 31))[3] == 0 or light.getpixel((0, 0))[3] == 0
+    # Linux: Glyphe mit Rand (sichtbar so groß wie die 16-px-Systemsymbole im 24er-Feld)
+    padded = icon.render_icon("online", "light", 48, 36)
+    left, top, right, bottom = padded.getchannel("A").getbbox()
+    assert left >= 6 and top >= 6 and right <= 42 and bottom <= 42
+
+
+def test_tray_icon_color_setting(monkeypatch):
+    from diskatlas.tray import icon
+
+    assert icon.resolve_color("dark") == "dark" and icon.resolve_color("light") == "light"
+    monkeypatch.setattr(icon, "taskbar_is_light", lambda: True)
+    assert icon.resolve_color("auto") == "dark"
+    assert settings.validate({"tray_icon_color": "dark"}) == {"tray_icon_color": "dark"}
+    with pytest.raises(ValueError, match="Farbe des Symbols"):
+        settings.validate({"tray_icon_color": "lila"})

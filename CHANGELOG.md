@@ -27,6 +27,51 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   `agent.yml`: baut die Programme für Windows (x64) und Linux (x86_64, Ubuntu 24.04/Mint 22) und
   hängt sie bei Versions-Tags an das Release.
 - Neue optionale Abhängigkeitsgruppe `tray` (pystray, Pillow, pywebview).
+- **Lokaler Betrieb im Agent-Programm**: Im Einstellungsfenster wählbar zwischen *Mit
+  DiskAtlas-Server verbinden* und *Nur dieser PC*. Lokal startet das Programm Weboberfläche und
+  SQLite-Datenbank selbst (`http://127.0.0.1:8765`, *Dashboard öffnen*); Status „Läuft lokal“.
+  Ohne Konfigurationsdatei gilt das Programm als nicht eingerichtet und fragt nach der Betriebsart.
+- Die Windows-Datei bringt **`smartctl.exe`** (smartmontools 7.5, GPL v2) mit; genutzt, wenn
+  kein installiertes smartctl gefunden wird. Lizenztext und Herkunft liegen bei und sind im
+  Einstellungsfenster verlinkt, der Quellcode wird bei jedem Release mitveröffentlicht
+  (`packaging/fetch_smartctl.py` lädt und prüft beides per SHA-256).
+- Einstellungsfenster weist unter Windows darauf hin, wenn SMART mangels Administratorrechten
+  nicht lesbar ist; neue Anleitung [docs/AGENT.md](docs/AGENT.md) (Betriebsarten, geplante Aufgabe
+  mit Adminrechten, SmartScreen, Protokolle).
+- Tray-Menü *Protokolle anzeigen*; das Einstellungsfenster schreibt eigene Protokolle
+  (`agent-settings.log`), und das Tray meldet per Benachrichtigung, wenn es sich nicht öffnen lässt.
+- **MIT-Lizenz** (`LICENSE`); Windows-Datei mit Metadaten (Produkt, Version, Copyright).
+- Signatur der Windows-Datei über **SignPath** vorbereitet: Schritt im Build (nur Versions-Tags,
+  aktiv sobald die Zugangsdaten hinterlegt sind), Richtlinie [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md),
+  Artefakt-Konfiguration `packaging/signpath/`. Anleitung zum Entfernen in docs/AGENT.md.
+- Build: GitHub-Release bekommt den CHANGELOG-Abschnitt der Version als Text
+  (`scripts/release_notes.py`).
+- Build: Starttest unter Windows (lokale Oberfläche muss antworten, Einstellungsfenster offen
+  bleiben; Protokolle im Build-Log, Bildschirmfoto als Artefakt).
+
+### Behoben
+- Lokale Weboberfläche startete im Windows-Programm ohne Konsole nicht (uvicorn richtete eigenes
+  Logging auf das fehlende `stdout` ein); sie protokolliert jetzt in die Datei des Programms.
+- Windows: Einstellungsfenster (und `diskatlas-gui`) stürzten beim Öffnen ab, weil WinForms als
+  Fenstersymbol nur `.ico` akzeptiert (.NET-Fehler `0xE0434352` ohne Meldung). Das Symbol wird
+  jetzt einmalig als `.ico` erzeugt.
+
+### Geändert
+- **Neues Programmsymbol** (Festplatten-Glyphe), alle Dateien aus einer Quelle
+  `packaging/icons/hard-disk.svg` per `scripts/build_icons.py` (Inkscape) erzeugt: App-Symbol weiß
+  auf Akzentblau (Browser, iPhone, Web-App inkl. eigener „maskable“-Variante, Windows-ICO mit
+  jeder Größe einzeln gerendert, kleine Größen mit größerer Glyphe), PNG-Favicon als Rückfall.
+- **Tray-Symbol einfarbig wie die Systemsymbole** (Linux im Cinnamon-Grauton und sichtbar so groß
+  wie die 16-px-Systemsymbole, Windows weiß bzw. dunkel) mit Statuspunkt unten rechts; unter Windows passend zur Taskleiste hell/dunkel (auch
+  beim Umschalten) und in exakt der Systemgröße (DPI-bewusst, keine Unschärfe durch Skalieren).
+  Symbol von Streamline (CC BY 4.0), Nachweis in [THIRD_PARTY.md](THIRD_PARTY.md).
+  Neue Option `[agent] tray_icon_color` (`auto`/`light`/`dark`), im Einstellungsfenster unter
+  *Erweitert*. Autostart-Eintrag unter Linux zeigt jetzt das Programmsymbol.
+- Linux-Programmdatei nutzt GTK, AppIndicator und WebKit des Systems statt eigener Kopien:
+  **ca. 18 statt 55–70 MB**, und die Bibliotheken passen sicher zusammen (vorher: eigenes GTK,
+  aber System-WebKit). Unnötige Pakete (pygments, rich, cryptography, greenlet …) ausgeschlossen.
+- Der Start der lokalen Weboberfläche ist nach `runtime.start_local_server` gewandert
+  (gemeinsam für `diskatlas-gui` und Tray).
 
 ## [0.3.0] - 2026-09-26
 

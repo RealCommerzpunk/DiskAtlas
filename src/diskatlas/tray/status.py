@@ -35,9 +35,14 @@ class TrayStatus:
     last_ok: float | None = None
     updated_at: float = 0.0
     config_path: str = ""
+    # "server": sendet an einen DiskAtlas-Server; "local": Oberfläche und Datenbank laufen lokal
+    # (server_url ist dann die Adresse der lokalen Oberfläche).
+    mode: str = "server"
 
     @property
     def label(self) -> str:
+        if self.mode == "local" and self.state == "online":
+            return "Läuft lokal"
         return STATE_LABELS.get(self.state, self.state)
 
 
@@ -73,7 +78,7 @@ def read_status(path: Path | None = None, now: float | None = None) -> TrayStatu
         return stopped
     if (now if now is not None else time.time()) - status.updated_at > STALE_SECONDS:
         stopped.server_url, stopped.host = status.server_url, status.host
-        stopped.config_path = status.config_path
+        stopped.config_path, stopped.mode = status.config_path, status.mode
         return stopped
     return status
 

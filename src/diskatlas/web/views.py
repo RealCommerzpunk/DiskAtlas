@@ -432,7 +432,7 @@ def manifest():
     icons = [
         {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
         {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
-        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png",
+        {"src": "/static/icon-maskable-512.png", "sizes": "512x512", "type": "image/png",
          "purpose": "maskable"},
     ]
     body = {

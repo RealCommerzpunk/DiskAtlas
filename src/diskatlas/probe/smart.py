@@ -25,13 +25,24 @@ RC_PAST_BELOW_THRESHOLD = 0x20
 RC_SELFTEST_ERRORS = 0x80
 
 
+def bundled_smartctl() -> Path | None:
+    """smartctl.exe, das die Windows-Programmdatei des Agenten mitbringt (siehe packaging/)."""
+    base = getattr(sys, "_MEIPASS", None)
+    if sys.platform != "win32" or not base:
+        return None
+    path = Path(base) / "smartmontools" / "smartctl.exe"
+    return path if path.is_file() else None
+
+
 def find_smartctl(configured: str = "smartctl") -> str | None:
+    """Reihenfolge: eingestellter Pfad/PATH, installierte smartmontools, mitgeliefertes smartctl."""
     found = shutil.which(configured)
     if found:
         return found
     if sys.platform == "win32" and WINDOWS_SMARTCTL.is_file():
         return str(WINDOWS_SMARTCTL)
-    return None
+    bundled = bundled_smartctl()
+    return str(bundled) if bundled else None
 
 
 def read_smart(device: str, smartctl: str = "smartctl", use_sudo: bool = True) -> SmartInfo:

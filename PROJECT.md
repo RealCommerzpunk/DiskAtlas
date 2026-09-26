@@ -64,7 +64,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Verteilt | Agent → HTTP-Ingest → zentraler Server, Token-Schutz | ✅ 0.1.0 |
 | Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy` | ✅ 0.1.0 |
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
-| Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; fertige Datei für Windows/Linux (PyInstaller, GitHub Actions) | ✅ Unreleased (Windows ungetestet) |
+| Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ Unreleased (Windows in Erprobung) |
 | Sicherheit | Login für das Dashboard | ⏳ geplant |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
@@ -138,16 +138,17 @@ src/diskatlas/
     app.py, api.py, views.py, schemas.py, formatting.py, templates/, static/
   tray/               Agent als Tray-Programm
     app.py              Tray-Symbol + Menü (pystray), Einzelinstanz, Neustart bei geänderter Konfiguration
-    controller.py       Agent im Hintergrund-Thread, Verbindungsstatus aus den Sink-Aufrufen
+    controller.py       Agent (und lokal: Weboberfläche) im Hintergrund, Status aus den Sink-Aufrufen
     window.py           Einstellungsfenster (pywebview, eigener Prozess)
     settings.py         config.toml lesen/prüfen/schreiben, Verbindungstest
     status.py           Statusdatei zwischen Tray und Fenster
+    icon.py, icons/     Tray-Symbol: Glyphen-Masken je Größe, Farbe hell/dunkel, Statuspunkt
     autostart.py        Start bei Anmeldung (XDG-Autostart / Run-Schlüssel)
   tools/dbcopy.py     Umzug zwischen Datenbanken
 tests/                pytest; Fixtures mit echten lsblk/smartctl/PowerShell-Ausgaben
 deploy/               systemd-Dienst, Windows-Autostart
-packaging/            Icons, PyInstaller-Bauanleitung des Agent-Programms
-scripts/              Versionierung, sudoers-Helfer für smartctl
+packaging/            Icons, PyInstaller-Bauanleitung des Agent-Programms, smartctl-Download (fetch_smartctl.py)
+scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeugen (build_icons.py)
 ```
 
 ## 4. Datenmodell
@@ -196,6 +197,8 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-23 | **Auto-Einhängen standardmäßig an, über udisks2 (schreibbar wie im Dateimanager)** | Ohne Einhängen sind Belegung und Dateiindex nicht erfassbar. Schreibgeschützt einhängen wurde verworfen, weil Daten zwischen Platten verschoben werden sollen. Abschaltbar mit `auto_mount = false`. |
 | 2026-09-23 | **Hersteller/Serie aus smartmontools-`drivedb.h` statt eigener Datenpflege** | Die Liste wird von der Community gepflegt und liegt mit smartmontools bereits auf dem Rechner; `sudo update-smart-drivedb` aktualisiert sie. Ergänzt um eine kleine Präfix-Tabelle für den Hersteller. Grenzen: Familien sind teils technisch (Enterprise-Reihen) oder fehlen (neue Modelle) – dann bleibt die Serie leer. |
 | 2026-09-26 | **Agent-Programm: pystray + pywebview in einem PyInstaller-Paket, Einstellungsfenster als eigener Prozess, Austausch über Statusdatei** | Beide Bibliotheken laufen unter Windows und Linux; pywebview ist schon im Projekt (GUI). Tray- und Fensterbibliothek wollen jeweils die Hauptschleife (unter Linux beide GTK, unter Windows Win32 vs. WinForms), deshalb getrennte Prozesse. Das Fenster schreibt nur `config.toml`; das Tray erkennt die Änderung und startet den Agenten neu. Der Verbindungsstatus wird aus den ohnehin stattfindenden Sink-Aufrufen abgeleitet, ohne zusätzlichen Netzverkehr. Ein Programm ohne Python-Installation ist für Windows-Nutzer die einzige zumutbare Verteilung. |
+| 2026-09-26 | **Agent bleibt in Python; ein Programm für beide Betriebsarten; Linux nutzt System-GTK; smartctl.exe wird mitgeliefert** | Ein Neubau nur des Agenten in Go hätte kleinere Dateien gebracht, der lokale Betrieb bräuchte dann aber zusätzlich den Python-Server (doppelte Pflege, Größenvorteil weg). Oberfläche und DB-Bibliotheken kosten im Paket nur wenige MB. Unter Linux war das mitgelieferte GTK der Großteil der Datei (Symbole, ICU) und passte nicht sicher zum ohnehin vom System geladenen WebKit. smartctl.exe unverändert aus dem offiziellen Installer; GPL-Pflichten: Lizenz im Paket, Quellcode derselben Version neben der Datei im Release. Adminrechte für SMART richtet der Nutzer selbst per Aufgabenplanung ein (Anleitung). |
+| 2026-09-26 | **MIT-Lizenz; Windows-Signatur über SignPath Foundation** | Kostenlose Signatur für Open-Source-Projekte, Signieren direkt aus GitHub Actions mit manueller Freigabe je Release. Voraussetzung ist eine OSI-Lizenz; MIT ist die einfachste und verträgt sich mit dem mitgelieferten (eigenständigen, GPL-lizenzierten) smartctl. Signiert wird nur die eigene .exe, smartctl bleibt Upstream-Binärdatei. |
 | 2026-09-26 | **Server führt nichts auf Platten aus; Agenten holen Aufträge ab (Polling)** | Der Server läuft auf einem anderen Rechner (Unraid) und darf keine Kommandos an Rechner „durchreichen“. Der Agent verbindet sich ausgehend (NAT/Firewall-freundlich), prüft jeden Auftrag gegen seinen eigenen Stand und ignoriert Gerätepfade aus dem Auftrag. Aufträge sind auf eine feste Liste (`rename_label`, `rescan`) beschränkt. |
 | 2026-09-26 | **Ein Passwort + signiertes Cookie statt Benutzerverwaltung; Server im Netz nur mit Passwort und Token** | Einzelnutzer-Heimnetz (Unraid, Tailscale). Kein Benutzerkonzept nötig; ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Das Passwort steckt in der Cookie-Signatur, ein Wechsel invalidiert alle Sitzungen. |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |
@@ -209,8 +212,9 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 - SMART braucht root: entweder `scripts/setup-smartctl-sudo.sh` (sudoers-Regel nur für
   smartctl) oder den Agenten als root starten.
 - Dateien werden nur auf **eingehängten** Volumes indiziert (Automount von Cinnamon genügt).
-- Agent-Programm `diskatlas-agent`: gebaut für Ubuntu 24.04 / Linux Mint 22, bringt GTK/WebKit
-  mit (ca. 70 MB). Tray-Symbol über AppIndicator (Cinnamon, KDE, XFCE; GNOME nur mit Erweiterung).
+- Agent-Programm `diskatlas-agent`: gebaut für Ubuntu 24.04 / Linux Mint 22 (ca. 18 MB). Nutzt
+  GTK 3, WebKitGTK 4.1 und AyatanaAppIndicator **des Systems** (nicht mitgeliefert). Tray-Symbol
+  über AppIndicator (Cinnamon, KDE, XFCE; GNOME nur mit Erweiterung).
 
 **Windows 10/11**
 - Benötigt: Python 3.11+, smartmontools für Windows (`smartctl.exe`, wird auch unter
@@ -218,9 +222,12 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 - SMART braucht eine Administrator-Konsole bzw. die geplante Aufgabe aus
   `deploy/windows/install-autostart.ps1`.
 - Noch nicht auf echter Hardware getestet (nur Parser-Tests mit Beispieldaten).
-- Agent-Programm `DiskAtlas-Agent.exe`: braucht die WebView2-Laufzeit (bei Windows 10/11 meist
-  vorhanden). Es läuft ohne Administratorrechte, **SMART ist dann nicht lesbar**; dafür das
-  Programm einmalig „als Administrator ausführen“ oder die geplante Aufgabe nutzen.
+- Agent-Programm `DiskAtlas-Agent.exe` (ca. 30 MB): braucht die WebView2-Laufzeit (bei
+  Windows 10/11 meist vorhanden) und bringt `smartctl.exe` (smartmontools, GPL v2) mit; ein
+  installiertes smartmontools hat Vorrang. Ohne Administratorrechte ist **SMART nicht lesbar**;
+  Einrichtung einer geplanten Aufgabe mit höchsten Rechten: [docs/AGENT.md](docs/AGENT.md).
+  Noch nicht signiert (SmartScreen-Warnung beim ersten Start); Signatur über SignPath Foundation
+  vorbereitet ([docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)).
 
 **Docker / Unraid**
 - Container betreibt nur den Server. Scans erfolgen durch Agenten auf den Rechnern

@@ -64,19 +64,18 @@ Das Passwort schützt die Oberfläche zusätzlich; die Adresse ist nur im eigene
 ## 4. Agent auf dem PC einrichten
 
 **Am einfachsten: das fertige Programm.** Unter *Releases* auf der GitHub-Seite liegen
-`DiskAtlas-Agent-windows-x64.exe` und `diskatlas-agent-linux-x86_64` (Linux: nach dem Download
-`chmod +x diskatlas-agent-linux-x86_64`). Programm starten → rechts unten erscheint das
-DiskAtlas-Symbol, beim ersten Start öffnet sich das Einstellungsfenster:
+`DiskAtlas-Agent-windows-x64.exe` und `diskatlas-agent-linux-x86_64`. Programm starten → rechts
+unten erscheint das DiskAtlas-Symbol, beim ersten Start öffnet sich das Einstellungsfenster:
 
-1. **Server-Adresse** (`https://tower.tail1234.ts.net` oder `http://<unraid-ip>:8765`) und
+1. **Mit DiskAtlas-Server verbinden** wählen.
+2. **Server-Adresse** (`https://tower.tail1234.ts.net` oder `http://<unraid-ip>:8765`) und
    **API-Token** (derselbe wie im Container) eintragen.
-2. **Verbindung testen** → „Verbindung in Ordnung …“ → **Speichern**.
-3. Haken bei **Beim Anmelden automatisch starten** setzen.
+3. **Verbindung testen** → „Verbindung in Ordnung …“ → **Speichern**.
+4. Haken bei **Beim Anmelden automatisch starten** setzen (Windows mit SMART: stattdessen die
+   geplante Aufgabe aus [AGENT.md](AGENT.md)).
 
-Der Punkt am Symbol zeigt den Zustand: grün verbunden, gelb wartend/nicht eingerichtet, rot
-gestört. Ein Klick aufs Symbol öffnet das Menü (Einstellungen, Dashboard, Beenden).
-
-Windows: Ohne Administratorrechte kann der Agent SMART nicht lesen. Die übrigen Daten kommen trotzdem an.
+Alles Weitere (Adminrechte für SMART unter Windows, SmartScreen, Protokolle, Betrieb ganz ohne
+Server): **[AGENT.md](AGENT.md)**.
 
 **Aus dem Quellcode (Linux):**
 

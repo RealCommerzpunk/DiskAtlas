@@ -27,6 +27,7 @@
 # server_url = "http://unraid.local:8765"   # oder https://<name>.<tailnet>.ts.net
 # api_token = "gleiches-token-wie-auf-dem-server"
 # host_name = ""                  # Anzeigename dieses Rechners (Standard: Hostname)
+# tray_icon_color = "auto"        # Tray-Programm: Symbolfarbe "auto", "light" oder "dark"
 
 [server]
 # host = "127.0.0.1"              # "0.0.0.0" für Zugriff aus dem Netzwerk
