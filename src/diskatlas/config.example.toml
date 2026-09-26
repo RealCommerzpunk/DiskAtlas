@@ -17,6 +17,8 @@
 # smart_interval_minutes = 60     # SMART-Werte angeschlossener Platten auffrischen
 # rescan_interval_hours = 24      # Dateiindex angeschlossener Platten erneuern
 # change_settle_seconds = 30      # Neuindex nach Datenänderung (belegter Platz), sobald so lange Ruhe ist; 0 = aus
+# change_min_bytes = 50000000     # ... aber nur bei mindestens so viel Änderung (Protokolle/Caches lösen nichts aus)
+# change_min_interval_minutes = 10   # ... und höchstens so oft (Systemvolumes lösen nie aus, dort gilt rescan_interval_hours)
 # index_files = true              # Dateien indizieren
 # index_system_volumes = false    # auch "/" bzw. "C:\" indizieren
 # auto_mount = true               # Linux: nicht eingehängte Dateisysteme automatisch einhängen (udisks2)

@@ -50,6 +50,11 @@ class AgentConfig:
     # Neuindex, sobald sich die Belegung eines Volumes geändert hat und danach so lange stabil
     # blieb (Verschieben/Kopieren/Löschen von Daten). 0 = aus.
     change_settle_seconds: float = 30.0
+    # Ein Neuindex wegen Datenänderung braucht mindestens so viel Änderung an der Belegung
+    # (Byte) und mindestens so viele Minuten Abstand zum letzten Komplett-Scan. Systemvolumes
+    # lösen nie aus; dort gilt nur `rescan_interval_hours`.
+    change_min_bytes: int = 50_000_000
+    change_min_interval_minutes: float = 10.0
     index_files: bool = True
     index_system_volumes: bool = False
     # Linux: angeschlossene, nicht eingehängte Dateisysteme selbst einhängen (udisks2, wie der
