@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from diskatlas.config import default_data_dir
@@ -19,6 +19,11 @@ from diskatlas.services.hosts import HostSnapshot
 
 BAY_COUNT = 4
 SETTING_KEY = "bays"
+
+
+def setting_key(user_id: int | None) -> str:
+    """Die Schachtzuordnung gehört zum Rechner eines Benutzers (ohne Anmeldung: eine einzige)."""
+    return SETTING_KEY if user_id is None else f"{SETTING_KEY}:{user_id}"
 
 
 def default_bays_path() -> Path:
@@ -33,8 +38,8 @@ class BayConfig:
     reverse: bool = False  # True: Schacht 1 liegt unten (Anzeige von 4 nach 1)
 
 
-def load_config(session: Session) -> BayConfig:
-    row = session.get(Setting, SETTING_KEY)
+def load_config(session: Session, user_id: int | None = None) -> BayConfig:
+    row = session.get(Setting, setting_key(user_id))
     try:
         data = json.loads(row.value) if row else {}
     except ValueError:
@@ -48,7 +53,7 @@ def load_config(session: Session) -> BayConfig:
     )
 
 
-def save_config(session: Session, config: BayConfig) -> None:
+def save_config(session: Session, config: BayConfig, user_id: int | None = None) -> None:
     used = [p for p in config.ports if p]
     if len(used) != len(set(used)):
         raise ValueError("Ein Port darf nur einem Schacht zugeordnet sein.")
@@ -56,9 +61,9 @@ def save_config(session: Session, config: BayConfig) -> None:
         {"host": config.host, "ports": (config.ports + [None] * BAY_COUNT)[:BAY_COUNT],
          "reverse": config.reverse}
     )
-    row = session.get(Setting, SETTING_KEY)
+    row = session.get(Setting, setting_key(user_id))
     if row is None:
-        session.add(Setting(key=SETTING_KEY, value=value))
+        session.add(Setting(key=setting_key(user_id), value=value))
     else:
         row.value = value
 
@@ -87,13 +92,18 @@ class Bay:
     indexing: bool = False
 
 
-def build_bays(session: Session, config: BayConfig, snapshot: HostSnapshot | None) -> list[Bay]:
+def build_bays(
+    session: Session, config: BayConfig, snapshot: HostSnapshot | None,
+    visible: Select | None = None,
+) -> list[Bay]:
     """Schächte von unten nach oben nummeriert; die Anzeigereihenfolge regelt `config.reverse`."""
     live = snapshot.by_port() if snapshot else {}
     serials = {p.serial for p in live.values() if p.serial}
     by_serial: dict[str, Disk] = {}
     if serials:
         stmt = select(Disk).where(Disk.serial.in_(serials))
+        if visible is not None:
+            stmt = stmt.where(Disk.id.in_(visible))
         by_serial = {d.serial: d for d in session.scalars(stmt)}
     online = bool(snapshot and snapshot.is_online)
     bays = []

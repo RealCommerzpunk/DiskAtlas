@@ -12,6 +12,45 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Geändert (Achtung, bricht bestehende Einrichtungen)
+- **Platten gehören Benutzern** (Phase 3 der Mehrbenutzer-Umstellung, Migration `0005`).
+  Wer eine Platte zuerst über seinen Client meldet, ist ihr **Besitzer**. Jeder sieht nur die
+  eigenen Platten (samt Dateiliste, Doubletten, Suche, Statistik, Aktivität, Seriennummer-Suche,
+  Schächten) und die ihm **freigegebenen**; der **Master sieht alles**. Ändern, Labels, Löschen,
+  Bezeichnung auf dem Datenträger ändern und Freigeben darf nur der Besitzer (oder der Master) –
+  freigegebene Platten sind für andere immer nur lesbar (403). Fremde Platten erscheinen weder in
+  Listen noch per ID (404).
+  **Umstieg:** Alle **bestehenden Platten sind herrenlos** und nur für den Master sichtbar. Beim
+  ersten Anmelden erscheint unter *Verwaltung* der Abschnitt „Herrenlose Platten“: dort übergibst
+  du sie samt Labels einem Benutzer (oder einzeln auf der Plattenseite). Meldet ein Client eine
+  herrenlose Platte, gehört sie sofort ihm.
+- **Labels gehören dem Benutzer**, Namen sind je Besitzer eindeutig (zwei Benutzer dürfen beide
+  „Filme“ haben) und fremde Labels lassen sich weder sehen noch ändern oder anheften. Auch die
+  **Schachtzuordnung** ist je Benutzer, ebenso **Aufträge** an Agenten und **Rechnernamen**
+  (der erste meldende Benutzer besitzt einen Namen; gleiche Namen anderer Benutzer werden
+  verworfen – bei Kollision `host_name` in der Agent-Konfiguration ändern).
+
+### Hinzugefügt
+- **Freigaben je Platte**: auf der Plattenseite (*Besitz & Freigabe*) gibt der Besitzer sie
+  lesend für einzelne Benutzer frei und entzieht sie wieder. `GET /api/v1/users` liefert Namen
+  der freigeschalteten Benutzer und ihrer Clients (nie Passwörter oder Tokens) als Auswahl.
+- **Übernahmen**: Meldet der Client eines anderen Benutzers eine schon vergebene Platte, wird
+  **nichts verändert** (auch nicht SMART oder „angeschlossen“), sondern nur ein Antrag angelegt.
+  Der bisherige Besitzer (oder der Master) entscheidet unter *Übernahmen* (Hinweis im Menü). Bei
+  Zustimmung wechselt der Besitz; Name, Lagerort, Notizen, Labels, Freigaben und offene Aufträge
+  des früheren Besitzers entfallen. Ein abgelehnter Antrag wird 30 Tage nicht neu gestellt. Der
+  Agent meldet fremde Platten im Log und indiziert sie nicht.
+- **Schutz vor gefälschten Rechnernamen**: Der Ingest verändert nur Platten des eigenen Benutzers
+  (Verbindungsstatus, Dateiindex), holt nur eigene Aufträge ab und meldet Ergebnisse nur für
+  eigene Aufträge.
+
+### Behoben
+- **Datenverlust bei der Migration auf SQLite verhindert.** Für manche Änderungen baut SQLite eine
+  Tabelle neu auf; bei aktivem Fremdschlüsselschutz löschte das per `ON DELETE CASCADE` alle
+  abhängigen Zeilen (Volumes, Dateiindex, SMART-Verlauf, Labels-Zuordnung). Die Migration schaltet
+  den Schutz jetzt währenddessen ab und danach wieder ein; ein Test mit Daten in allen Tabellen
+  sichert das ab. (Aufgefallen beim Test von `0005` mit einer Kopie der echten Datenbank.)
+
+### Geändert (Achtung, bricht bestehende Einrichtungen)
 - **Agenten weisen sich mit dem Token ihres Clients aus** (Phase 2 der Mehrbenutzer-Umstellung).
   Der gemeinsame `DISKATLAS_API_TOKEN` des Servers entfällt: `/api/v1/ingest/*` akzeptiert nur noch
   Client-Tokens (keine Browser-Sitzung), und die übrige API akzeptiert sie als Alternative zur

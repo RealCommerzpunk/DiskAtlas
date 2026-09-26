@@ -66,7 +66,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
 | Benutzer | Benutzerkonten mit Freischaltung durch den Master (Antrag unter `/register`), Anmeldung mit Name + Passwort, pro Benutzer beliebig viele Clients mit eigenem Token (Konto-Seite) | ✅ Unreleased (Phase 1) |
-| Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer, Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung; Ingest mit Client-Token | ⏳ in Arbeit (Phase 2–3, siehe Changelog) |
+| Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Master), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ Unreleased (Phase 2–3) |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
 | Export | CSV/JSON-Export von Festplatten und Dateilisten | ⏳ geplant |
@@ -156,16 +156,18 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 
 | Tabelle | Inhalt | Schlüssel |
 |---|---|---|
-| `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben | `disk_key` (eindeutig) |
+| `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben, `owner_user_id` (NULL = herrenlos) | `disk_key` (eindeutig) |
 | `host_states` | Heartbeat je Agenten-Rechner: belegte SATA-Ports (Grundlage der Schachtansicht) | `host` |
 | `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
+| `disk_shares` | Lesefreigabe einer Platte für einen Benutzer | (`disk_id`, `viewer_user_id`) |
+| `disk_transfer_requests` | Übernahmeantrag (von/an Benutzer, Client, Status `pending`/`approved`/`rejected`) | `id` |
 | `users` | Benutzerkonten: Name (ohne Beachtung der Groß-/Kleinschreibung eindeutig), PBKDF2-Passwort-Hash, `is_master`, `status` (`pending` = Antrag, `active`) | `nickname` |
 | `clients` | Agent-Installation eines Benutzers, Token nur als SHA-256-Hash, `last_seen` | (`user_id`, `nickname`), `token_hash` |
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
 | `files` | Dateiindex (Pfad relativ zum Volume, Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
 | `smart_snapshots` | SMART-Verlauf inkl. Roh-JSON | `disk_id`, `taken_at` |
-| `labels` | Name (eindeutig), Kategorie, Farbe | `name` |
+| `labels` | Name (je Besitzer eindeutig), Kategorie, Farbe, `owner_user_id` | (`owner_user_id`, `name`) |
 | `disk_labels` | n:m-Zuordnung | (`disk_id`, `label_id`) |
 
 **Identität einer Festplatte (`disk_key`):** `sn:<SERIENNUMMER>` → sonst `wwn:<wwn>` → sonst
@@ -207,6 +209,11 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-26 | ~~Ein Passwort + signiertes Cookie statt Benutzerverwaltung~~ (ersetzt, s. u.); **Server im Netz nur mit Passwort und Token** | Ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Bleibt bestehen: `DISKATLAS_PASSWORD` ist Pflicht bei Betrieb im Netz. |
 | 2026-09-26 | **Benutzer mit Antrag und Master-Freischaltung; Clients mit eigenem Token** | Der Server soll über einen Reverse-Proxy im Internet erreichbar sein und mehrere Personen bedienen. `DISKATLAS_PASSWORD` legt nur noch den Master an (nur beim allerersten Start, danach zählt das Passwort in der Datenbank). Jeder darf einen Antrag stellen, aber erst der Master schaltet frei; abgelehnte Anträge werden gelöscht. |
 | 2026-09-26 | **Ingest nur mit Client-Token, nie mit Browser-Sitzung; kein gemeinsames Server-Token mehr** | Ein gemeinsames Token macht jeden Agenten zum Vollzugriff und lässt sich nicht einzeln widerrufen. Jetzt hat jeder Client ein eigenes Token (Widerruf = Client löschen) und handelt als sein Besitzer – Grundlage für Besitz und Berechtigungen je Platte. Ohne Anmeldung (lokaler Betrieb) gibt es keine Clients, der Ingest ist dort offen wie die übrige Oberfläche. Alte `[server] api_token`-Einträge in Konfigurationsdateien werden mit Warnung ignoriert. |
+| 2026-09-26 | **Fremde Clients ändern nie etwas an einer vergebenen Platte** (auch nicht SMART/„angeschlossen“; Abweichung vom ersten Entwurf, der das noch erlauben wollte) | `disk_key` und Rechnername sind frei fälschbar; sonst könnte ein Benutzer fremde Platten als „defekt“ oder „abgesteckt“ markieren oder deren Dateiindex überschreiben. Der Besitzer sieht stattdessen einen Übernahmeantrag. Aufträge, Rechnernamen und Verbindungsstatus sind deshalb ebenfalls an den Benutzer gebunden. |
+| 2026-09-26 | **Besitzwechsel nur mit Zustimmung, dabei entfallen die Angaben des Vorbesitzers** | Notizen, Lagerorte, Labels und Freigaben sind privat und sollen nicht mit der Platte wandern. |
+| 2026-09-26 | **Freigabe je Platte statt pauschal; Master sieht alles; Herrenloses nur der Master** | Vorgabe des Betreibers. Alt-Platten werden über *Verwaltung → Herrenlose Platten* dem gewünschten Benutzer übergeben. |
+| 2026-09-26 | **Labels und Schachtzuordnung je Benutzer** | Sonst würden Label-Namen zwischen Benutzern sichtbar und änderbar; ein globales `UNIQUE(name)` wich `UNIQUE(owner_user_id, name)`. |
+| 2026-09-26 | **SQLite-Migrationen laufen ohne Fremdschlüsselschutz** | Tabellen-Neuaufbau (DROP/RENAME) löscht sonst per CASCADE abhängige Daten; Regressionstest in `test_config_db.py`. **Jede künftige Migration mit Test an einer Datenbank-Kopie prüfen.** |
 | 2026-09-26 | **PBKDF2 aus der Standardbibliothek statt bcrypt/argon2** | Das Projekt hält die Abhängigkeiten bewusst klein (PyInstaller-Größe). 600 000 Runden SHA-256 mit Salt je Passwort (Wert steht im Hash, kann später erhöht werden). Client-Tokens sind zufällig und lang, dort genügt SHA-256. |
 | 2026-09-26 | **Sitzung pro Benutzer, Passwort-Hash in der Cookie-Signatur** | Passwortwechsel meldet alle Sitzungen dieses Benutzers ab, ohne Sitzungstabelle. Namen werden ohne Beachtung der Groß-/Kleinschreibung verglichen („Anna“ vs. „anna“ wären verwechselbar). |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |

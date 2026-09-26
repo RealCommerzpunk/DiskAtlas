@@ -60,8 +60,22 @@ class Database:
         """Bringt das Schema per Alembic auf den neuesten Stand."""
         from alembic import command
 
-        with self.engine.begin() as conn:
-            command.upgrade(alembic_config(conn), "head")
+        sqlite = self.engine.dialect.name == "sqlite"
+        with self.engine.connect() as conn:
+            if sqlite:
+                # SQLite baut Tabellen für manche Änderungen neu auf (DROP + RENAME). Bei aktivem
+                # Fremdschlüssel-Schutz würde das DROP per ON DELETE CASCADE die abhängigen Zeilen
+                # (Volumes, Dateiindex, SMART-Verlauf, Labels) mitlöschen. Der PRAGMA wirkt nur
+                # außerhalb einer Transaktion.
+                conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+                conn.commit()
+            try:
+                with conn.begin():
+                    command.upgrade(alembic_config(conn), "head")
+            finally:
+                if sqlite:
+                    conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+                    conn.commit()
         from diskatlas.services.ingest import backfill_identity
 
         with self.session() as session:

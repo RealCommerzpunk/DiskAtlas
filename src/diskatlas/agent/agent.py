@@ -110,7 +110,11 @@ class Agent:
             disk.smart = self.smart_reader(disk.smart_device or disk.device)
             if not disk.smart.available:
                 log.warning("SMART für %s nicht verfügbar: %s", disk.device, disk.smart.error)
-        self.sink.report_disk(self.host, disk)
+        if self.sink.report_disk(self.host, disk) is False:
+            log.warning(
+                "%s gehört einem anderen Benutzer des Servers. Übernahme beantragt – der "
+                "bisherige Besitzer muss zustimmen (Weboberfläche: Übernahmen).", disk.key)
+            return
         if not index_files:
             return
         for volume in disk.volumes:

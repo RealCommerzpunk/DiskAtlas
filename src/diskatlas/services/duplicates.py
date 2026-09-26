@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import Select, func, select, tuple_
 from sqlalchemy.orm import Session
 
 from diskatlas.db.models import Disk, FileEntry, Volume
@@ -27,6 +27,7 @@ class FileDupQuery:
     limit: int = 50
     offset: int = 0
     exclude_disk_ids: tuple[int, ...] = ()
+    visible: Select | None = None  # Unterabfrage der erlaubten Platten-IDs
 
 
 @dataclass
@@ -64,6 +65,7 @@ class FolderDupQuery:
     min_size: int = 0
     include_hidden: bool = False  # Ordner, deren Pfad eine Komponente ".xyz" enthält
     exclude_disk_ids: tuple[int, ...] = ()
+    visible: Select | None = None  # Unterabfrage der erlaubten Platten-IDs
 
 
 # ------------------------------------------------------------------ Dateien
@@ -79,6 +81,8 @@ def find_file_duplicates(
     )
     if q.exclude_disk_ids:
         base = base.where(Volume.disk_id.notin_(q.exclude_disk_ids))
+    if q.visible is not None:
+        base = base.where(Volume.disk_id.in_(q.visible))
     exts = [e.strip().lstrip(".").lower() for e in q.extension.replace(";", ",").split(",")]
     if exts := [e for e in exts if e]:
         base = base.where(FileEntry.extension.in_(exts))
@@ -109,6 +113,8 @@ def find_file_duplicates(
     )
     if q.exclude_disk_ids:
         members = members.where(Volume.disk_id.notin_(q.exclude_disk_ids))
+    if q.visible is not None:
+        members = members.where(Volume.disk_id.in_(q.visible))
     rows = session.execute(members)
     for entry, volume, disk in rows:
         groups[(entry.name.lower(), entry.size)].members.append((entry, volume, disk))
@@ -138,6 +144,8 @@ def find_folder_duplicates(
     )
     if q.exclude_disk_ids:
         stmt = stmt.where(Volume.disk_id.notin_(q.exclude_disk_ids))
+    if q.visible is not None:
+        stmt = stmt.where(Volume.disk_id.in_(q.visible))
     for volume_id, path, size in session.execute(stmt):
         parts = path.split("/")
         size = size or 0

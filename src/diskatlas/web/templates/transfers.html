@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Übernahmen{% endblock %}
+{% block content %}
+<h1>Übernahmen</h1>
+<p class="muted">Meldet der Agent eines anderen Benutzers eine Platte, die dir gehört, wird sie nicht verändert, sondern nur ein Antrag angelegt. Stimmst du zu, geht die Platte an den Antragsteller; deine Namen, Lagerorte, Notizen, Labels und Freigaben dazu bleiben nicht erhalten.</p>
+{% if msg %}<p class="notice ok" role="status">{{ msg }}</p>{% endif %}
+
+<section class="card">
+  <h2>Anträge an dich{% if incoming %} ({{ incoming | length }}){% endif %}</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Platte</th><th>Von</th><th>Gemeldet an</th><th>Seit</th><th></th></tr></thead>
+    <tbody>
+    {% for t in incoming %}
+      <tr>
+        <td><a href="/disks/{{ t.disk.id }}">{{ t.disk.display_name }}</a><div class="muted small">{{ t.disk.serial or '' }}</div></td>
+        <td>{{ t.to_user.nickname }}</td>
+        <td>{{ t.disk.last_host or '–' }}</td>
+        <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+        <td class="inline">
+          <form method="post" action="/transfers/{{ t.id }}/approve" data-confirm="Platte „{{ t.disk.display_name }}“ an {{ t.to_user.nickname }} übergeben? Deine Angaben dazu (Name, Lagerort, Notizen, Labels, Freigaben) werden gelöscht.">
+            <button type="submit">Übergeben</button>
+          </form>
+          <form method="post" action="/transfers/{{ t.id }}/reject"><button class="link danger">Ablehnen</button></form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">Keine offenen Anträge.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Deine Anträge</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Platte</th><th>Besitzer</th><th>Stand</th><th>Seit</th></tr></thead>
+    <tbody>
+    {% for t in outgoing %}
+      <tr>
+        <td>{{ t.disk.display_name if t.status == 'approved' else (t.disk.serial or t.disk.disk_key) }}</td>
+        <td>{{ t.from_user.nickname if t.from_user else '–' }}</td>
+        <td>{{ {'pending': 'wartet auf Zustimmung', 'approved': 'übergeben', 'rejected': 'abgelehnt'}.get(t.status, t.status) }}</td>
+        <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Du hast keine Übernahme beantragt.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

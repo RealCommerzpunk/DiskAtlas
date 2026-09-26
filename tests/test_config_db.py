@@ -78,3 +78,37 @@ def test_example_config_copies_identical():
     import tomllib
 
     tomllib.loads(packaged.read_text())  # muss gültiges TOML sein
+
+
+def test_upgrade_keeps_dependent_rows_when_sqlite_rebuilds_a_table(tmp_path):
+    """Regression: Der Tabellen-Neuaufbau von SQLite darf per ON DELETE CASCADE nichts löschen."""
+    from alembic import command
+
+    from diskatlas.db import Database, alembic_config
+
+    db = Database(f"sqlite:///{(tmp_path / 'old.db').as_posix()}")
+    with db.engine.begin() as conn:
+        command.upgrade(alembic_config(conn), "0004")
+        conn.exec_driver_sql(
+            "INSERT INTO disks (id, disk_key, removable, is_system, health, is_connected) "
+            "VALUES (1, 'sn:A', 0, 0, 'ok', 0)")
+        conn.exec_driver_sql(
+            "INSERT INTO volumes (id, disk_id, volume_key, is_system, present, index_status, "
+            "index_errors, file_count, file_bytes) VALUES (1, 1, 'v1', 0, 1, 'done', 0, 1, 5)")
+        conn.exec_driver_sql(
+            "INSERT INTO files (id, volume_id, scan_id, path, name, size) "
+            "VALUES (1, 1, 's', 'a.txt', 'a.txt', 5)")
+        conn.exec_driver_sql(
+            "INSERT INTO smart_snapshots (id, disk_id, taken_at, health) "
+            "VALUES (1, 1, '2026-01-01', 'ok')")
+        conn.exec_driver_sql("INSERT INTO labels (id, name, color) VALUES (1, 'Keller', '#fff')")
+        conn.exec_driver_sql("INSERT INTO disk_labels (disk_id, label_id) VALUES (1, 1)")
+
+    db.upgrade()
+
+    with db.engine.connect() as conn:
+        tables = ("disks", "volumes", "files", "smart_snapshots", "labels", "disk_labels")
+        counts = {t: conn.exec_driver_sql(f"SELECT count(*) FROM {t}").scalar() for t in tables}
+        assert counts == dict.fromkeys(counts, 1), counts
+        assert conn.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1, "Schutz wieder aktiv"
+    db.dispose()

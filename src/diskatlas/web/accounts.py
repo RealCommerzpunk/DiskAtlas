@@ -6,10 +6,10 @@ import time
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from diskatlas.db.models import Client, User
+from diskatlas.db.models import Client, Disk, User
 from diskatlas.services import users
 from diskatlas.web import auth
 from diskatlas.web.deps import get_current_user, get_session, require_master
@@ -132,13 +132,19 @@ def account_client_delete(
 @router.get("/admin/users", response_class=HTMLResponse)
 def admin_users(
     request: Request,
+    msg: str = "",
     user: User = Depends(require_master),
     session: Session = Depends(get_session),
 ):
     everyone = session.scalars(select(User).order_by(User.created_at, User.id)).all()
+    unowned = session.scalar(
+        select(func.count()).select_from(Disk).where(Disk.owner_user_id.is_(None))
+    )
     return templates.TemplateResponse(request, "admin_users.html", {
         "pending": [u for u in everyone if u.status == "pending"],
         "active": [u for u in everyone if u.status == "active"],
+        "unowned": unowned,
+        "msg": msg,
     })
 
 

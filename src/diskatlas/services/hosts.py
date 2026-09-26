@@ -39,24 +39,37 @@ class HostSnapshot:
 
 
 def record(
-    session: Session, host: str, ports_info: dict | None, now: datetime | None = None
-) -> None:
-    """Speichert den Heartbeat. Ohne Portangaben (z. B. Windows) bleibt nur der Zeitstempel."""
+    session: Session, host: str, ports_info: dict | None, now: datetime | None = None,
+    user_id: int | None = None,
+) -> bool:
+    """Speichert den Heartbeat. Ohne Portangaben (z. B. Windows) bleibt nur der Zeitstempel.
+
+    Ein Rechnername gehört dem Benutzer, dessen Client ihn zuerst gemeldet hat; Meldungen
+    anderer Benutzer unter demselben Namen werden verworfen (False).
+    """
     now = now or utcnow()
     state = session.get(HostState, host)
     if state is None:
-        state = HostState(host=host, updated_at=now, data="{}")
+        state = HostState(host=host, user_id=user_id, updated_at=now, data="{}")
         session.add(state)
+    elif user_id is not None and state.user_id not in (None, user_id):
+        return False
+    elif user_id is not None:
+        state.user_id = user_id
     state.updated_at = now
     if ports_info is not None:
         state.data = json.dumps(
             {"present": ports_info.get("present", []), "ports": ports_info.get("all_ports", [])}
         )
+    return True
 
 
-def get(session: Session, host: str | None) -> HostSnapshot | None:
+def get(
+    session: Session, host: str | None, user_id: int | None = None
+) -> HostSnapshot | None:
+    """Zustand des Rechners; mit `user_id` nur, wenn er diesem Benutzer gehört."""
     state = session.get(HostState, host) if host else None
-    if state is None:
+    if state is None or (user_id is not None and state.user_id != user_id):
         return None
     try:
         data = json.loads(state.data or "{}")
@@ -70,9 +83,9 @@ def get(session: Session, host: str | None) -> HostSnapshot | None:
     return HostSnapshot(state.host, state.updated_at, present, list(data.get("ports", [])))
 
 
-def known_hosts(session: Session) -> list[HostSnapshot]:
-    return [
-        snap
-        for (host,) in session.query(HostState.host).order_by(HostState.host)
-        if (snap := get(session, host))
-    ]
+def known_hosts(session: Session, user_id: int | None = None) -> list[HostSnapshot]:
+    """Bekannte Rechner; mit `user_id` nur die, die dieser Benutzer gemeldet hat."""
+    query = session.query(HostState.host).order_by(HostState.host)
+    if user_id is not None:
+        query = query.filter(HostState.user_id == user_id)
+    return [snap for (host,) in query if (snap := get(session, host))]

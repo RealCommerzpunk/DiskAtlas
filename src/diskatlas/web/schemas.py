@@ -208,6 +208,15 @@ class RunningIndexOut(BaseModel):
     files_so_far: int
 
 
+class UserOut(BaseModel):
+    """Was jeder angemeldete Benutzer über die anderen sieht: nur Namen (zum Freigeben)."""
+
+    id: int
+    nickname: str
+    is_master: bool
+    clients: list[str]
+
+
 class LookupOut(BaseModel):
     id: int
     name: str

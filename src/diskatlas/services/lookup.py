@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
 from diskatlas.db.models import Disk
@@ -19,13 +19,15 @@ def normalize(value: str | None) -> str:
     return re.sub(r"[^A-Z0-9]", "", (value or "").upper())
 
 
-def find_disks(session: Session, code: str) -> list[Disk]:
+def find_disks(session: Session, code: str, visible: Select | None = None) -> list[Disk]:
     """Genau passende Platten; gibt es keine, dann solche, deren Seriennummer/WWN im Code
     steckt (Etikett mit Zusatztext) oder die den getippten Teil enthalten."""
     wanted = normalize(code)
     if len(wanted) < MIN_CODE:
         return []
     stmt = select(Disk).options(selectinload(Disk.labels), selectinload(Disk.volumes))
+    if visible is not None:
+        stmt = stmt.where(Disk.id.in_(visible))
     exact, partial = [], []
     for disk in session.scalars(stmt):
         for candidate in (normalize(disk.serial), normalize(disk.wwn)):
@@ -51,7 +53,7 @@ class Whereabouts:
 def whereabouts(session: Session, disk: Disk) -> Whereabouts:
     if not disk.is_connected:
         return Whereabouts("offline", disk.last_host, None, disk.location)
-    config = bays.load_config(session)
+    config = bays.load_config(session, disk.owner_user_id)  # die Schächte gehören dem Besitzer
     snapshot = hosts.get(session, disk.last_host)
     if snapshot is not None and (config.host in (None, disk.last_host)):
         for info in snapshot.present:

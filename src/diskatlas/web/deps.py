@@ -7,7 +7,9 @@ from collections.abc import Iterator
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from diskatlas.db.models import Client, User
+from diskatlas.db.models import Client, Disk, Label, User
+from diskatlas.services import authz, queries
+from diskatlas.services.authz import Viewer
 
 
 def get_session(request: Request) -> Iterator[Session]:
@@ -46,3 +48,34 @@ def require_master(user: User = Depends(get_current_user)) -> User:
     if not user.is_master:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Nur für den Master.")
     return user
+
+
+def get_viewer(request: Request) -> Viewer:
+    """Wer fragt (für Sichtbarkeit und Schreibrechte); ohne Anmeldung gibt es keine Beschränkung."""
+    if not request.app.state.auth_enabled:
+        return authz.OPEN
+    identity = getattr(request.state, "identity", None)
+    if identity is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Anmeldung erforderlich")
+    return Viewer(identity.user_id, identity.is_master)
+
+
+def disk_or_404(session: Session, viewer: Viewer, disk_id: int, write: bool = False) -> Disk:
+    """Die Platte, falls der Benutzer sie sehen darf (sonst 404, das verrät nichts); mit
+    `write` außerdem nur, wenn sie ihm gehört (sonst 403: freigegebene Platten sind nur lesbar)."""
+    disk = queries.get_disk(session, disk_id, authz.visible_ids(viewer))
+    if disk is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Festplatte nicht gefunden")
+    if write and not authz.can_write(viewer, disk):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Die Festplatte gehört einem anderen Benutzer (nur lesbar)."
+        )
+    return disk
+
+
+def label_or_404(session: Session, viewer: Viewer, label_id: int) -> Label:
+    """Das Label, falls es dem Benutzer gehört (fremde bleiben unsichtbar: 404)."""
+    label = session.get(Label, label_id)
+    if label is None or not authz.can_write_label(viewer, label):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Label nicht gefunden")
+    return label

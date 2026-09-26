@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from diskatlas import __version__
-from diskatlas.db.models import Disk, Label
+from diskatlas.db.models import Client, Disk, Label, User
 from diskatlas.probe.types import FileRecord
-from diskatlas.services import commands, duplicates, hosts, ingest, queries
+from diskatlas.services import authz, commands, duplicates, hosts, ingest, labels, queries
 from diskatlas.services import lookup as lookup_service
-from diskatlas.web.deps import get_session, require_client
+from diskatlas.services.authz import Viewer
+from diskatlas.web.deps import (
+    disk_or_404,
+    get_current_user,
+    get_session,
+    get_viewer,
+    label_or_404,
+    require_client,
+)
 from diskatlas.web.schemas import (
     CommandResult,
     DiskDetailOut,
@@ -37,6 +45,7 @@ from diskatlas.web.schemas import (
     LookupOut,
     RunningIndexOut,
     StatsOut,
+    UserOut,
 )
 
 router = APIRouter()
@@ -59,9 +68,10 @@ def list_disks(
     sort: str = "name",
     desc: bool = False,
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     disks = queries.filter_disks(
-        queries.load_disks(session),
+        queries.load_disks(session, authz.visible_ids(viewer)),
         queries.DiskFilter(
             q=q, health=health, connected=connected, label_id=label_id, fs=fs, usage=usage
         ),
@@ -69,21 +79,21 @@ def list_disks(
     return queries.sort_disks(disks, sort, desc)
 
 
-def _disk_or_404(session: Session, disk_id: int) -> Disk:
-    disk = queries.get_disk(session, disk_id)
-    if disk is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Festplatte nicht gefunden")
-    return disk
-
-
 @router.get("/disks/{disk_id}", response_model=DiskDetailOut, tags=["disks"])
-def get_disk(disk_id: int, session: Session = Depends(get_session)):
-    return _disk_or_404(session, disk_id)
+def get_disk(
+    disk_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
+    return disk_or_404(session, viewer, disk_id)
 
 
 @router.patch("/disks/{disk_id}", response_model=DiskDetailOut, tags=["disks"])
-def patch_disk(disk_id: int, body: DiskPatch, session: Session = Depends(get_session)):
-    disk = _disk_or_404(session, disk_id)
+def patch_disk(
+    disk_id: int,
+    body: DiskPatch,
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
+    disk = disk_or_404(session, viewer, disk_id, write=True)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(disk, field, (value or "").strip() or None)
     session.flush()
@@ -91,18 +101,27 @@ def patch_disk(disk_id: int, body: DiskPatch, session: Session = Depends(get_ses
 
 
 @router.delete("/disks/{disk_id}", status_code=204, tags=["disks"])
-def delete_disk(disk_id: int, session: Session = Depends(get_session)):
-    session.delete(_disk_or_404(session, disk_id))
+def delete_disk(
+    disk_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
+    session.delete(disk_or_404(session, viewer, disk_id, write=True))
     return Response(status_code=204)
 
 
 @router.put("/disks/{disk_id}/labels", response_model=DiskDetailOut, tags=["disks"])
 def set_disk_labels(
-    disk_id: int, body: LabelAssignment, session: Session = Depends(get_session)
+    disk_id: int,
+    body: LabelAssignment,
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    disk = _disk_or_404(session, disk_id)
+    disk = disk_or_404(session, viewer, disk_id, write=True)
     labels = list(session.scalars(select(Label).where(Label.id.in_(body.label_ids))))
-    if len(labels) != len(set(body.label_ids)):
+    usable = [
+        lab for lab in labels
+        if authz.can_write_label(viewer, lab) and authz.label_fits_disk(lab, disk)
+    ]
+    if len(usable) != len(set(body.label_ids)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unbekannte Label-ID")
     disk.labels = labels
     session.flush()
@@ -111,14 +130,19 @@ def set_disk_labels(
 
 # ------------------------------------------------------------------ Labels
 @router.get("/labels", response_model=list[LabelOut], tags=["labels"])
-def list_labels(session: Session = Depends(get_session)):
-    return [label for label, _ in queries.list_labels(session)]
+def list_labels(session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)):
+    return [label for label, _ in queries.list_labels(session, viewer)]
 
 
 @router.post("/labels", response_model=LabelOut, status_code=201, tags=["labels"])
-def create_label(body: LabelIn, session: Session = Depends(get_session)):
-    label = Label(name=body.name.strip(), category=(body.category or "").strip() or None,
-                  color=body.color)
+def create_label(
+    body: LabelIn, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
+    name = body.name.strip()
+    if labels.name_taken(session, viewer.user_id, name):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Label existiert bereits")
+    label = Label(owner_user_id=viewer.user_id, name=name,
+                  category=(body.category or "").strip() or None, color=body.color)
     session.add(label)
     try:
         session.flush()
@@ -128,13 +152,18 @@ def create_label(body: LabelIn, session: Session = Depends(get_session)):
 
 
 @router.patch("/labels/{label_id}", response_model=LabelOut, tags=["labels"])
-def patch_label(label_id: int, body: LabelPatch, session: Session = Depends(get_session)):
-    label = session.get(Label, label_id)
-    if label is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Label nicht gefunden")
+def patch_label(
+    label_id: int,
+    body: LabelPatch,
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
+    label = label_or_404(session, viewer, label_id)
     for field, value in body.model_dump(exclude_unset=True).items():
         if field == "category":
             value = (value or "").strip() or None
+        if field == "name" and labels.name_taken(session, label.owner_user_id, value, label.id):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Label existiert bereits")
         setattr(label, field, value)
     try:
         session.flush()
@@ -144,10 +173,10 @@ def patch_label(label_id: int, body: LabelPatch, session: Session = Depends(get_
 
 
 @router.delete("/labels/{label_id}", status_code=204, tags=["labels"])
-def delete_label(label_id: int, session: Session = Depends(get_session)):
-    label = session.get(Label, label_id)
-    if label is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Label nicht gefunden")
+def delete_label(
+    label_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
+    label = label_or_404(session, viewer, label_id)
     session.delete(label)
     return Response(status_code=204)
 
@@ -166,12 +195,14 @@ def search_files(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     rows, total = queries.search_files(
         session,
         queries.FileQuery(
             q=q, extension=ext, disk_id=disk_id, label_id=label_id, min_size=min_size,
             max_size=max_size, sort=sort, descending=desc, limit=limit, offset=offset,
+            visible=authz.visible_ids(viewer),
         ),
     )
     items = [
@@ -199,11 +230,15 @@ def duplicate_files(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     """Dateien mit gleichem Namen und gleicher Größe (aus dem Index, ohne Prüfsummen)."""
     groups, total, wasted = duplicates.find_file_duplicates(
         session,
-        duplicates.FileDupQuery(min_size=min_size, extension=ext, limit=limit, offset=offset),
+        duplicates.FileDupQuery(
+            min_size=min_size, extension=ext, limit=limit, offset=offset,
+            visible=authz.visible_ids(viewer),
+        ),
     )
     items = [
         FileDuplicateGroup(
@@ -221,11 +256,13 @@ def duplicate_folders(
     min_size: int = Query(0, ge=0),
     include_hidden: bool = False,
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     """Ordner mit identischem Inhalt (gleiche relative Pfade und Größen); größte zuerst."""
     groups, wasted = duplicates.find_folder_duplicates(
         session, duplicates.FolderDupQuery(
-            min_files=min_files, min_size=min_size, include_hidden=include_hidden
+            min_files=min_files, min_size=min_size, include_hidden=include_hidden,
+            visible=authz.visible_ids(viewer),
         )
     )
     items = [
@@ -239,20 +276,23 @@ def duplicate_folders(
 
 
 @router.get("/activity", response_model=list[RunningIndexOut], tags=["system"])
-def activity(session: Session = Depends(get_session)):
+def activity(session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)):
     """Laufende Indizierungen angeschlossener Festplatten (Festplatte dann nicht abziehen)."""
-    return [r.__dict__ for r in queries.running_indexes(session)]
+    return [r.__dict__ for r in queries.running_indexes(session, authz.visible_ids(viewer))]
 
 
 @router.get("/bays/live", tags=["system"])
-def bays_live(host: str = "", session: Session = Depends(get_session)):
+def bays_live(
+    host: str = "", session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
     """Portbelegung des Agenten-Rechners (für den Schacht-Assistenten und die Live-Anzeige)."""
     from diskatlas.services import bays as bay_service
 
-    chosen = host or bay_service.load_config(session).host or ""
-    snapshot = hosts.get(session, chosen) if chosen else None
+    chosen = host or bay_service.load_config(session, viewer.user_id).host or ""
+    snapshot = hosts.get(session, chosen, viewer.scope_id) if chosen else None
     if snapshot is None:  # noch keine Zuordnung: erster Rechner, der Ports meldet
-        snapshot = next((h for h in hosts.known_hosts(session) if h.all_ports), None)
+        known = hosts.known_hosts(session, viewer.scope_id)
+        snapshot = next((h for h in known if h.all_ports), None)
     if snapshot is None:
         return {"host": None, "online": False, "ports": [], "occupied": []}
     return {
@@ -267,10 +307,11 @@ def bays_live(host: str = "", session: Session = Depends(get_session)):
 def lookup(
     code: str = Query(..., min_length=1, max_length=500),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     """Festplatte per Seriennummer/WWN finden (Barcode oder Text) und ihren Ort nennen."""
     result = []
-    for disk in lookup_service.find_disks(session, code)[:10]:
+    for disk in lookup_service.find_disks(session, code, authz.visible_ids(viewer))[:10]:
         where = lookup_service.whereabouts(session, disk)
         result.append(
             LookupOut(
@@ -284,17 +325,37 @@ def lookup(
 
 
 @router.get("/commands/recent", tags=["system"])
-def commands_recent(limit: int = Query(20, ge=1, le=100), session: Session = Depends(get_session)):
+def commands_recent(
+    limit: int = Query(20, ge=1, le=100),
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
     """Letzte Aufträge an Agenten mit Status (für die Live-Anzeige)."""
     return [
         {"id": c.id, "kind": c.kind, "status": c.status, "disk_key": c.disk_key, "result": c.result}
-        for c in commands.recent(session, None, limit)
+        for c in commands.recent(session, None, limit, viewer.scope_id)
     ]
 
 
 @router.get("/stats", response_model=StatsOut, tags=["system"])
-def stats(session: Session = Depends(get_session)):
-    return queries.dashboard_stats(queries.load_disks(session)).__dict__
+def stats(session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)):
+    return queries.dashboard_stats(queries.load_disks(session, authz.visible_ids(viewer))).__dict__
+
+
+# ------------------------------------------------------------------ Benutzer
+@router.get("/users", response_model=list[UserOut], tags=["users"])
+def list_users(
+    session: Session = Depends(get_session), _: User = Depends(get_current_user)
+):
+    """Namen der freigeschalteten Benutzer und ihrer Clients (nie Passwörter oder Tokens)."""
+    rows = session.scalars(
+        select(User).where(User.status == "active").order_by(func.lower(User.nickname))
+    )
+    return [
+        UserOut(id=u.id, nickname=u.nickname, is_master=u.is_master,
+                clients=[c.nickname for c in u.clients])
+        for u in rows
+    ]
 
 
 # ------------------------------------------------------------------ Ingest (für Agenten)
@@ -303,59 +364,98 @@ ingest_router = APIRouter(
 )
 
 
+def _owner(client: Client | None) -> int | None:
+    """Benutzer des Clients; None = ohne Anmeldung (lokal), dann gibt es keine Beschränkung."""
+    return client.user_id if client else None
+
+
 @ingest_router.post("/disk")
-def ingest_disk(body: IngestDisk, session: Session = Depends(get_session)):
-    disk = ingest.upsert_disk(session, body.host, body.disk)
-    return {"disk_id": disk.id}
+def ingest_disk(
+    body: IngestDisk,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    disk = ingest.upsert_disk(session, body.host, body.disk, client=client)
+    pending = client is not None and disk.owner_user_id != client.user_id
+    return {"disk_id": disk.id, "transfer_pending": pending}
 
 
 @ingest_router.post("/connected")
-def ingest_connected(body: IngestConnected, session: Session = Depends(get_session)):
-    ingest.mark_connected(session, body.host, body.disk_keys)
-    hosts.record(session, body.host, body.ports_info)
+def ingest_connected(
+    body: IngestConnected,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client))
+    hosts.record(session, body.host, body.ports_info, user_id=_owner(client))
     return {"ok": True}
 
 
 @ingest_router.get("/commands")
-def ingest_commands(host: str, session: Session = Depends(get_session)):
-    """Offene Aufträge für den Agenten `host` (werden dabei als „läuft“ markiert)."""
-    return commands.claim_pending(session, host)
+def ingest_commands(
+    host: str,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    """Offene Aufträge des Benutzers für den Agenten `host` (werden als „läuft“ markiert)."""
+    return commands.claim_pending(session, host, user_id=_owner(client))
 
 
 @ingest_router.post("/commands/{command_id}/result")
 def ingest_command_result(
-    command_id: int, body: CommandResult, session: Session = Depends(get_session)
+    command_id: int,
+    body: CommandResult,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
 ):
-    _lookup(commands.finish, session, command_id, body.ok, body.message)
+    _lookup(commands.finish, session, command_id, body.ok, body.message,
+            user_id=_owner(client))
     return {"ok": True}
 
 
-def _lookup(func, session: Session, *args):
+def _lookup(func, session: Session, *args, **kwargs):
     try:
-        return func(session, *args)
+        return func(session, *args, **kwargs)
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
 
 
 @ingest_router.post("/index/begin")
-def ingest_begin(body: IngestVolumeRef, session: Session = Depends(get_session)):
-    return {"scan_id": _lookup(ingest.begin_index, session, body.disk_key, body.volume_key)}
+def ingest_begin(
+    body: IngestVolumeRef,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    scan_id = _lookup(ingest.begin_index, session, body.disk_key, body.volume_key,
+                      user_id=_owner(client))
+    return {"scan_id": scan_id}
 
 
 @ingest_router.post("/index/files")
-def ingest_files(body: IngestFiles, session: Session = Depends(get_session)):
+def ingest_files(
+    body: IngestFiles,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
     records = [FileRecord(*f) for f in body.files]
     count = _lookup(
-        ingest.add_files, session, body.disk_key, body.volume_key, body.scan_id, records
+        ingest.add_files, session, body.disk_key, body.volume_key, body.scan_id, records,
+        user_id=_owner(client),
     )
     return {"added": count}
 
 
 @ingest_router.post("/index/finish")
-def ingest_finish(body: IngestFinish, session: Session = Depends(get_session)):
+def ingest_finish(
+    body: IngestFinish,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
     volume = _lookup(
         ingest.finish_index, session, body.disk_key, body.volume_key, body.scan_id,
-        body.errors, body.success,
+        body.errors, body.success, user_id=_owner(client),
     )
     return {"file_count": volume.file_count}
 
