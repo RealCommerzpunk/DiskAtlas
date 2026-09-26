@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Anfrage{% endblock %}
+{% block content %}
+<h1>Anfrage vom {{ req.created_at.strftime('%d.%m.%Y %H:%M') }}</h1>
+<p>Ziel: <strong>{{ req.target_disk.display_name }}</strong> / {{ req.target_path or '(Wurzel)' }} · Client {{ req.target_client.nickname }}</p>
+<p class="muted">{% for state, n in counts.items() %}{{ n }} {{ STATE_TEXT[state] }}{{ ', ' if not loop.last }}{% endfor %}</p>
+{% if req.cancelled_at is none and (counts.get('waiting_approval', 0) or counts.get('waiting_disk', 0) or counts.get('queued', 0) or counts.get('running', 0)) %}
+<form method="post" action="/requests/{{ req.id }}/cancel" data-confirm="Offene Dateien dieser Anfrage abbrechen?"><button class="secondary">Offene abbrechen</button></form>
+{% endif %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Datei</th><th class="num">Größe</th><th>Stand</th><th>Hinweis</th></tr></thead>
+  <tbody>
+  {% for it in req.items %}
+    <tr>
+      <td>{{ it.source_path }}</td>
+      <td class="num">{{ it.size | filesize }}</td>
+      <td>{{ STATE_TEXT[it.state] }}</td>
+      <td class="muted small">{{ it.wait_reason or it.message or '' }}{% if it.result_name and it.result_name != it.name %} · gespeichert als {{ it.result_name }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+<p><a href="/requests">← alle Anfragen</a></p>
+{% endblock %}

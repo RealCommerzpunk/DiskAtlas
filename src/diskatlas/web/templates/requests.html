@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Anfragen{% endblock %}
+{% block content %}
+<h1>Anfragen</h1>
+<p class="muted">Dateien, die du anforderst, und Anforderungen anderer an deine Platten.</p>
+{% if msg %}<p class="notice ok" role="status">{{ msg }}</p>{% endif %}
+
+<section class="card">
+  <h2>Zustimmung nötig{% if approvals %} ({{ approvals | length }}){% endif %}</h2>
+  {% if approvals %}
+  <form method="post" action="/requests-decide">
+    <div class="table-wrap"><table>
+      <thead><tr><th></th><th>Datei</th><th>Platte</th><th>Von</th><th>Seit</th></tr></thead>
+      <tbody>
+      {% for it in approvals %}
+        <tr>
+          <td class="pick"><input type="checkbox" name="item" value="{{ it.id }}" checked aria-label="{{ it.name }}"></td>
+          <td>{{ it.source_path }} <span class="muted small">({{ it.size | filesize }})</span></td>
+          <td>{{ it.source_disk.display_name }}</td>
+          <td>{{ it.request.requester.nickname }}</td>
+          <td>{{ it.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <div class="selection-bar">
+      <button type="submit" name="action" value="approve">Ausgewählte erlauben</button>
+      <button type="submit" name="action" value="deny" class="secondary">Ausgewählte ablehnen</button>
+    </div>
+  </form>
+  {% else %}<p class="muted">Nichts zu entscheiden.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Deine Anfragen</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Angefordert</th><th>Ziel</th><th>Dateien</th><th>Stand</th></tr></thead>
+    <tbody>
+    {% for r in mine %}
+      {% set c = counts(r) %}
+      <tr>
+        <td><a href="/requests/{{ r.id }}">{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</a></td>
+        <td>{{ r.target_disk.display_name }} / {{ r.target_path or '(Wurzel)' }}</td>
+        <td class="num">{{ r.items | length }}</td>
+        <td>{% for state, n in c.items() %}{{ n }} {{ STATE_TEXT[state] }}{{ ', ' if not loop.last }}{% endfor %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">Noch nichts angefordert.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

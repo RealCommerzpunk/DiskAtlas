@@ -20,6 +20,7 @@ from diskatlas.services import (
     authz,
     browse,
     commands,
+    copies,
     duplicates,
     fslabel,
     hosts,
@@ -55,6 +56,21 @@ def _pending_transfer_count(request: Request) -> int:
 
 
 templates.env.globals["pending_transfer_count"] = _pending_transfer_count
+
+
+def _pending_approval_count(request: Request) -> int:
+    """Kopieranfragen anderer an Platten des Benutzers, die auf seine Zustimmung warten."""
+    who = getattr(request.state, "identity", None)
+    if who is None or not request.app.state.config.server.copy_enabled:
+        return 0
+    with request.app.state.db.session() as session:
+        return copies.pending_approval_count(session, who.user_id)
+
+
+templates.env.globals["pending_approval_count"] = _pending_approval_count
+templates.env.globals["copy_enabled"] = (
+    lambda request: request.app.state.config.server.copy_enabled and request.app.state.auth_enabled
+)
 
 router = APIRouter(include_in_schema=False)
 PAGE_SIZE = 100

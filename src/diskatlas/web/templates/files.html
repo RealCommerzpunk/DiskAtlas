@@ -30,7 +30,11 @@
 {% macro request_bar() %}
 <div class="selection-bar">
   <span class="muted small"><span data-selected-count>0</span> ausgewählt</span>
-  <button type="submit" data-request-button disabled title="Wähle Dateien oder Ordner aus. (Das Anfordern wird in einem der nächsten Schritte freigeschaltet.)">Datei anfordern</button>
+  {% if copy_enabled(request) %}
+  <button type="submit" data-request-button data-enabled="1" disabled title="Wähle Dateien oder Ordner aus">Datei anfordern</button>
+  {% else %}
+  <button type="button" disabled title="Auf diesem Server nicht freigeschaltet">Datei anfordern</button>
+  {% endif %}
 </div>
 {% endmacro %}
 

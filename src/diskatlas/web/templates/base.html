@@ -33,14 +33,16 @@
     {% set who = identity(request) %}
     {% if who %}
     {% set open_transfers = pending_transfer_count(request) %}
+    {% set open_approvals = pending_approval_count(request) %}
     <details class="usermenu">
       <summary aria-label="Benutzermenü von {{ who.nickname }}">
-        <span class="avatar">{{ who.nickname[:1] | upper }}{% if open_transfers %}<span class="avatar-dot" aria-hidden="true"></span>{% endif %}</span>
+        <span class="avatar">{{ who.nickname[:1] | upper }}{% if open_transfers or open_approvals %}<span class="avatar-dot" aria-hidden="true"></span>{% endif %}</span>
         <span class="who"><strong>{{ who.nickname }}</strong><small>{{ 'Admin' if who.is_master else 'Benutzer' }}</small></span>
         <span class="caret" aria-hidden="true">▾</span>
       </summary>
       <div class="usermenu-panel" role="menu">
         <a role="menuitem" href="/account" class="{{ 'active' if path.startswith('/account') }}">Konto</a>
+        {% if copy_enabled(request) %}<a role="menuitem" href="/requests" class="{{ 'active' if path.startswith('/requests') }}">Anfragen{% if open_approvals %} <span class="badge">{{ open_approvals }}</span>{% endif %}</a>{% endif %}
         <a role="menuitem" href="/transfers" class="{{ 'active' if path.startswith('/transfers') }}">Übernahmen{% if open_transfers %} <span class="badge">{{ open_transfers }}</span>{% endif %}</a>
         {% if who.is_master %}<a role="menuitem" href="/admin/users" class="{{ 'active' if path.startswith('/admin') }}">Verwaltung</a>{% endif %}
         {% if auth_enabled(request) %}<form method="post" action="/logout"><button role="menuitem" class="menu-logout">Abmelden</button></form>{% endif %}

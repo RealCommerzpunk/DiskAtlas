@@ -81,6 +81,9 @@ class ServerConfig:
     password: str = ""
     # Nur für Tests/Sonderfälle: Betrieb im Netz ohne Passwort erlauben (nicht empfohlen).
     allow_insecure: bool = False
+    # „Datei anfordern“ (Kopieren zwischen Benutzern/Clients) freischalten; solange die
+    # Agenten-Seite fehlt, standardmäßig aus.
+    copy_enabled: bool = False
 
 
 @dataclass
@@ -104,6 +107,7 @@ ENV_MAP: dict[str, list[tuple[str | None, str]]] = {
     "DISKATLAS_API_TOKEN": [("agent", "api_token")],
     "DISKATLAS_PASSWORD": [("server", "password")],
     "DISKATLAS_ALLOW_INSECURE": [("server", "allow_insecure")],
+    "DISKATLAS_COPY_ENABLED": [("server", "copy_enabled")],
     "DISKATLAS_HOST": [("server", "host")],
     "DISKATLAS_PORT": [("server", "port")],
     "DISKATLAS_HOST_NAME": [("agent", "host_name")],

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Datei anfordern{% endblock %}
+{% block content %}
+<h1>Datei anfordern</h1>
+{% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+
+<section class="card">
+  <h2>{{ selection.files | length }} Datei(en), {{ selection.total_size | filesize }}{% if selection.folders %} · {{ selection.folders }} Ordner aufgelöst{% endif %}</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Platte</th><th class="num">Dateien</th><th class="num">Größe</th><th>Was passiert</th></tr></thead>
+    <tbody>
+    {% for row in summary %}
+      <tr>
+        <td>{{ row.disk.display_name }}</td>
+        <td class="num">{{ row.count | number }}</td>
+        <td class="num">{{ row.size | filesize }}</td>
+        <td>{% if row.mode in ('own', 'always') %}Wird kopiert{% if not row.disk.is_connected %}, sobald die Platte angeschlossen ist{% endif %}.
+          {% elif row.mode == 'ask' %}Der Besitzer wird gefragt.
+          {% else %}<strong>Nicht erlaubt</strong> – für diese Platte hast du keine Kopierberechtigung (wird übersprungen).{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="card">
+  <h2>Ziel</h2>
+  {% if choices %}
+  <form method="post" action="/requests" class="stack">
+    {% for s in sel %}<input type="hidden" name="sel" value="{{ s }}">{% endfor %}
+    <label>Platte
+      <select name="target" required>
+        {% for c in choices %}
+        {% set d = defaults.get(c.client.id) %}
+        <option value="{{ c.client.id }}:{{ c.volume.id }}" {{ 'selected' if d and d.volume_id == c.volume.id }}>{{ c.client.nickname }} · {{ c.disk.display_name }}{% if c.volume.label %} · {{ c.volume.label }}{% endif %} ({{ c.volume.mountpoint }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Ordner auf der Platte (wird angelegt, falls er fehlt; leer = Wurzel)
+      <input name="path" value="{{ (defaults.values() | select | map(attribute='path') | first) or '' }}" placeholder="z. B. Anforderungen/Filme" maxlength="500">
+    </label>
+    <label class="check"><input type="checkbox" name="remember" value="1" checked> als Standard für diesen Client merken</label>
+    <div><button type="submit">Anfordern</button> <a href="javascript:history.back()">zurück</a></div>
+  </form>
+  {% else %}
+  <p class="notice" role="alert">Es ist keine eigene Platte an einem deiner Clients angeschlossen (Systemplatten zählen nicht). Schließe eine Platte an und lade die Seite neu.</p>
+  {% endif %}
+</section>
+{% endblock %}

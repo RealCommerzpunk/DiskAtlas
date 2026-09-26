@@ -50,7 +50,8 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Eigene Angaben | Anzeigename, Notizen | ✅ 0.1.0 |
 | Dashboard | Kennzahlen, Suche, Filter, Gruppierung, Sortierung, Detailseite | ✅ 0.1.0 |
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
-| Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser), „Datei anfordern“ folgt | 🚧 |
+| Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser) | ✅ |
+| Datei anfordern | Kopierberechtigung je Freigabe (nie/nachfragen/immer), Anfragen mit Zustandsmaschine und Zustimmung des Besitzers; Ausführung durch den Agenten (lokal/Relay) folgt; Schalter `copy_enabled` | 🚧 |
 | iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ 0.3.0 |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |
@@ -170,6 +171,7 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
 | `files` | Dateiindex (Pfad relativ zum Volume, `parent` = Ordner (vom Server berechnet), Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
+| `copy_requests` / `copy_items` | „Datei anfordern“: Anfrage (Anfordernder, Zielclient/-platte/-ordner) und je Datei ein Eintrag mit Zustand (`waiting_approval`, `waiting_disk`, `queued`, `running`, `done`, `failed`, `denied`, `cancelled`, `expired`), Phase (`local`/`upload`/`download`), Lease und Ablauf; Logik in `services/copies.py` | `id` (uuid) |
 | `client_copy_targets` | Standard-Zielordner (Platte, Volume, Pfad) für angeforderte Dateien je Client | `client_id` |
 | `directories` | Ordnerindex je Scan für den Dateibrowser (Pfad, Elternordner, Dateizahl und Größe samt Unterordnern); entsteht bei `finish_index`, `volumes.dirs_scan_id` merkt den Stand | `volume_id` + `scan_id` + `path` |
 | `smart_snapshots` | SMART-Verlauf inkl. Roh-JSON | `disk_id`, `taken_at` |
