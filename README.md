@@ -101,6 +101,15 @@ Add `-v` for verbose logs. The REST API is documented at **/docs**.
 
 All options: [config.example.toml](config.example.toml).
 
+### Database
+
+DiskAtlas stores everything in **SQLite** – a single file, no database server needed. This applies
+to the local installation, the agent program in *This PC only* mode and the Docker container
+(`/data/diskatlas.db`; on Unraid `/mnt/user/appdata/diskatlas/diskatlas.db`). **PostgreSQL** is
+supported as an alternative (`DISKATLAS_DATABASE_URL`, install extra `postgres`). Schema changes
+are applied automatically at startup (Alembic migrations). Moving local data into the Docker
+container: [docs/UNRAID.md](docs/UNRAID.md#lokale-daten-übernehmen) (German).
+
 ### Autostart on Linux (systemd)
 
 ```bash
