@@ -138,3 +138,53 @@ def test_ingest_api_ports_and_commands(client, db):
     assert ok.status_code == 200
     assert client.post("/api/v1/ingest/commands/999/result",
                        json={"ok": True}).status_code == 404
+
+
+class _HttpAdapter:
+    """Leitet die HttpSink-Aufrufe (relativ zu /api/v1) an den TestClient weiter."""
+
+    def __init__(self, client):
+        self.client = client
+
+    def post(self, path, json):
+        return self.client.post("/api/v1" + path, json=json)
+
+    def get(self, path, params=None):
+        return self.client.get("/api/v1" + path, params=params)
+
+    def close(self):
+        pass
+
+
+def test_agent_over_http_sink_full_roundtrip(client, db, monkeypatch):
+    """Der echte Betriebsweg: Agent -> HttpSink -> Server (Ports, Aufträge, Ergebnis)."""
+    from diskatlas.agent.sinks import HttpSink
+
+    disk = _disk_with_volume()
+    disk.port = "ata3"
+    monkeypatch.setattr(fslabel, "set_label", lambda d, f, m, label: label)
+    monkeypatch.setattr("diskatlas.probe.ports.all_ports", lambda *a, **k: ["ata3", "ata4"])
+    sink = HttpSink("http://server", client=_HttpAdapter(client))
+    agent = Agent(AgentConfig(poll_interval=0.05), sink, prober=lambda: [disk],
+                  smart_reader=_smart, host="pc")
+    agent.scan_all(index_files=False)
+
+    live = client.get("/api/v1/bays/live?host=pc").json()
+    assert live["online"] and [p["port"] for p in live["occupied"]] == ["ata3"]
+
+    with db.session() as s:
+        volume_id = s.scalar(select(Volume.id))
+    client.post(f"/volumes/{volume_id}/label", data={"label": "ViaHttp"})
+    thread = threading.Thread(target=agent._command_loop, daemon=True)
+    thread.start()
+    try:
+        for _ in range(100):
+            with db.session() as s:
+                (row,) = s.scalars(select(Command)).all()
+                if row.status in ("done", "failed"):
+                    break
+            threading.Event().wait(0.05)
+    finally:
+        agent.stop()
+        thread.join(5)
+    assert (row.status, row.result) == ("done", "Bezeichnung geändert: „ViaHttp“.")
