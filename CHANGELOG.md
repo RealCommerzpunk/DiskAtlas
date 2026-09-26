@@ -44,6 +44,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 - Signatur der Windows-Datei über **SignPath** vorbereitet: Schritt im Build (nur Versions-Tags,
   aktiv sobald die Zugangsdaten hinterlegt sind), Richtlinie [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md),
   Artefakt-Konfiguration `packaging/signpath/`. Anleitung zum Entfernen in docs/AGENT.md.
+- Build: GitHub-Release bekommt den CHANGELOG-Abschnitt der Version als Text
+  (`scripts/release_notes.py`).
 - Build: Starttest unter Windows (lokale Oberfläche muss antworten, Einstellungsfenster offen
   bleiben; Protokolle im Build-Log, Bildschirmfoto als Artefakt).
 

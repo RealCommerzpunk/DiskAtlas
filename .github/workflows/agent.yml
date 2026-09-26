@@ -161,10 +161,19 @@ jobs:
           path: build/smartmontools-*.tar.gz
           if-no-files-found: error
 
+      - name: Release-Text aus dem CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python; else PY=.venv/bin/python; fi
+          $PY scripts/release_notes.py "$GITHUB_REF_NAME" > release-notes.md
+
       - name: An Release hängen
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          name: DiskAtlas ${{ github.ref_name }}
+          body_path: release-notes.md
           files: |
             dist/${{ matrix.asset }}
             build/smartmontools-*.tar.gz
