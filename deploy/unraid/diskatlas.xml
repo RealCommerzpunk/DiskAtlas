@@ -15,5 +15,5 @@
   <ExtraParams>--health-start-period=20s</ExtraParams>
   <Config Name="Web-Port" Target="8765" Default="8765" Mode="tcp" Description="Port der Weboberfläche und API" Type="Port" Display="always" Required="true" Mask="false">8765</Config>
   <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/diskatlas" Mode="rw" Description="Datenbank (SQLite)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/diskatlas</Config>
-  <Config Name="Passwort" Target="DISKATLAS_PASSWORD" Default="" Mode="" Description="Startpasswort des Benutzers Master (Pflicht, wird nur beim ersten Start übernommen; Anmeldename: Master)" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Passwort" Target="DISKATLAS_PASSWORD" Default="" Mode="" Description="Startpasswort des Benutzers Admin – nur beim allerersten Start nötig, danach darf das Feld leer bleiben (Anmeldename: Admin)" Type="Variable" Display="advanced-hide" Required="false" Mask="true"/>
 </Container>

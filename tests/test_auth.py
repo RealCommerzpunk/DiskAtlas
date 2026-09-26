@@ -2,6 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from diskatlas.config import Config
+from diskatlas.db.models import User
+from diskatlas.services import users
 from diskatlas.web import auth
 from diskatlas.web.app import create_app
 
@@ -21,7 +23,22 @@ def test_exposed_server_requires_password(db, tmp_path):
     _client(db, tmp_path)  # Loopback ohne Passwort bleibt möglich
 
 
-def _login(c, nickname="Master", password="geheim", next="/"):
+def test_password_is_only_needed_for_the_first_start(db, tmp_path):
+    _client(db, tmp_path, host="0.0.0.0", password="geheim-geheim")  # legt den Admin an
+    c = _client(db, tmp_path, host="0.0.0.0")  # spätere Starts brauchen es nicht mehr
+    assert c.get("/files?q=x").status_code == 303, "Anmeldung bleibt Pflicht"
+
+
+def test_legacy_master_account_becomes_admin(db, tmp_path):
+    _client(db, tmp_path, password="geheim")
+    with db.session() as s:
+        users.find_user(s, "Admin").nickname = "Master"
+    _client(db, tmp_path)
+    with db.session() as s:
+        assert [u.nickname for u in s.query(User).all()] == ["Admin"]
+
+
+def _login(c, nickname="Admin", password="geheim", next="/"):
     return c.post("/login", data={"nickname": nickname, "password": password, "next": next})
 
 
@@ -39,7 +56,7 @@ def test_login_flow(db, tmp_path):
     assert auth.COOKIE not in bad.headers.get("set-cookie", "")
     assert "Falscher" in _login(c, nickname="niemand").headers["location"]
 
-    ok = _login(c, nickname="master", next="https://evil.example/")  # Name ohne Groß/Klein
+    ok = _login(c, nickname="admin", next="https://evil.example/")  # Name ohne Groß/Klein
     assert ok.status_code == 303 and ok.headers["location"] == "/", "kein Open-Redirect"
     cookie = ok.headers["set-cookie"]
     assert "HttpOnly" in cookie and "samesite=lax" in cookie.lower()
@@ -60,7 +77,7 @@ def test_master_is_created_once_from_bootstrap_password(db, tmp_path):
     _client(db, tmp_path, password="anderes")  # zweiter Start ändert nichts
     with db.session() as s:
         rows = s.scalars(select(User)).all()
-    assert [(u.nickname, u.is_master, u.status) for u in rows] == [("Master", True, "active")]
+    assert [(u.nickname, u.is_master, u.status) for u in rows] == [("Admin", True, "active")]
     assert rows[0].password_hash != "geheim"
     assert security.verify_password("geheim", rows[0].password_hash)
 
@@ -76,7 +93,7 @@ def test_cookie_is_bound_to_user_and_password(db, tmp_path):
     _login(c)
     assert c.get("/").status_code == 200
     with db.session() as s:
-        master = users.find_user(s, "Master")
+        master = users.find_user(s, "Admin")
         users.change_password(s, master, "geheim", "neues-passwort-1")  # meldet alle ab
     assert c.get("/").status_code == 303
     assert _login(c, password="geheim").status_code == 303
@@ -144,7 +161,7 @@ def test_registration_needs_approval_by_master(db, tmp_path):
     assert auth.COOKIE not in pending.headers.get("set-cookie", "")
     assert c.get("/").status_code == 303
 
-    _login(c)  # Master
+    _login(c)  # Admin
     page = c.get("/admin/users")
     assert page.status_code == 200 and "Anna" in page.text and "Ich bin Anna" in page.text
     from sqlalchemy import select
@@ -160,13 +177,13 @@ def test_registration_needs_approval_by_master(db, tmp_path):
     assert _login(c, "anna", "anna-passwort-1").headers["location"] == "/"
     assert c.get("/").status_code == 200
     assert c.get("/account").status_code == 200
-    assert c.get("/admin/users").status_code == 403, "nur der Master verwaltet"
+    assert c.get("/admin/users").status_code == 403, "nur der Admin verwaltet"
     assert c.post(f"/admin/users/{anna_id}/reject").status_code == 403
 
 
 def test_registration_rejects_bad_input_and_duplicates(db, tmp_path):
     c = _client(db, tmp_path, password="geheim")
-    assert "vergeben" in _register(c, "master").text, "Groß-/Kleinschreibung zählt nicht"
+    assert "vergeben" in _register(c, "admin").text, "Groß-/Kleinschreibung zählt nicht"
     assert "mindestens 10" in _register(c, "Bob", "kurz").text
     assert "2–40 Zeichen" in _register(c, "<b>", "bob-passwort-1").text
     assert "Antrag gesendet" in _register(c, "Bob", "bob-passwort-1").text

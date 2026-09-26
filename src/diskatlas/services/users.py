@@ -13,7 +13,7 @@ from diskatlas.db.models import Client, User
 from diskatlas.services.ingest import utcnow
 from diskatlas.web import security
 
-MASTER_NICKNAME = "Master"
+MASTER_NICKNAME = "Admin"
 MIN_PASSWORD = 10
 MAX_PASSWORD = 200
 LAST_SEEN_INTERVAL = timedelta(minutes=1)  # so oft wird `last_seen` höchstens geschrieben
@@ -56,7 +56,14 @@ def has_users(session: Session) -> bool:
 
 
 def bootstrap_master(session: Session, password: str) -> bool:
-    """Legt beim allerersten Start den Master an (Passwort aus DISKATLAS_PASSWORD)."""
+    """Legt beim allerersten Start den Admin an (Passwort aus DISKATLAS_PASSWORD).
+
+    Ein Konto, das bis Version 0.6 „Master“ hieß, wird zu „Admin“ (sofern der Name frei ist).
+    """
+    legacy = session.scalar(select(User).where(User.is_master, User.nickname == "Master"))
+    if legacy is not None and find_user(session, MASTER_NICKNAME) is None:
+        legacy.nickname = MASTER_NICKNAME
+        session.commit()
     if not password or has_users(session):
         return False
     session.add(User(nickname=MASTER_NICKNAME, password_hash=security.hash_password(password),

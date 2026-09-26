@@ -2,7 +2,7 @@
 
 Ohne Benutzerkonten (kein Passwort konfiguriert) ist keine Anmeldung nötig – das ist nur erlaubt,
 solange der Server ausschließlich lokal (Loopback) lauscht (siehe `check_exposure`). Das Passwort
-aus `DISKATLAS_PASSWORD` legt beim ersten Start den Master an. Agenten weisen sich mit dem Token
+aus `DISKATLAS_PASSWORD` legt beim ersten Start den Admin an. Agenten weisen sich mit dem Token
 ihres Clients aus (`Authorization: Bearer …`); das gilt für `/api/v1/ingest/*` (nur so, keine
 Sitzung) und darf auch Skripte für die übrige API authentifizieren – jeweils als Besitzer des
 Clients.
@@ -34,10 +34,13 @@ INGEST_PREFIX = "/api/v1/ingest/"
 MAX_FAILURES, FAILURE_WINDOW = 5, 300.0
 
 
-def check_exposure(config: Config) -> None:
-    """Verhindert, dass ein im Netz erreichbarer Server ungeschützt startet."""
+def check_exposure(config: Config, has_users: bool = False) -> None:
+    """Verhindert, dass ein im Netz erreichbarer Server ungeschützt startet.
+
+    Das Startpasswort ist nur für den allerersten Start nötig; gibt es schon Benutzer, entfällt es.
+    """
     server = config.server
-    if server.host in LOOPBACK or server.allow_insecure:
+    if server.host in LOOPBACK or server.allow_insecure or has_users:
         return
     if not server.password:
         raise RuntimeError(

@@ -84,7 +84,7 @@
 <section class="card" id="share">
   <h2>Besitz &amp; Freigabe</h2>
   {% if share_err %}<p class="notice health-reasons failed" role="alert">{{ share_err }}</p>{% endif %}
-  <p>Besitzer: <strong>{{ owner.nickname if owner else 'niemand (herrenlos – nur der Master sieht diese Platte)' }}</strong>{% if not can_write %} · Sie ist dir nur zum Ansehen freigegeben.{% endif %}</p>
+  <p>Besitzer: <strong>{{ owner.nickname if owner else 'niemand (herrenlos – nur der Admin sieht diese Platte)' }}</strong>{% if not can_write %} · Sie ist dir nur zum Ansehen freigegeben.{% endif %}</p>
   {% if can_write and owner %}
   <h3>Lesend freigegeben für</h3>
   <div class="chips">

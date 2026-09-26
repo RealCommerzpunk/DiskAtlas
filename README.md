@@ -146,14 +146,14 @@ diskatlas db copy --to "postgresql+psycopg://diskatlas:pw@unraid.local:5432/disk
 (For PostgreSQL, run `pip install -e ".[postgres]"` once locally.)
 
 The web interface requires a login. On the very first start `DISKATLAS_PASSWORD` becomes the
-password of the user **Master**; other people apply for access at `/register` and the Master
+password of the user **Admin**; other people apply for access at `/register` and the Admin
 approves them under *Verwaltung*. Each user creates **clients** (one per computer running an agent)
 with their own token under *Konto*; agents authenticate with that token. Every drive belongs to
 the user whose client reported it first: users see only their own drives plus those shared with
-them (per drive, read-only), and only the owner (or the Master) can change anything. If another
+them (per drive, read-only), and only the owner (or the Admin) can change anything. If another
 user's client reports an owned drive, nothing changes – the owner just gets a transfer request.
-Labels are private per user. The container only
-starts when `DISKATLAS_PASSWORD` is set.
+Labels are private per user. The container needs
+`DISKATLAS_PASSWORD` only for the very first start.
 
 ## Development
 

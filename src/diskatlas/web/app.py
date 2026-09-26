@@ -28,7 +28,6 @@ class _RevalidatingStaticFiles(StaticFiles):
 def create_app(
     config: Config, db: Database | None = None, bays_path: Path | None = None
 ) -> FastAPI:
-    auth.check_exposure(config)
     if db is None:
         db = Database(config.effective_database_url)
         db.upgrade()
@@ -40,6 +39,7 @@ def create_app(
     app.state.config = config
     app.state.db = db
     with db.session() as session:
+        auth.check_exposure(config, users.has_users(session))
         users.bootstrap_master(session, config.server.password)
         app.state.auth_enabled = users.has_users(session)
     legacy = bays_path or bays.default_bays_path()

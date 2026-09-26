@@ -11,6 +11,13 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- **„Master“ heißt jetzt „Admin“** (Oberfläche, Doku, Anmeldename des ersten Kontos). Ein bestehendes
+  Konto „Master“ wird beim Start zu „Admin“ umbenannt (Passwort bleibt).
+- **`DISKATLAS_PASSWORD` nur noch beim allerersten Start nötig.** Existiert schon ein Benutzer, startet
+  der Container auch ohne die Variable (Unraid-Vorlage: nicht mehr Pflicht, `docker-compose.yml`
+  ohne Abbruch). Ohne Benutzer und ohne Passwort verweigert ein im Netz lauschender Server weiter den Start.
+
 ## [0.6.0] - 2026-09-27
 
 ### Geändert (Achtung, bricht bestehende Einrichtungen)

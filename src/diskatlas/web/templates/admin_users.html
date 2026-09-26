@@ -33,7 +33,7 @@
 {% if unowned %}
 <section class="card">
   <h2>Herrenlose Platten ({{ unowned }})</h2>
-  <p class="muted">Platten ohne Besitzer (z. B. aus einer früheren Einzelplatz-Datenbank) sieht nur der Master. Hier übergibst du sie samt ihren Labels einem Benutzer; danach gehören sie ihm.</p>
+  <p class="muted">Platten ohne Besitzer (z. B. aus einer früheren Einzelplatz-Datenbank) sieht nur der Admin. Hier übergibst du sie samt ihren Labels einem Benutzer; danach gehören sie ihm.</p>
   <form method="post" action="/admin/disks/assign-unowned" class="inline" data-confirm="Alle herrenlosen Platten und Labels dem gewählten Benutzer übergeben?">
     <select name="user_id" aria-label="Benutzer" required>
       <option value="">Benutzer wählen …</option>
@@ -53,7 +53,7 @@
     {% for u in active %}
       <tr>
         <td>{{ u.nickname }}</td>
-        <td>{{ 'Master' if u.is_master else 'Benutzer' }}</td>
+        <td>{{ 'Admin' if u.is_master else 'Benutzer' }}</td>
         <td>{{ u.created_at.strftime('%d.%m.%Y') }}</td>
         <td class="num">{{ u.clients | length }}</td>
       </tr>

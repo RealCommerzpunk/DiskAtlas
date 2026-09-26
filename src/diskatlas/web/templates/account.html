@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Konto{% endblock %}
 {% block content %}
-<h1>Konto von {{ user.nickname }}{% if user.is_master %} <span class="chip" style="background:var(--accent);color:var(--accent-text)">Master</span>{% endif %}</h1>
+<h1>Konto von {{ user.nickname }}{% if user.is_master %} <span class="chip" style="background:var(--accent);color:var(--accent-text)">Admin</span>{% endif %}</h1>
 {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
 {% if info %}<p class="notice ok" role="status">{{ info }}</p>{% endif %}
 

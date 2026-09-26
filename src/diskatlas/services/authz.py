@@ -1,8 +1,8 @@
 """Wer darf welche Platten sehen und ändern?
 
-- Herr über eine Platte ist ihr Besitzer (`Disk.owner_user_id`) und der Master.
+- Herr über eine Platte ist ihr Besitzer (`Disk.owner_user_id`) und der Admin.
 - Lesen darf zusätzlich, wem der Besitzer die Platte freigegeben hat (`DiskShare`).
-- Herrenlose Platten (kein Besitzer) sehen nur der Master.
+- Herrenlose Platten (kein Besitzer) sehen nur der Admin.
 - Ohne Anmeldung (lokaler Betrieb) gibt es keine Beschränkung.
 """
 
