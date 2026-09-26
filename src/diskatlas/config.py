@@ -60,6 +60,9 @@ class AgentConfig:
     # Linux: angeschlossene, nicht eingehängte Dateisysteme selbst einhängen (udisks2, wie der
     # Dateimanager), damit Belegung und Dateien erfasst werden können.
     auto_mount: bool = True
+    # Dateien auf Anweisung des Servers kopieren („Datei anfordern“). Standardmäßig aus: nur wer
+    # es an diesem Rechner einschaltet, lässt den Agenten vom Server gesteuert lesen/schreiben.
+    allow_transfer: bool = False
     exclude_dirs: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
     smartctl_path: str = "smartctl"
     smart_use_sudo: bool = True

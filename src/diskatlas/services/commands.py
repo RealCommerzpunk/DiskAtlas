@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from diskatlas.db.models import Command
 from diskatlas.services.ingest import utcnow
 
-KINDS = {"rename_label", "rescan"}
+KINDS = {"rename_label", "rescan", "notice"}
 STALE_RUNNING_SECONDS = 600  # ein hängengebliebener „läuft“-Auftrag wird nicht endlos angezeigt
 
 

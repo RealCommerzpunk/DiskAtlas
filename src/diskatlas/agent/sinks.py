@@ -40,6 +40,24 @@ class Sink(ABC):
         self, disk_key: str, volume_key: str, scan_id: str, errors: int, success: bool
     ) -> None: ...
 
+    # Übertragungen („Datei anfordern“) gibt es nur gegenüber einem Server mit Clients.
+    capabilities: dict = {}  # noqa: RUF012 - wird je Instanz gesetzt
+
+    def fetch_transfers(self) -> list[dict]:
+        return []
+
+    def transfer_progress(self, item_id: str, bytes_done: int) -> bool:
+        """False = abbrechen."""
+        return True
+
+    def transfer_done(  # noqa: B027
+        self, item_id: str, sha256: str, size: int, name: str, message: str
+    ) -> None:
+        pass
+
+    def transfer_fail(self, item_id: str, message: str, retry: bool) -> None:  # noqa: B027
+        pass
+
     def close(self) -> None:  # noqa: B027 - optionaler Hook
         pass
 
@@ -85,6 +103,7 @@ class HttpSink(Sink):
     """Überträgt an die Ingest-API eines entfernten DiskAtlas-Servers (z. B. Docker)."""
 
     def __init__(self, base_url: str, token: str = "", timeout: float = 120.0, client=None):
+        self.capabilities = {}
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         self.client = client or httpx.Client(
             base_url=base_url.rstrip("/") + "/api/v1", headers=headers, timeout=timeout
@@ -104,8 +123,25 @@ class HttpSink(Sink):
     ) -> None:
         self._post(
             "/ingest/connected",
-            {"host": host, "disk_keys": disk_keys, "ports_info": ports_info},
+            {"host": host, "disk_keys": disk_keys, "ports_info": ports_info,
+             **self.capabilities},
         )
+
+    def fetch_transfers(self) -> list[dict]:
+        response = self.client.get("/ingest/transfers")
+        response.raise_for_status()
+        return response.json()
+
+    def transfer_progress(self, item_id: str, bytes_done: int) -> bool:
+        reply = self._post(f"/ingest/transfers/{item_id}/progress", {"bytes_done": bytes_done})
+        return not reply.get("abort")
+
+    def transfer_done(self, item_id: str, sha256: str, size: int, name: str, message: str) -> None:
+        self._post(f"/ingest/transfers/{item_id}/done",
+                   {"sha256": sha256, "size": size, "result_name": name, "message": message})
+
+    def transfer_fail(self, item_id: str, message: str, retry: bool) -> None:
+        self._post(f"/ingest/transfers/{item_id}/fail", {"message": message, "retry": retry})
 
     def fetch_commands(self, host: str) -> list[dict]:
         response = self.client.get("/ingest/commands", params={"host": host})

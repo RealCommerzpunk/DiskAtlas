@@ -388,6 +388,10 @@ class Client(Base):
     # NULL = noch nie eingerichtet
     bay_ports: Mapped[str | None] = mapped_column(Text)
     bay_reverse: Mapped[bool] = mapped_column(default=False, server_default="0")
+    # Vom Agenten im Heartbeat gemeldet: darf er auf Anweisung Dateien kopieren/übertragen?
+    transfer_enabled: Mapped[bool] = mapped_column(default=False, server_default="0")
+    # Öffentlicher X25519-Schlüssel (base64) für die Ende-zu-Ende-Verschlüsselung im Relay
+    pubkey: Mapped[str | None] = mapped_column(String(64))
 
     user: Mapped[User] = relationship(back_populates="clients")
 
@@ -447,6 +451,7 @@ class CopyRequest(Base):
     requester: Mapped[User] = relationship()
     target_client: Mapped[Client] = relationship()
     target_disk: Mapped[Disk] = relationship()
+    target_volume: Mapped[Volume | None] = relationship()
     items: Mapped[list[CopyItem]] = relationship(
         back_populates="request", cascade="all, delete-orphan", order_by="CopyItem.created_at"
     )
@@ -487,6 +492,18 @@ class CopyItem(Base):
     )
     approved_at: Mapped[datetime | None]
     expires_at: Mapped[datetime | None]
+    # Der Client, der die Übertragung übernommen hat (nur er darf Fortschritt/Ergebnis melden)
+    claimed_by_client_id: Mapped[int | None] = mapped_column(
+        ForeignKey("clients.id", ondelete="SET NULL")
+    )
+    # Relay (Phase upload): das Stück liegt verschlüsselt unter einem Zufallsnamen; es liegt immer
+    # höchstens ein Stück je Datei dort, bis der Empfänger es quittiert hat.
+    relay_epk: Mapped[str | None] = mapped_column(String(64))  # Ephemeral-Schlüssel des Senders
+    relay_next: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    relay_pending: Mapped[bool] = mapped_column(default=False, server_default="0")
+    relay_blob: Mapped[str | None] = mapped_column(String(32))
+    relay_bytes: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    relay_final: Mapped[bool] = mapped_column(default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
 

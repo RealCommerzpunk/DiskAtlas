@@ -144,6 +144,24 @@ class IngestConnected(BaseModel):
     host: str
     disk_keys: list[str]
     ports_info: dict | None = None  # {"present": [...], "all_ports": [...]} (Linux/SATA)
+    transfer: bool = False  # darf dieser Agent Dateien auf Anweisung kopieren/übertragen?
+    pubkey: str | None = None  # öffentlicher X25519-Schlüssel (base64) für das Relay
+
+
+class TransferProgress(BaseModel):
+    bytes_done: int = 0
+
+
+class TransferDone(BaseModel):
+    sha256: str
+    size: int
+    result_name: str
+    message: str = ""
+
+
+class TransferFail(BaseModel):
+    message: str
+    retry: bool = False
 
 
 class CommandResult(BaseModel):

@@ -89,7 +89,9 @@ def overview(
     return templates.TemplateResponse(request, "requests.html", {
         "mine": copies.requests_of(session, user.id),
         "approvals": copies.approvals_for(session, user.id),
-        "counts": copies.counts, "STATE_TEXT": copies.STATE_TEXT, "msg": msg,
+        "connect": copies.disks_to_connect(session, user.id),
+        "user_name": user.nickname, "counts": copies.counts,
+        "STATE_TEXT": copies.STATE_TEXT, "msg": msg,
     })
 
 

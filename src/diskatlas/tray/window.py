@@ -73,6 +73,8 @@ Beim Anmelden automatisch starten</label>
 <label class="check"><input type="checkbox" id="index_files"> Dateien indizieren</label>
 <label class="check"><input type="checkbox" id="auto_mount">
 Datenträger automatisch einhängen (Linux)</label>
+<label class="check"><input type="checkbox" id="allow_transfer">
+Angeforderte Dateien kopieren erlauben (der Server darf hier Dateien lesen/schreiben lassen)</label>
 <details><summary>Erweitert</summary>
 <label class="check"><input type="checkbox" id="index_system_volumes">
 Systemvolumes indizieren</label>
@@ -101,7 +103,7 @@ SMART mit sudo lesen (Linux)</label>
 <script>
 const TEXT = ["server_url","api_token","host_name","smartctl_path","tray_icon_color"];
 const NUM = ["poll_interval","smart_interval_minutes","rescan_interval_hours"];
-const BOOL = ["index_files","auto_mount","index_system_volumes","smart_use_sudo"];
+const BOOL = ["index_files","auto_mount","allow_transfer","index_system_volumes","smart_use_sudo"];
 const $ = id => document.getElementById(id);
 function say(text, ok){const m=$("msg");m.textContent=text;m.className=ok?"ok":"bad";}
 function fill(v){TEXT.forEach(k=>$(k).value=v[k]??"");NUM.forEach(k=>$(k).value=v[k]);

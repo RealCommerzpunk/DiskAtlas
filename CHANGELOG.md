@@ -12,6 +12,18 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Agent führt „Datei anfordern“ aus (lokale Kopie, Migration `0011`)**: Nur mit dem neuen Haken
+  *„Angeforderte Dateien kopieren erlauben“* (Tray-Einstellungen bzw. `allow_transfer = true`,
+  Standard **aus**) holt der Agent Kopieraufträge ab. Laufwerke und Pfade leitet er aus seiner eigenen
+  Erkennung ab, Systemvolumes werden nie kopiert; Pfade laufen durch `safepath` (kein `..`, keine
+  absoluten Pfade/Laufwerksbuchstaben/NTFS-Streams/reservierten Namen, keine Symlinks/Junctions aus dem
+  Volume heraus, nur reguläre Dateien). Geschrieben wird in eine Teildatei, geprüft (SHA-256), dann ohne
+  Überschreiben umbenannt (Kollision: `name (1).ext`); Änderungszeit bleibt erhalten. Der Server
+  liefert Aufträge nur an den Ziel-Client, Fortschritt und Ergebnis nimmt er nur von dem Client, der den
+  Auftrag übernommen hat; Zurückziehen oder entzogene Berechtigung brechen einen laufenden Auftrag ab.
+  Fehlt eine Platte, erhält ihr Besitzer einen Hinweis (Tray-Meldung, höchstens einmal je Platte und Tag)
+  und sieht sie unter *Anfragen → Bitte Platte anschließen*. Kopien zwischen verschiedenen Clients
+  (Relay) folgen im nächsten Schritt.
 - **„Datei anfordern“ (Server-Seite, Migration `0010`)**, hinter dem Schalter `copy_enabled` /
   `DISKATLAS_COPY_ENABLED` (Standard aus, bis die Agenten-Seite folgt): Aus dem Dateibrowser und den
   Suchergebnissen lassen sich Dateien und ganze Ordner (bis 2000 Dateien je Anfrage) anfordern. Ziel

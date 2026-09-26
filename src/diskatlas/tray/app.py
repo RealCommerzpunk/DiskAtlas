@@ -128,6 +128,10 @@ class Tray:
         if stamp != self._config_stamp:
             self._config_stamp = stamp
             self.controller.restart()
+        for text in self.controller.pop_notices():
+            if self._icon is not None:
+                with contextlib.suppress(Exception):
+                    self._icon.notify(text, "DiskAtlas Agent")
         status = self.controller.status()
         try:
             write_status(status)
