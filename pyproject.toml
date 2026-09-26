@@ -34,6 +34,14 @@ gui = [
     "pywebview>=5.0",
     "pythonnet>=3.0.3; sys_platform == 'win32'",
 ]
+# Agent als Tray-Programm (Symbol im Systembereich + Einstellungsfenster). Linux zusätzlich:
+# python3-gi und gir1.2-ayatanaappindicator3-0.1 (auf Linux Mint meist vorhanden).
+tray = [
+    "pystray>=0.19.5",
+    "pillow>=10.0",
+    "pywebview>=5.0",
+    "pythonnet>=3.0.3; sys_platform == 'win32'",
+]
 dev = ["pytest>=8", "ruff>=0.5"]
 build = ["pyinstaller>=6.10", "pyinstaller-hooks-contrib>=2024.9"]
 
@@ -42,6 +50,7 @@ diskatlas = "diskatlas.cli:main"
 
 [project.gui-scripts]
 diskatlas-gui = "diskatlas.gui:main"
+diskatlas-tray = "diskatlas.tray.app:main"
 
 [tool.hatch.version]
 path = "src/diskatlas/__init__.py"

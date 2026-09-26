@@ -7,8 +7,8 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.2.0 (siehe `src/diskatlas/__init__.py`) |
-| **Status** | Erste lauffähige Version – lokaler Betrieb unter Linux Mint, Windows ungetestet auf echter Hardware |
+| **Aktuelle Version** | 0.3.0 (siehe `src/diskatlas/__init__.py`) |
+| **Status** | Server auf Unraid (Docker) im Einsatz, Agent unter Linux Mint; Windows ungetestet auf echter Hardware |
 | **Zuletzt aktualisiert** | 2026-09-26 |
 
 ---
@@ -64,6 +64,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Verteilt | Agent → HTTP-Ingest → zentraler Server, Token-Schutz | ✅ 0.1.0 |
 | Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy` | ✅ 0.1.0 |
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
+| Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; fertige Datei für Windows/Linux (PyInstaller, GitHub Actions) | ✅ Unreleased (Windows ungetestet) |
 | Sicherheit | Login für das Dashboard | ⏳ geplant |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
@@ -135,9 +136,17 @@ src/diskatlas/
     migrations/         Alembic (wird beim Start automatisch angewendet)
   web/
     app.py, api.py, views.py, schemas.py, formatting.py, templates/, static/
+  tray/               Agent als Tray-Programm
+    app.py              Tray-Symbol + Menü (pystray), Einzelinstanz, Neustart bei geänderter Konfiguration
+    controller.py       Agent im Hintergrund-Thread, Verbindungsstatus aus den Sink-Aufrufen
+    window.py           Einstellungsfenster (pywebview, eigener Prozess)
+    settings.py         config.toml lesen/prüfen/schreiben, Verbindungstest
+    status.py           Statusdatei zwischen Tray und Fenster
+    autostart.py        Start bei Anmeldung (XDG-Autostart / Run-Schlüssel)
   tools/dbcopy.py     Umzug zwischen Datenbanken
 tests/                pytest; Fixtures mit echten lsblk/smartctl/PowerShell-Ausgaben
 deploy/               systemd-Dienst, Windows-Autostart
+packaging/            Icons, PyInstaller-Bauanleitung des Agent-Programms
 scripts/              Versionierung, sudoers-Helfer für smartctl
 ```
 
@@ -186,6 +195,7 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-23 | **Neu formatiert = gleiche Partition mit neuer Dateisystem-UUID → Index verwerfen; neue Partitions-GUID = neues Volume** | Volumes werden über die GPT-GUID identifiziert (MBR: Dateisystem-UUID); ein Neupartitionieren erzeugt also neue Volumes, das alte bleibt als „nicht mehr vorhanden“ stehen und kann manuell gelöscht werden. |
 | 2026-09-23 | **Auto-Einhängen standardmäßig an, über udisks2 (schreibbar wie im Dateimanager)** | Ohne Einhängen sind Belegung und Dateiindex nicht erfassbar. Schreibgeschützt einhängen wurde verworfen, weil Daten zwischen Platten verschoben werden sollen. Abschaltbar mit `auto_mount = false`. |
 | 2026-09-23 | **Hersteller/Serie aus smartmontools-`drivedb.h` statt eigener Datenpflege** | Die Liste wird von der Community gepflegt und liegt mit smartmontools bereits auf dem Rechner; `sudo update-smart-drivedb` aktualisiert sie. Ergänzt um eine kleine Präfix-Tabelle für den Hersteller. Grenzen: Familien sind teils technisch (Enterprise-Reihen) oder fehlen (neue Modelle) – dann bleibt die Serie leer. |
+| 2026-09-26 | **Agent-Programm: pystray + pywebview in einem PyInstaller-Paket, Einstellungsfenster als eigener Prozess, Austausch über Statusdatei** | Beide Bibliotheken laufen unter Windows und Linux; pywebview ist schon im Projekt (GUI). Tray- und Fensterbibliothek wollen jeweils die Hauptschleife (unter Linux beide GTK, unter Windows Win32 vs. WinForms), deshalb getrennte Prozesse. Das Fenster schreibt nur `config.toml`; das Tray erkennt die Änderung und startet den Agenten neu. Der Verbindungsstatus wird aus den ohnehin stattfindenden Sink-Aufrufen abgeleitet, ohne zusätzlichen Netzverkehr. Ein Programm ohne Python-Installation ist für Windows-Nutzer die einzige zumutbare Verteilung. |
 | 2026-09-26 | **Server führt nichts auf Platten aus; Agenten holen Aufträge ab (Polling)** | Der Server läuft auf einem anderen Rechner (Unraid) und darf keine Kommandos an Rechner „durchreichen“. Der Agent verbindet sich ausgehend (NAT/Firewall-freundlich), prüft jeden Auftrag gegen seinen eigenen Stand und ignoriert Gerätepfade aus dem Auftrag. Aufträge sind auf eine feste Liste (`rename_label`, `rescan`) beschränkt. |
 | 2026-09-26 | **Ein Passwort + signiertes Cookie statt Benutzerverwaltung; Server im Netz nur mit Passwort und Token** | Einzelnutzer-Heimnetz (Unraid, Tailscale). Kein Benutzerkonzept nötig; ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Das Passwort steckt in der Cookie-Signatur, ein Wechsel invalidiert alle Sitzungen. |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |
@@ -199,6 +209,8 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 - SMART braucht root: entweder `scripts/setup-smartctl-sudo.sh` (sudoers-Regel nur für
   smartctl) oder den Agenten als root starten.
 - Dateien werden nur auf **eingehängten** Volumes indiziert (Automount von Cinnamon genügt).
+- Agent-Programm `diskatlas-agent`: gebaut für Ubuntu 24.04 / Linux Mint 22, bringt GTK/WebKit
+  mit (ca. 70 MB). Tray-Symbol über AppIndicator (Cinnamon, KDE, XFCE; GNOME nur mit Erweiterung).
 
 **Windows 10/11**
 - Benötigt: Python 3.11+, smartmontools für Windows (`smartctl.exe`, wird auch unter
@@ -206,6 +218,9 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 - SMART braucht eine Administrator-Konsole bzw. die geplante Aufgabe aus
   `deploy/windows/install-autostart.ps1`.
 - Noch nicht auf echter Hardware getestet (nur Parser-Tests mit Beispieldaten).
+- Agent-Programm `DiskAtlas-Agent.exe`: braucht die WebView2-Laufzeit (bei Windows 10/11 meist
+  vorhanden). Es läuft ohne Administratorrechte, **SMART ist dann nicht lesbar**; dafür das
+  Programm einmalig „als Administrator ausführen“ oder die geplante Aufgabe nutzen.
 
 **Docker / Unraid**
 - Container betreibt nur den Server. Scans erfolgen durch Agenten auf den Rechnern
