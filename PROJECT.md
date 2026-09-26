@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.5.1 (siehe `src/diskatlas/__init__.py`) |
+| **Aktuelle Version** | 0.6.0 (siehe `src/diskatlas/__init__.py`) |
 | **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0 |
 | **Zuletzt aktualisiert** | 2026-09-26 |
 
@@ -66,8 +66,8 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
 | Benutzer | Benutzerkonten mit Freischaltung durch den Master (Antrag unter `/register`), Anmeldung mit Name + Passwort, pro Benutzer beliebig viele Clients mit eigenem Token (Konto-Seite) | ✅ 0.5.0 |
-| Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ Unreleased |
-| Schächte je Client | Anzahl und Port-Zuordnung je Client (Assistent), Haken „Keine Wechselschächte“, Schachtblock je Client im Dashboard | ✅ Unreleased |
+| Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ 0.6.0 |
+| Schächte je Client | Anzahl und Port-Zuordnung je Client (Assistent), Haken „Keine Wechselschächte“, Schachtblock je Client im Dashboard | ✅ 0.6.0 |
 | Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Master), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ 0.5.0 |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |

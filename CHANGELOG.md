@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-27
+
 ### Geändert (Achtung, bricht bestehende Einrichtungen)
 - **Schächte gehören zum Client** (Migration `0007`). Statt einer Zuordnung je Benutzer stellt jeder
   Client unter *Konto → Meine Clients* selbst ein: **Anzahl der Wechselschächte (1–24)** oder den
