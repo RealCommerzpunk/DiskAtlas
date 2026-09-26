@@ -8,7 +8,7 @@
 | | |
 |---|---|
 | **Aktuelle Version** | 0.4.0 (siehe `src/diskatlas/__init__.py`) |
-| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung |
+| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer-Umstellung (Benutzer, Clients, Besitz, Freigaben) fertig, noch nicht veröffentlicht |
 | **Zuletzt aktualisiert** | 2026-09-26 |
 
 ---
@@ -206,7 +206,7 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-26 | **MIT-Lizenz; Windows-Signatur über SignPath Foundation** | Kostenlose Signatur für Open-Source-Projekte, Signieren direkt aus GitHub Actions mit manueller Freigabe je Release. Voraussetzung ist eine OSI-Lizenz; MIT ist die einfachste und verträgt sich mit dem mitgelieferten (eigenständigen, GPL-lizenzierten) smartctl. Signiert wird nur die eigene .exe, smartctl bleibt Upstream-Binärdatei. |
 | 2026-09-26 | **README und Code-Signing-Richtlinie auf Englisch (README.de.md als deutsche Fassung), Rest bleibt deutsch** | Die SignPath-Prüfung und Nutzer außerhalb des deutschen Sprachraums sehen zuerst README und Richtlinie. GitHub kennt keine Sprachumschaltung; üblich ist `README.md` englisch plus `README.<sprache>.md` mit Links oben. Oberfläche und ausführliche Anleitungen bleiben vorerst deutsch (Übersetzung wäre ein eigenes Vorhaben). |
 | 2026-09-26 | **Server führt nichts auf Platten aus; Agenten holen Aufträge ab (Polling)** | Der Server läuft auf einem anderen Rechner (Unraid) und darf keine Kommandos an Rechner „durchreichen“. Der Agent verbindet sich ausgehend (NAT/Firewall-freundlich), prüft jeden Auftrag gegen seinen eigenen Stand und ignoriert Gerätepfade aus dem Auftrag. Aufträge sind auf eine feste Liste (`rename_label`, `rescan`) beschränkt. |
-| 2026-09-26 | ~~Ein Passwort + signiertes Cookie statt Benutzerverwaltung~~ (ersetzt, s. u.); **Server im Netz nur mit Passwort und Token** | Ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Bleibt bestehen: `DISKATLAS_PASSWORD` ist Pflicht bei Betrieb im Netz. |
+| 2026-09-26 | ~~Ein Passwort + signiertes Cookie statt Benutzerverwaltung~~ (ersetzt, s. u.); **Server im Netz nur mit Passwort** | Ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Bleibt bestehen: `DISKATLAS_PASSWORD` ist Pflicht bei Betrieb im Netz. |
 | 2026-09-26 | **Benutzer mit Antrag und Master-Freischaltung; Clients mit eigenem Token** | Der Server soll über einen Reverse-Proxy im Internet erreichbar sein und mehrere Personen bedienen. `DISKATLAS_PASSWORD` legt nur noch den Master an (nur beim allerersten Start, danach zählt das Passwort in der Datenbank). Jeder darf einen Antrag stellen, aber erst der Master schaltet frei; abgelehnte Anträge werden gelöscht. |
 | 2026-09-26 | **Ingest nur mit Client-Token, nie mit Browser-Sitzung; kein gemeinsames Server-Token mehr** | Ein gemeinsames Token macht jeden Agenten zum Vollzugriff und lässt sich nicht einzeln widerrufen. Jetzt hat jeder Client ein eigenes Token (Widerruf = Client löschen) und handelt als sein Besitzer – Grundlage für Besitz und Berechtigungen je Platte. Ohne Anmeldung (lokaler Betrieb) gibt es keine Clients, der Ingest ist dort offen wie die übrige Oberfläche. Alte `[server] api_token`-Einträge in Konfigurationsdateien werden mit Warnung ignoriert. |
 | 2026-09-26 | **Fremde Clients ändern nie etwas an einer vergebenen Platte** (auch nicht SMART/„angeschlossen“; Abweichung vom ersten Entwurf, der das noch erlauben wollte) | `disk_key` und Rechnername sind frei fälschbar; sonst könnte ein Benutzer fremde Platten als „defekt“ oder „abgesteckt“ markieren oder deren Dateiindex überschreiben. Der Besitzer sieht stattdessen einen Übernahmeantrag. Aufträge, Rechnernamen und Verbindungsstatus sind deshalb ebenfalls an den Benutzer gebunden. |
@@ -306,6 +306,14 @@ rm tmp-migration.db
 ```
 
 Der Test `test_migrations_match_models` schlägt fehl, wenn eine Migration fehlt.
+
+**Migrationen an echten Daten prüfen:** Kopie der Datenbank ziehen (bei WAL-Modus mit
+`diskatlas db copy --to sqlite:///kopie.db`), `DISKATLAS_DATABASE_URL=sqlite:///kopie.db diskatlas
+db upgrade` ausführen und die Zeilenzahlen aller Tabellen vorher/nachher vergleichen. Unter SQLite
+bauen z. B. `create_foreign_key` und `drop_constraint` die Tabelle neu auf; `Database.upgrade()`
+schaltet dafür den Fremdschlüsselschutz ab, damit kein `ON DELETE CASCADE` Daten löscht
+(Regressionstest `test_upgrade_keeps_dependent_rows_when_sqlite_rebuilds_a_table`).
+Migrationen mit Löschung/Umbau immer zuerst an einer Kopie ausprobieren.
 
 **Git-Workflow:** `main` ist stets lauffähig; Arbeit in Feature-Branches (`feature/…`,
 `fix/…`), Pull Request, CI muss grün sein. Commit-Nachrichten im Imperativ, kurz und deutsch
