@@ -1,0 +1,24 @@
+# systemd-User-Dienst für den Agenten (Betrieb mit zentralem Server, z. B. Docker auf dem Unraid).
+# Voraussetzung: in ~/.config/diskatlas/config.toml sind [agent] server_url und api_token gesetzt.
+# Installation:
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/linux/diskatlas-agent.service ~/.config/systemd/user/
+#   # ExecStart ggf. an den Pfad der virtuellen Umgebung anpassen
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now diskatlas-agent
+#   journalctl --user -u diskatlas-agent -f      # Log ansehen
+# Als User-Dienst hat der Agent dieselben Rechte wie dein Dateimanager (udisks2/polkit) –
+# nötig für das automatische Einhängen und das Umbenennen von Bezeichnungen.
+[Unit]
+Description=DiskAtlas Agent – meldet Festplatten an den DiskAtlas-Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/diskatlas/.venv/bin/diskatlas agent
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

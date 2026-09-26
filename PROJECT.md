@@ -206,7 +206,11 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 **Docker / Unraid**
 - Container betreibt nur den Server. Scans erfolgen durch Agenten auf den Rechnern
   (`[agent] server_url = "http://unraid:8765"`, `api_token` wie im Container).
+- Der Container startet **nur mit `DISKATLAS_PASSWORD` und `DISKATLAS_API_TOKEN`**.
 - Daten unter `/data` (SQLite) oder PostgreSQL per `DISKATLAS_DATABASE_URL`.
+- Image: `ghcr.io/realcommerzpunk/diskatlas` (GitHub Actions bei `v*`-Tags), Unraid-Vorlage
+  `deploy/unraid/diskatlas.xml`. Einrichtung, Tailscale-HTTPS (Voraussetzung für die iPhone-
+  Kamera) und Agent: [docs/UNRAID.md](docs/UNRAID.md).
 
 ## 7. Konfiguration
 

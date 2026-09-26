@@ -11,6 +11,13 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- Server-Paket für Unraid/Docker: `docker-compose.yml` verlangt Passwort und Token,
+  Unraid-Vorlage `deploy/unraid/diskatlas.xml`, GitHub-Actions-Workflow, der das Image bei
+  `v*`-Tags nach `ghcr.io/realcommerzpunk/diskatlas` veröffentlicht, systemd-User-Dienst für den
+  Agenten (`deploy/linux/diskatlas-agent.service`) und die Anleitung `docs/UNRAID.md`
+  (Container, Tailscale-HTTPS, Agent, Schächte, Update, Sicherung).
+
 ### Sicherheit
 - **Anmeldung:** Die Weboberfläche und die API sind jetzt per Passwort geschützt
   (`DISKATLAS_PASSWORD` bzw. `[server] password`, Anmeldeseite `/login`, signiertes

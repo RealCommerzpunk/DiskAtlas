@@ -1,9 +1,14 @@
-# Start: docker compose up -d   ->   http://<host>:8765
+# DiskAtlas-Server (Weboberfläche + API + Datenbank) – z. B. für Unraid.
+# Die Festplatten-Scans laufen per Agent auf den jeweiligen Rechnern (`diskatlas agent`).
+#
+# Start:  DISKATLAS_PASSWORD=... DISKATLAS_API_TOKEN=... docker compose up -d
+#   oder Werte in eine Datei `.env` neben dieser Datei schreiben (wird nicht eingecheckt).
+# Der Server startet bewusst NICHT ohne Passwort und Token, weil er im Netz lauscht.
 # Standard: SQLite im Verzeichnis ./data. Für PostgreSQL die auskommentierten Zeilen aktivieren.
 services:
   diskatlas:
+    image: ghcr.io/realcommerzpunk/diskatlas:latest
     build: .
-    image: diskatlas:latest
     container_name: diskatlas
     restart: unless-stopped
     ports:
@@ -11,8 +16,10 @@ services:
     volumes:
       - ./data:/data
     environment:
-      # Token, mit dem sich Agenten beim Senden ausweisen – unbedingt ändern!
-      DISKATLAS_API_TOKEN: "bitte-aendern"
+      # Passwort der Weboberfläche
+      DISKATLAS_PASSWORD: "${DISKATLAS_PASSWORD:?bitte DISKATLAS_PASSWORD setzen}"
+      # Token, mit dem sich Agenten beim Senden ausweisen (auch für Skripte an der API)
+      DISKATLAS_API_TOKEN: "${DISKATLAS_API_TOKEN:?bitte DISKATLAS_API_TOKEN setzen}"
       # DISKATLAS_DATABASE_URL: "postgresql+psycopg://diskatlas:diskatlas@db:5432/diskatlas"
     # depends_on: [db]
 
