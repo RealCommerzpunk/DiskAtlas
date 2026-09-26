@@ -7,8 +7,8 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.3.0 (siehe `src/diskatlas/__init__.py`) |
-| **Status** | Server auf Unraid (Docker) im Einsatz, Agent unter Linux Mint; Windows ungetestet auf echter Hardware |
+| **Aktuelle Version** | 0.4.0 (siehe `src/diskatlas/__init__.py`) |
+| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung |
 | **Zuletzt aktualisiert** | 2026-09-26 |
 
 ---
@@ -50,7 +50,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Eigene Angaben | Anzeigename, Notizen | ✅ 0.1.0 |
 | Dashboard | Kennzahlen, Suche, Filter, Gruppierung, Sortierung, Detailseite | ✅ 0.1.0 |
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
-| iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ Unreleased |
+| iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ 0.3.0 |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |
 | Auto-Einhängen | Linux: nicht eingehängte Dateisysteme selbst einhängen (`auto_mount`, udisks2), damit Belegung/Index möglich sind | ✅ 0.2.0 |
@@ -64,7 +64,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Verteilt | Agent → HTTP-Ingest → zentraler Server, Token-Schutz | ✅ 0.1.0 |
 | Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy` | ✅ 0.1.0 |
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
-| Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ Unreleased (Windows in Erprobung) |
+| Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
 | Sicherheit | Login für das Dashboard | ⏳ geplant |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |

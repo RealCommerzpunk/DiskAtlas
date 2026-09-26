@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-26
+
 ### Hinzugefügt
 - **Agent als Tray-Programm** (`diskatlas-tray`, als fertige Datei `DiskAtlas-Agent.exe` bzw.
   `diskatlas-agent`): Symbol im Systembereich mit farbigem Statuspunkt (grün verbunden, gelb
