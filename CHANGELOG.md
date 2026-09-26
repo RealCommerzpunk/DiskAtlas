@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-26
+
 ### Geändert (Achtung, bricht bestehende Einrichtungen)
 - **Platten gehören Benutzern** (Phase 3 der Mehrbenutzer-Umstellung, Migration `0005`).
   Wer eine Platte zuerst über seinen Client meldet, ist ihr **Besitzer**. Jeder sieht nur die
