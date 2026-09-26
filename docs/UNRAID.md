@@ -15,19 +15,24 @@ Der Agent verbindet sich **ausgehend** zum Server und fragt dort nach Aufträgen
 
 ## 1. Zugangsdaten festlegen
 
-Du brauchst zwei Werte, beide geheim:
+Du brauchst einen geheimen Wert:
 
-| Wert | Wofür | Beispiel erzeugen |
-|---|---|---|
-| `DISKATLAS_PASSWORD` | Startpasswort des Benutzers **Master** (Anmeldung mit Name „Master“) | ein Passwort, das du dir merkst |
-| `DISKATLAS_API_TOKEN` | Ausweis der Agenten (und Skripte) | `openssl rand -hex 32` |
+| Wert | Wofür |
+|---|---|
+| `DISKATLAS_PASSWORD` | Startpasswort des Benutzers **Master** (Anmeldung mit Name „Master“) |
 
 Das Passwort wird nur beim allerersten Start übernommen; danach ändert der Master es unter
 *Konto*. Weitere Benutzer beantragen den Zugang unter `/register`, der Master schaltet sie unter
-*Verwaltung* frei.
+*Verwaltung* frei. Die Agenten weisen sich nicht mehr mit einem gemeinsamen Token aus, sondern
+jeder **Client** mit seinem eigenen (siehe Abschnitt 4).
 
-Der Container **startet nicht**, wenn eines davon fehlt – bewusst, damit die Oberfläche nie
+Der Container **startet nicht**, wenn das Passwort fehlt – bewusst, damit die Oberfläche nie
 unbeabsichtigt offen im Netz steht.
+
+> **Umstieg von Version 0.4.0 und älter:** Der Container-Wert `DISKATLAS_API_TOKEN` wird nicht mehr
+> gebraucht (harmlos, wenn er stehen bleibt). Deine Agenten melden sich erst wieder, wenn du dich
+> als **Master** anmeldest, unter *Konto* einen Client anlegst und das angezeigte Token in die
+> Konfiguration des Agenten einträgst (`api_token`).
 
 ## 2. Container auf Unraid einrichten
 
@@ -40,7 +45,7 @@ Dann den Container anlegen, am einfachsten mit der mitgelieferten Vorlage:
 1. Vorlage im Unraid-Terminal herunterladen:
    `wget -O /boot/config/plugins/dockerMan/templates-user/my-diskatlas.xml https://raw.githubusercontent.com/RealCommerzpunk/DiskAtlas/main/deploy/unraid/diskatlas.xml`
 2. Unraid → *Docker* → *Add Container* → Vorlage **DiskAtlas** wählen.
-3. Port (Standard 8765), Datenpfad (`/mnt/user/appdata/diskatlas`), Passwort und API-Token eintragen → *Apply*.
+3. Port (Standard 8765), Datenpfad (`/mnt/user/appdata/diskatlas`), Passwort eintragen → *Apply*.
 
 Alternativ per Compose: `docker-compose.yml` verwenden (siehe Kommentar in der Datei).
 
@@ -73,7 +78,7 @@ unten erscheint das DiskAtlas-Symbol, beim ersten Start öffnet sich das Einstel
 
 1. **Mit DiskAtlas-Server verbinden** wählen.
 2. **Server-Adresse** (`https://tower.tail1234.ts.net` oder `http://<unraid-ip>:8765`) und
-   **API-Token** (derselbe wie im Container) eintragen.
+   **Client-Token** (aus *Konto* → *Client anlegen*) eintragen.
 3. **Verbindung testen** → „Verbindung in Ordnung …“ → **Speichern**.
 4. Haken bei **Beim Anmelden automatisch starten** setzen (Windows mit SMART: stattdessen die
    geplante Aufgabe aus [AGENT.md](AGENT.md)).
@@ -88,12 +93,15 @@ cd ~/diskatlas && . .venv/bin/activate
 diskatlas config --init          # legt ~/.config/diskatlas/config.toml an
 ```
 
+**Token besorgen:** In der Weboberfläche anmelden, *Konto* → *Client anlegen* (Name z. B. „Arbeits-PC“).
+Das Token erscheint nur einmal; kopiere es sofort. Jeder Rechner bekommt einen eigenen Client.
+
 In `config.toml` eintragen:
 
 ```toml
 [agent]
 server_url = "https://tower.tail1234.ts.net"     # oder http://<unraid-ip>:8765 im Heimnetz
-api_token  = "<dasselbe Token wie im Container>"
+api_token  = "<Token deines Clients, siehe unten>"
 ```
 
 Testen mit `diskatlas agent -v`, dauerhaft als Dienst: `deploy/linux/diskatlas-agent.service`

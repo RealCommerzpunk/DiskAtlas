@@ -17,7 +17,7 @@ STATE_LABELS = {
     "starting": "Verbindung wird aufgebaut …",
     "online": "Verbunden",
     "offline": "Server nicht erreichbar",
-    "auth_error": "API-Token abgelehnt",
+    "auth_error": "Client-Token abgelehnt",
     "unconfigured": "Nicht eingerichtet",
     "config_error": "Konfigurationsfehler",
     "stopped": "Agent läuft nicht",

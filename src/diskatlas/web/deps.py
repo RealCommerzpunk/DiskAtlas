@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import secrets
 from collections.abc import Iterator
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from diskatlas.db.models import User
-
-bearer = HTTPBearer(auto_error=False)
+from diskatlas.db.models import Client, User
 
 
 def get_session(request: Request) -> Iterator[Session]:
@@ -19,15 +15,18 @@ def get_session(request: Request) -> Iterator[Session]:
         yield session
 
 
-def require_ingest_token(
-    request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)
-) -> None:
-    expected = request.app.state.config.server.api_token
-    if not expected:
-        return
-    supplied = credentials.credentials if credentials else ""
-    if not secrets.compare_digest(supplied, expected):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Ungültiges oder fehlendes API-Token")
+def require_client(request: Request, session: Session = Depends(get_session)) -> Client | None:
+    """Der Client, dessen Token die Anfrage trägt (die Middleware hat es schon geprüft).
+
+    Ohne Anmeldung (lokaler Betrieb) gibt es keine Clients: dann None.
+    """
+    if not request.app.state.auth_enabled:
+        return None
+    identity = getattr(request.state, "identity", None)
+    client = session.get(Client, identity.client_id) if identity and identity.client_id else None
+    if client is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Ungültiges oder fehlendes Client-Token")
+    return client
 
 
 def get_current_user(request: Request, session: Session = Depends(get_session)) -> User:

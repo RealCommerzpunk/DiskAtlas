@@ -11,6 +11,17 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert (Achtung, bricht bestehende Einrichtungen)
+- **Agenten weisen sich mit dem Token ihres Clients aus** (Phase 2 der Mehrbenutzer-Umstellung).
+  Der gemeinsame `DISKATLAS_API_TOKEN` des Servers entfällt: `/api/v1/ingest/*` akzeptiert nur noch
+  Client-Tokens (keine Browser-Sitzung), und die übrige API akzeptiert sie als Alternative zur
+  Anmeldung. Der Container verlangt nur noch `DISKATLAS_PASSWORD`; die Variable
+  `DISKATLAS_API_TOKEN` wird vom Server ignoriert (der Agent liest sie weiter als sein Token), ein
+  alter Eintrag `[server] api_token` in der Konfigurationsdatei wird mit Warnung übergangen.
+  **Umstieg:** als „Master“ anmelden, unter *Konto* je Rechner einen Client anlegen und dessen Token
+  als `api_token` im Agenten eintragen (Tray-Fenster: Feld „Client-Token“). Bis dahin melden sich
+  die Agenten mit „Client-Token abgelehnt“. Ohne Anmeldung (lokal) bleibt der Ingest offen.
+
 ### Hinzugefügt
 - **Benutzerkonten** (Phase 1 der Mehrbenutzer-Umstellung). Die Anmeldung an der Weboberfläche
   läuft jetzt mit **Name und Passwort**. Beim allerersten Start legt `DISKATLAS_PASSWORD` den
@@ -25,8 +36,7 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   **Clients** verwalten. Ein Client steht für ein Agent-Programm auf einem Rechner und bekommt ein
   eigenes Token, das nur beim Anlegen im Klartext erscheint (gespeichert wird nur der Hash). Ein
   Client-Token authentifiziert – wie bisher der globale Token – Skripte an der übrigen API, und
-  zwar als sein Besitzer. Für den Ingest der Agenten gilt vorerst weiter der globale
-  `DISKATLAS_API_TOKEN`; er wird in Phase 2 durch die Client-Tokens ersetzt.
+  zwar als sein Besitzer.
 - Neue Tabellen `users` und `clients` (Migration `0004`). Ohne Passwort (lokaler Betrieb, Tray-
   Programm „Nur dieser PC“) bleibt alles offen, Benutzerseiten sind dort nicht vorhanden.
 

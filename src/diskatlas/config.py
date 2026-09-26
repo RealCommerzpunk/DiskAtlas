@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import tomllib
@@ -10,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 APP_NAME = "diskatlas"
+log = logging.getLogger(__name__)
 
 # Verzeichnisnamen (fnmatch, case-insensitive), die beim Dateiindex übersprungen werden.
 DEFAULT_EXCLUDE_DIRS = [
@@ -69,11 +71,10 @@ class AgentConfig:
 class ServerConfig:
     host: str = "127.0.0.1"
     port: int = 8765
-    # Wenn gesetzt, müssen Agenten sich mit "Authorization: Bearer <token>" ausweisen.
-    api_token: str = ""
-    # Passwort der Weboberfläche. Pflicht, sobald der Server nicht nur lokal lauscht.
+    # Startpasswort des Benutzers „Master“ (nur beim allerersten Start ausgewertet). Pflicht,
+    # sobald der Server nicht nur lokal lauscht.
     password: str = ""
-    # Nur für Tests/Sonderfälle: Betrieb im Netz ohne Passwort/Token erlauben (nicht empfohlen).
+    # Nur für Tests/Sonderfälle: Betrieb im Netz ohne Passwort erlauben (nicht empfohlen).
     allow_insecure: bool = False
 
 
@@ -95,7 +96,7 @@ class Config:
 ENV_MAP: dict[str, list[tuple[str | None, str]]] = {
     "DISKATLAS_DATABASE_URL": [(None, "database_url")],
     "DISKATLAS_SERVER_URL": [("agent", "server_url")],
-    "DISKATLAS_API_TOKEN": [("agent", "api_token"), ("server", "api_token")],
+    "DISKATLAS_API_TOKEN": [("agent", "api_token")],
     "DISKATLAS_PASSWORD": [("server", "password")],
     "DISKATLAS_ALLOW_INSECURE": [("server", "allow_insecure")],
     "DISKATLAS_HOST": [("server", "host")],
@@ -128,6 +129,10 @@ def _apply_dict(cfg: Config, data: dict[str, Any], source: str) -> None:
             section = getattr(cfg, key)
             valid = {f.name for f in fields(section)}
             for sub_key, sub_value in value.items():
+                if (key, sub_key) == ("server", "api_token"):
+                    log.warning("%s: [server] api_token gibt es nicht mehr und wird ignoriert; "
+                                "Agenten nutzen das Token ihres Clients (Konto-Seite).", source)
+                    continue
                 if sub_key not in valid:
                     raise ValueError(f"{source}: unbekannte Option [{key}].{sub_key}")
                 setattr(section, sub_key, sub_value)

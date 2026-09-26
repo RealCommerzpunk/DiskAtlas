@@ -17,7 +17,7 @@ AyatanaAppIndicator). Auf Linux Mint und Ubuntu sind sie vorhanden, sonst:
 Beim ersten Start öffnet sich das Einstellungsfenster. Dort wählst du eine von zwei Betriebsarten:
 
 - **Mit DiskAtlas-Server verbinden** (z. B. Docker auf dem NAS, siehe [UNRAID.md](UNRAID.md)):
-  Server-Adresse und API-Token eintragen, **Verbindung testen**, **Speichern**. Der Agent meldet
+  Server-Adresse und Client-Token eintragen, **Verbindung testen**, **Speichern**. Der Agent meldet
   die Festplatten an den Server; die Oberfläche kommt vom Server.
 - **Nur dieser PC**: Oberfläche und Datenbank laufen im Programm selbst, ganz ohne Server.
   **Dashboard öffnen** (im Menü oder im Fenster) zeigt die Oberfläche im Browser

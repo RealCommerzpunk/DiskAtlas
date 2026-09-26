@@ -53,7 +53,7 @@ class StatusTracker:
         if isinstance(exc, httpx.HTTPStatusError):
             code = exc.response.status_code
             if code in (401, 403):
-                self.set("auth_error", "Der Server lehnt den API-Token ab.")
+                self.set("auth_error", "Der Server lehnt das Client-Token ab.")
             else:
                 self.set("offline", f"Der Server antwortet mit Fehler {code}.")
         elif isinstance(exc, httpx.TransportError):
