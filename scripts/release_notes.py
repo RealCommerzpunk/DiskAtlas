@@ -20,6 +20,10 @@ FOOTER = """
 - `diskatlas-agent-linux-x86_64` – Agent für Linux Mint 22 / Ubuntu 24.04 und neuer
 - `smartmontools-*.tar.gz` – Quellcode des mitgelieferten smartctl (GPL)
 
+Code signing: Free code signing provided by [SignPath.io](https://about.signpath.io/),
+certificate by [SignPath Foundation](https://signpath.org/)
+([Richtlinie]({repo}/blob/main/docs/CODE_SIGNING.md)).
+
 Server als Docker-Image: `ghcr.io/realcommerzpunk/diskatlas:{version}`.
 Anleitungen: [Agent]({repo}/blob/main/docs/AGENT.md) ·
 [Unraid/Docker]({repo}/blob/main/docs/UNRAID.md)

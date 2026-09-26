@@ -26,6 +26,10 @@ Infobereich, Einstellungsfenster, wahlweise **nur auf diesem PC** (Oberfläche u
 Programm) oder **mit einem DiskAtlas-Server** (Docker/Unraid). Anleitung:
 **[docs/AGENT.md](docs/AGENT.md)**.
 
+Code-Signatur der Windows-Datei: Free code signing provided by [SignPath.io](https://about.signpath.io/),
+certificate by [SignPath Foundation](https://signpath.org/) (Einrichtung läuft; Richtlinie:
+[docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)).
+
 ### Aus dem Quellcode: Linux Mint / Ubuntu
 
 ```bash

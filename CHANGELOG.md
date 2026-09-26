@@ -11,6 +11,10 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- README und Release-Seiten nennen die Code-Signatur über SignPath (Voraussetzung für den Antrag
+  bei der SignPath Foundation).
+
 ### Behoben
 - Unraid zeigte beim Container ein Fragezeichen statt des Programmsymbols: Die Vorlage
   `deploy/unraid/diskatlas.xml` hat jetzt ein `<Icon>`, das Docker-Image zusätzlich die Labels
