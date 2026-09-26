@@ -54,6 +54,8 @@ class Disk(Base):
 
     # Vom Benutzer gepflegt
     custom_name: Mapped[str | None] = mapped_column(String(200))
+    # Lagerort der abgesteckten Platte, z. B. „Karton 3, Regal B“
+    location: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
 
     # Letzter bekannter SMART-Zustand
@@ -251,3 +253,42 @@ class Label(Base):
     color: Mapped[str] = mapped_column(String(20), default="#4f7cff")
 
     disks: Mapped[list[Disk]] = relationship(secondary=disk_labels, back_populates="labels")
+
+
+class HostState(Base):
+    """Zuletzt gemeldeter Zustand eines Agenten-Rechners (Heartbeat): welche Platten stecken an
+    welchem SATA-Port. Grundlage der Schachtansicht und des Assistenten."""
+
+    __tablename__ = "host_states"
+
+    host: Mapped[str] = mapped_column(String(200), primary_key=True)
+    updated_at: Mapped[datetime]
+    # JSON: {"present": [...], "ports": [...]}
+    data: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class Setting(Base):
+    """Einfache Schlüssel/Wert-Einstellungen des Servers (z. B. Schachtzuordnung)."""
+
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+
+
+class Command(Base):
+    """Auftrag vom Server an einen Agenten (z. B. Bezeichnung ändern, neu scannen)."""
+
+    __tablename__ = "commands"
+    __table_args__ = (Index("ix_commands_host_status", "host", "status"),)
+
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
+    host: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(50))
+    payload: Mapped[str] = mapped_column(Text, default="{}")  # JSON
+    # pending | running | done | failed
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    result: Mapped[str | None] = mapped_column(Text)
+    disk_key: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]

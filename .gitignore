@@ -25,3 +25,6 @@ data/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Lokale Claude-Code-Einstellungen
+.claude/settings.local.json

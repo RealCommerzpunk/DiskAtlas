@@ -13,10 +13,11 @@ from collections.abc import Callable
 from diskatlas.agent.sinks import Sink
 from diskatlas.config import AgentConfig
 from diskatlas.probe import list_disks
+from diskatlas.probe import ports as sata
 from diskatlas.probe.files import iter_files
 from diskatlas.probe.smart import read_smart
 from diskatlas.probe.types import DiskInfo, SmartInfo, VolumeInfo
-from diskatlas.services import mounting
+from diskatlas.services import fslabel, mounting
 
 log = logging.getLogger(__name__)
 
@@ -83,13 +84,14 @@ class Agent:
         self.host = host or config.host_name or socket.gethostname()
         self.stop_event = threading.Event()
         self.mounter = mounter or mounting.mount
+        self._enqueue: Callable[[str, str], None] | None = None
         self._mount_enabled = config.auto_mount and (mounter is not None or mounting.available())
 
     # ------------------------------------------------------------------ Einmal-Scan
     def scan_all(self, index_files: bool | None = None, only: set[str] | None = None) -> int:
         """Scannt alle (bzw. die in `only` genannten) Festplatten einmal. Gibt die Anzahl zurück."""
         disks = self.prober()
-        self.sink.report_connected(self.host, [d.key for d in disks])
+        self.sink.report_connected(self.host, [d.key for d in disks], sata.ports_info(disks))
         count = 0
         for disk in disks:
             if only and not ({disk.key, disk.device, disk.serial} & only):
@@ -202,6 +204,11 @@ class Agent:
 
         worker_thread = threading.Thread(target=worker, name="diskatlas-scan", daemon=True)
         worker_thread.start()
+        self._enqueue = enqueue
+        command_thread = threading.Thread(
+            target=self._command_loop, name="diskatlas-commands", daemon=True
+        )
+        command_thread.start()
 
         signatures: dict[str, tuple] = {}
         last_full: dict[str, float] = {}
@@ -237,7 +244,7 @@ class Agent:
                     mount_tried.pop(key, None)
             if keys != previous or now - last_heartbeat >= HEARTBEAT_SECONDS:
                 try:
-                    self.sink.report_connected(self.host, sorted(keys))
+                    self.sink.report_connected(self.host, sorted(keys), sata.ports_info(disks))
                     last_heartbeat = now
                 except Exception:
                     log.exception("Verbindungsstatus konnte nicht gemeldet werden")
@@ -263,6 +270,68 @@ class Agent:
             self.stop_event.wait(self.config.poll_interval)
 
         worker_thread.join(timeout=10)
+        command_thread.join(timeout=10)
+
+    # ------------------------------------------------------------------ Aufträge vom Server
+    def _command_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                pending = self.sink.fetch_commands(self.host)
+            except Exception:
+                log.debug("Aufträge konnten nicht abgeholt werden", exc_info=True)
+                pending = []
+            for command in pending:
+                try:
+                    ok, message = self.execute_command(command)
+                except Exception as exc:  # ein Fehler darf die Schleife nie beenden
+                    log.exception("Auftrag %s fehlgeschlagen", command.get("id"))
+                    ok, message = False, f"Unerwarteter Fehler: {exc}"
+                try:
+                    self.sink.report_command(command["id"], ok, message)
+                except Exception:
+                    log.exception("Ergebnis von Auftrag %s nicht übermittelt", command.get("id"))
+            self.stop_event.wait(min(max(self.config.poll_interval, 1.0), 3.0))
+
+    def _find_volume(self, disk_key: str, volume_key: str):
+        for disk in self.prober():
+            if disk.key == disk_key:
+                for volume in disk.volumes:
+                    if volume.key == volume_key:
+                        return disk, volume
+        return None, None
+
+    def execute_command(self, command: dict) -> tuple[bool, str]:
+        """Führt einen Auftrag aus. Geräte werden aus dem eigenen Stand ermittelt, nie aus dem
+        Auftrag übernommen."""
+        kind, payload = command.get("kind"), command.get("payload") or {}
+        if kind == "rescan":
+            key = payload.get("disk_key")
+            if key not in {d.key for d in self.prober()}:
+                return False, "Die Festplatte ist an diesem Rechner nicht angeschlossen."
+            if self._enqueue is None:
+                return False, "Der Agent überwacht gerade nicht."
+            self._enqueue(key, "full")
+            return True, "Neu-Scan eingeplant."
+        if kind == "rename_label":
+            disk, volume = self._find_volume(
+                payload.get("disk_key", ""), payload.get("volume_key", "")
+            )
+            if volume is None:
+                return False, "Das Volume wurde an diesem Rechner nicht gefunden."
+            if volume.is_system:
+                return False, "Systemvolumes werden nicht umbenannt."
+            try:
+                written = fslabel.set_label(
+                    volume.device, volume.fs_type, volume.mountpoint, str(payload.get("label", ""))
+                )
+            except fslabel.LabelError as exc:
+                return False, str(exc)
+            refreshed, _ = self._find_volume(disk.key, volume.key)
+            if refreshed is not None:  # neue Bezeichnung sofort an den Server melden
+                self.scan_disk(refreshed, index_files=False, read_smart=False)
+            done = f"Bezeichnung geändert: „{written}“." if written else "Bezeichnung entfernt."
+            return True, done
+        return False, f"Unbekannter Auftrag: {kind}"
 
     def _mountable(self, volume: VolumeInfo) -> bool:
         return bool(

@@ -1,12 +1,13 @@
 import os
+from datetime import timedelta
 
 from conftest import make_disk
 from sqlalchemy import select
 
-from diskatlas.db.models import Disk, Label
+from diskatlas.db.models import Disk, Label, Setting
 from diskatlas.probe import ports
 from diskatlas.probe.types import FileRecord
-from diskatlas.services import bays, duplicates, ingest, queries
+from diskatlas.services import bays, duplicates, hosts, ingest, queries
 
 
 def _index(db, key, records):
@@ -74,34 +75,53 @@ def test_hide_system_toggle_sets_cookie_and_stays_local(client):
     assert "diskatlas_hide_system=1" in r.headers["set-cookie"]
 
 
-def test_bay_assignment_roundtrip(tmp_path):
-    path = tmp_path / "bays.json"
-    assert bays.load_assignment(path) == [None] * 4
-    bays.save_assignment(path, ["ata3", "", "ata5"])
-    assert bays.load_assignment(path) == ["ata3", None, "ata5", None]
-    assert bays.load_reverse(path) is False
-    bays.save_assignment(path, ["ata3"], reverse=True)
-    assert bays.load_reverse(path) is True
-    try:
-        bays.save_assignment(path, ["ata3", "ata3"])
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("doppelter Port muss abgelehnt werden")
+def test_bay_config_roundtrip_and_legacy_import(db, tmp_path):
+    with db.session() as s:
+        assert bays.load_config(s) == bays.BayConfig()
+        bays.save_config(s, bays.BayConfig(host="pc", ports=["ata3", None, "ata5"], reverse=True))
+    with db.session() as s:
+        cfg = bays.load_config(s)
+        assert (cfg.host, cfg.ports, cfg.reverse) == ("pc", ["ata3", None, "ata5", None], True)
+        try:
+            bays.save_config(s, bays.BayConfig(ports=["ata3", "ata3"]))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("doppelter Port muss abgelehnt werden")
+
+    legacy = tmp_path / "bays.json"
+    legacy.write_text('{"ports": ["ata6", "ata5"], "reverse": true}', encoding="utf-8")
+    with db.session() as s:
+        assert not bays.import_legacy_file(s, legacy, "pc"), "vorhandene Einstellung bleibt"
+        s.delete(s.get(Setting, "bays"))
+    with db.session() as s:
+        assert bays.import_legacy_file(s, legacy, "mypc")
+    with db.session() as s:
+        cfg = bays.load_config(s)
+        assert (cfg.host, cfg.ports[:2], cfg.reverse) == ("mypc", ["ata6", "ata5"], True)
 
 
-def test_build_bays_states(db):
+def test_build_bays_states_and_display_order(db):
     with db.session() as s:
         ingest.upsert_disk(s, "pc", make_disk("sn:TEST1"))
-    live = {
-        "ata3": ports.SataPort("ata3", "/dev/sdb", "TEST1"),
-        "ata4": ports.SataPort("ata4", "/dev/sdc", "UNBEKANNT"),
-    }
+        hosts.record(s, "pc", {
+            "all_ports": ["ata3", "ata4", "ata5"],
+            "present": [
+                {"port": "ata3", "device": "/dev/sdb", "serial": "TEST1", "disk_key": "sn:TEST1"},
+                {"port": "ata4", "device": "/dev/sdc", "serial": "UNBEKANNT"},
+            ],
+        })
     with db.session() as s:
-        result = bays.build_bays(s, ["ata3", "ata4", "ata5", None], live)
-        states = [b.state for b in result]
-        assert states == ["disk", "unknown", "empty", "unassigned"]
+        snap = hosts.get(s, "pc")
+        cfg = bays.BayConfig(host="pc", ports=["ata3", "ata4", "ata5", None])
+        result = bays.build_bays(s, cfg, snap)
+        assert [b.state for b in result] == ["disk", "unknown", "empty", "unassigned"]
         assert result[0].disk.serial == "TEST1"
+        cfg.reverse = True
+        assert [b.number for b in bays.build_bays(s, cfg, snap)] == [4, 3, 2, 1]
+        # Agent meldet sich nicht mehr -> „offline“ statt „leer“
+        snap.updated_at = snap.updated_at - timedelta(seconds=hosts.FRESH_SECONDS + 5)
+        assert bays.build_bays(s, cfg, snap)[3].state == "offline"
 
 
 def test_sata_ports_from_sysfs(tmp_path):

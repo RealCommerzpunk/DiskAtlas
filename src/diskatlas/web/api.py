@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 
 from diskatlas import __version__
 from diskatlas.db.models import Disk, Label
-from diskatlas.probe import ports as sata
 from diskatlas.probe.types import FileRecord
-from diskatlas.services import duplicates, ingest, queries
+from diskatlas.services import commands, duplicates, hosts, ingest, queries
 from diskatlas.web.deps import get_session, require_ingest_token
 from diskatlas.web.schemas import (
+    CommandResult,
     DiskDetailOut,
     DiskOut,
     DiskPatch,
@@ -243,15 +243,31 @@ def activity(session: Session = Depends(get_session)):
 
 
 @router.get("/bays/live", tags=["system"])
-def bays_live():
-    """Aktuell belegte SATA-Ports dieses Rechners (für den Schacht-Assistenten)."""
+def bays_live(host: str = "", session: Session = Depends(get_session)):
+    """Portbelegung des Agenten-Rechners (für den Schacht-Assistenten und die Live-Anzeige)."""
+    from diskatlas.services import bays as bay_service
+
+    chosen = host or bay_service.load_config(session).host or ""
+    snapshot = hosts.get(session, chosen) if chosen else None
+    if snapshot is None:  # noch keine Zuordnung: erster Rechner, der Ports meldet
+        snapshot = next((h for h in hosts.known_hosts(session) if h.all_ports), None)
+    if snapshot is None:
+        return {"host": None, "online": False, "ports": [], "occupied": []}
     return {
-        "ports": sata.all_ports(),
-        "occupied": [
-            {"port": p.port, "device": p.device, "serial": p.serial, "model": p.model}
-            for p in sata.sata_ports().values()
-        ],
+        "host": snapshot.host,
+        "online": snapshot.is_online,
+        "ports": snapshot.all_ports,
+        "occupied": [p.__dict__ for p in snapshot.present],
     }
+
+
+@router.get("/commands/recent", tags=["system"])
+def commands_recent(limit: int = Query(20, ge=1, le=100), session: Session = Depends(get_session)):
+    """Letzte Aufträge an Agenten mit Status (für die Live-Anzeige)."""
+    return [
+        {"id": c.id, "kind": c.kind, "status": c.status, "disk_key": c.disk_key, "result": c.result}
+        for c in commands.recent(session, None, limit)
+    ]
 
 
 @router.get("/stats", response_model=StatsOut, tags=["system"])
@@ -274,6 +290,21 @@ def ingest_disk(body: IngestDisk, session: Session = Depends(get_session)):
 @ingest_router.post("/connected")
 def ingest_connected(body: IngestConnected, session: Session = Depends(get_session)):
     ingest.mark_connected(session, body.host, body.disk_keys)
+    hosts.record(session, body.host, body.ports_info)
+    return {"ok": True}
+
+
+@ingest_router.get("/commands")
+def ingest_commands(host: str, session: Session = Depends(get_session)):
+    """Offene Aufträge für den Agenten `host` (werden dabei als „läuft“ markiert)."""
+    return commands.claim_pending(session, host)
+
+
+@ingest_router.post("/commands/{command_id}/result")
+def ingest_command_result(
+    command_id: int, body: CommandResult, session: Session = Depends(get_session)
+):
+    _lookup(commands.finish, session, command_id, body.ok, body.message)
     return {"ok": True}
 
 

@@ -17,7 +17,9 @@ erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhä
 </section>
 
 <form method="post" action="/bays/setup" class="card" id="bay-form">
-  <h2>Zuordnung</h2>
+  <h2>Zuordnung{% if host %} <span class="muted small">· Rechner „{{ host }}“{% if not online %} (Agent offline){% endif %}</span>{% endif %}</h2>
+  <input type="hidden" name="host" value="{{ host }}">
+  {% if not all_ports %}<p class="notice">Bisher meldet kein Agent SATA-Ports. Starte den Agenten auf dem Rechner mit den Schächten (Linux, <code>diskatlas agent</code>).</p>{% endif %}
   <div class="bay-assign">
     {% for i in range(bay_count) %}
     <label>Schacht {{ i + 1 }}
@@ -62,7 +64,7 @@ erkennt DiskAtlas jederzeit, in welchem Schacht welche Platte steckt – unabhä
       : "keine");
   }
   function poll() {
-    fetch("/api/v1/bays/live", { cache: "no-store" })
+    fetch("/api/v1/bays/live?host=" + encodeURIComponent({{ host | tojson }}), { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var now = data.occupied.map(function (o) { return o.port; });

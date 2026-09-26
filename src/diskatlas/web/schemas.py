@@ -140,6 +140,12 @@ class IngestDisk(BaseModel):
 class IngestConnected(BaseModel):
     host: str
     disk_keys: list[str]
+    ports_info: dict | None = None  # {"present": [...], "all_ports": [...]} (Linux/SATA)
+
+
+class CommandResult(BaseModel):
+    ok: bool
+    message: str = ""
 
 
 class IngestVolumeRef(BaseModel):

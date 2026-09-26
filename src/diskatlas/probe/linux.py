@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from collections.abc import Iterator
 
+from diskatlas.probe.ports import port_map
 from diskatlas.probe.types import DiskInfo, VolumeInfo, clean, make_disk_key, partition_key
 
 LSBLK_COLUMNS = (
@@ -27,7 +28,11 @@ def list_disks() -> list[DiskInfo]:
         check=True,
         timeout=30,
     )
-    return parse_lsblk(json.loads(proc.stdout))
+    disks = parse_lsblk(json.loads(proc.stdout))
+    ports = port_map()
+    for disk in disks:
+        disk.port = ports.get(disk.device.removeprefix("/dev/"))
+    return disks
 
 
 def parse_lsblk(data: dict) -> list[DiskInfo]:

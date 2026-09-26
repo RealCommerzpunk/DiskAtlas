@@ -11,6 +11,23 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- **Architektur Agent ↔ Server:** Alles, was einen Rechner betrifft, läuft im Agenten; der Server
+  (Docker/Unraid) hält nur Weboberfläche, API und Datenbank.
+  - Schachtbelegung: Der Agent meldet beim Heartbeat die SATA-Ports (`ports_info`); der Server
+    speichert sie je Rechner (Tabelle `host_states`) und zeigt die Schächte daraus – ohne selbst
+    auf sysfs zuzugreifen. Die Zuordnung Port → Schacht liegt jetzt in der Datenbank
+    (Tabelle `settings`); eine vorhandene lokale `bays.json` wird einmalig übernommen.
+  - Umbenennen der Bezeichnung ist jetzt ein **Auftrag** an den Agenten (Tabelle `commands`,
+    `GET /api/v1/ingest/commands`, `POST …/commands/{id}/result`). Der Agent prüft den Auftrag
+    gegen seinen eigenen Festplattenstand, ignoriert vom Server mitgeschickte Gerätepfade und
+    meldet das Ergebnis zurück; die Festplattendetails zeigen den Status (wartet/läuft/fertig).
+    Der Server führt nie selbst etwas auf Platten aus. Auch im Betrieb ohne Docker (`run`) läuft
+    das über denselben Weg.
+  - Neuer Befehl `diskatlas agent` (Agent für den Betrieb mit zentralem Server).
+- Schema-Migration 0003: Tabellen `host_states`, `settings`, `commands`; Spalte `disks.location`
+  (Lagerort, für die geplante iPhone-App).
+
 ## [0.2.0] - 2026-09-26
 
 ### Hinzugefügt

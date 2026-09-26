@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -37,7 +38,10 @@ def create_app(
     )
     app.state.config = config
     app.state.db = db
-    app.state.bays_path = bays_path or bays.default_bays_path()
+    legacy = bays_path or bays.default_bays_path()
+    if legacy.is_file():  # frühere lokale Schachtzuordnung einmalig übernehmen
+        with db.session() as session:
+            bays.import_legacy_file(session, legacy, config.agent.host_name or socket.gethostname())
     app.mount("/static", _RevalidatingStaticFiles(directory=Path(__file__).parent / "static"),
               name="static")
     app.include_router(api.router, prefix="/api/v1")

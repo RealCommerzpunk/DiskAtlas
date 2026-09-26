@@ -73,3 +73,35 @@ def _lsblk_info(names: list[str]) -> dict[str, tuple[str | None, str | None]]:
         if "NAME" in fields:
             result[fields["NAME"]] = (fields.get("SERIAL") or None, fields.get("MODEL") or None)
     return result
+
+
+def port_map(sys_root: str = "/sys") -> dict[str, str]:
+    """Gerätename -> SATA-Port (z. B. {"sdb": "ata3"}); nur sysfs, kein Prozessaufruf."""
+    if not sys.platform.startswith("linux"):
+        return {}
+    try:
+        entries = sorted((Path(sys_root) / "block").iterdir())
+    except OSError:
+        return {}
+    result = {}
+    for entry in entries:
+        match = _ATA.search(str(entry.resolve()) + "/") if entry.name.startswith("sd") else None
+        if match:
+            result[entry.name] = match.group(1)
+    return result
+
+
+def ports_info(disks: list, sys_root: str = "/sys") -> dict | None:
+    """Heartbeat-Angaben für den Server: belegte Ports und alle Ports; None ohne SATA (Windows)."""
+    all_p = all_ports(sys_root)
+    if not all_p:
+        return None
+    return {
+        "all_ports": all_p,
+        "present": [
+            {"port": d.port, "device": d.device, "serial": d.serial, "model": d.model,
+             "disk_key": d.key}
+            for d in disks
+            if getattr(d, "port", None)
+        ],
+    }

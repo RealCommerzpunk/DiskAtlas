@@ -112,6 +112,12 @@
   <h2>Partitionen / Volumes</h2>
   {% if flash_ok %}<p class="notice ok" role="status">{{ flash_ok }}</p>{% endif %}
   {% if flash_err %}<p class="notice health-reasons failed" role="alert">{{ flash_err }}</p>{% endif %}
+  {% if commands %}
+  <ul class="cmd-list small">
+    {% for c in commands %}<li><span class="badge cmd-{{ c.status }}">{{ {'pending': 'wartet', 'running': 'läuft', 'done': 'fertig', 'failed': 'fehlgeschlagen'}[c.status] }}</span>
+      {{ {'rename_label': 'Bezeichnung ändern', 'rescan': 'Neu scannen'}.get(c.kind, c.kind) }}{% if c.result %} – {{ c.result }}{% endif %} <span class="muted">{{ c.updated_at | ago }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}
   <div class="table-wrap">
   <table>
     <thead><tr><th>Bezeichnung</th><th>Dateisystem</th><th class="num">Größe</th><th class="usage-col">Belegung</th><th class="num">Frei</th><th>Eingehängt</th><th class="num">Dateien</th><th>Index</th><th></th></tr></thead>
@@ -125,7 +131,7 @@
             {% if relabel_block %}<p class="muted small">{{ relabel_block }}</p>
             {% else %}
             <form method="post" action="/volumes/{{ v.id }}/label" class="inline-form"
-                  data-confirm="Die Bezeichnung wird auf dem Datenträger selbst geändert (auch im Dateimanager sichtbar). Dafür wird das Volume kurz ausgehängt und danach automatisch wieder eingehängt – laufende Zugriffe auf diese Platte werden unterbrochen. Fortfahren?">
+                  data-confirm="Die Bezeichnung wird auf dem Datenträger selbst geändert (auch im Dateimanager sichtbar). Der Agent am Rechner hängt das Volume dafür bei Bedarf kurz aus und danach wieder ein – laufende Zugriffe auf diese Platte werden unterbrochen. Fortfahren?">
               <input name="label" value="{{ v.label or '' }}" maxlength="128" aria-label="Neue Bezeichnung" size="16">
               <button type="submit">Speichern</button>
             </form>

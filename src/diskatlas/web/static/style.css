@@ -256,3 +256,8 @@ table.disks th.rail, table.disks td.rail { width: 74px; min-width: 74px; padding
 .filterbar .filters select { max-width: 11.5rem; }
 .brand-name { color: var(--text); font-weight: 600; }
 .bay-rows .brand-name { color: #e9ebf0; }
+.cmd-list { list-style: none; padding: 0; margin: .3rem 0 .6rem; }
+.cmd-list li { margin: .15rem 0; }
+.badge.cmd-done { color: var(--ok); }
+.badge.cmd-failed { color: var(--bad); }
+.badge.cmd-pending, .badge.cmd-running { color: var(--warn); }
