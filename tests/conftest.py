@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from diskatlas.config import Config
 from diskatlas.db import Database
+from diskatlas.probe import catalog
 from diskatlas.probe.types import DiskInfo, SmartInfo, VolumeInfo
 from diskatlas.web.app import create_app
 
@@ -16,6 +18,20 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def load_fixture(name: str):
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+
+@pytest.fixture(autouse=True)
+def _isolated_drivedb(monkeypatch):
+    """Die Laufwerksdatenbank von smartmontools (drivedb.h) liegt nur auf manchen Rechnern. Die
+    Tests dürfen nicht davon abhängen (z. B. fehlt sie auf den CI-Rechnern)."""
+    fake = tuple(
+        (re.compile(pattern, re.IGNORECASE), family)
+        for pattern, family in [
+            ("ST8000VN004-.*", "Seagate IronWolf"),
+            ("WDC WD(20|40)EFRX-.*", "Western Digital Red"),
+        ]
+    )
+    monkeypatch.setattr(catalog, "_drivedb", lambda: fake)
 
 
 @pytest.fixture

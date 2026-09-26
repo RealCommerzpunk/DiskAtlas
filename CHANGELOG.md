@@ -28,6 +28,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   (Container, Tailscale-HTTPS, Agent, Schächte, Update, Sicherung).
 
 ### Behoben
+- Tests hängen nicht mehr von der lokalen Laufwerksdatenbank `drivedb.h` (smartmontools) ab; auf
+  den CI-Rechnern fehlt sie, dort schlug `test_catalog` fehl. Die CI läuft jetzt auch auf
+  `feature/**`- und `fix/**`-Branches.
 - Ein ohne Testpfad gestarteter Server (`diskatlas serve`) stürzte beim Umbau ab
   (`default_bays_path` fehlte); durch Regressionstest abgesichert.
 

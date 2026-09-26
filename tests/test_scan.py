@@ -62,7 +62,7 @@ def test_lookup_api_location_patch_and_pwa_routes(client, db):
     _add(db, "sn:A", "WD-WCC4E2VRR0CJ")
     found = client.get("/api/v1/lookup", params={"code": "WD-WCC4E2VRR0CJ"}).json()
     assert len(found) == 1 and found[0]["serial"] == "WD-WCC4E2VRR0CJ"
-    assert found[0]["brand"].startswith("WD Red") and found[0]["state"] == "connected"
+    assert found[0]["brand"] == "WD Red" and found[0]["state"] == "connected"
     assert client.get("/api/v1/lookup", params={"code": "NICHTDA123"}).json() == []
 
     disk_id = found[0]["id"]
