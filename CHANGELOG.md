@@ -30,6 +30,15 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   **Schachtzuordnung** ist je Benutzer, ebenso **Aufträge** an Agenten und **Rechnernamen**
   (der erste meldende Benutzer besitzt einen Namen; gleiche Namen anderer Benutzer werden
   verworfen – bei Kollision `host_name` in der Agent-Konfiguration ändern).
+- **Agenten weisen sich mit dem Token ihres Clients aus** (Phase 2 der Mehrbenutzer-Umstellung).
+  Der gemeinsame `DISKATLAS_API_TOKEN` des Servers entfällt: `/api/v1/ingest/*` akzeptiert nur noch
+  Client-Tokens (keine Browser-Sitzung), und die übrige API akzeptiert sie als Alternative zur
+  Anmeldung. Der Container verlangt nur noch `DISKATLAS_PASSWORD`; die Variable
+  `DISKATLAS_API_TOKEN` wird vom Server ignoriert (der Agent liest sie weiter als sein Token), ein
+  alter Eintrag `[server] api_token` in der Konfigurationsdatei wird mit Warnung übergangen.
+  **Umstieg:** als „Master“ anmelden, unter *Konto* je Rechner einen Client anlegen und dessen Token
+  als `api_token` im Agenten eintragen (Tray-Fenster: Feld „Client-Token“). Bis dahin melden sich
+  die Agenten mit „Client-Token abgelehnt“. Ohne Anmeldung (lokal) bleibt der Ingest offen.
 
 ### Hinzugefügt
 - **Freigaben je Platte**: auf der Plattenseite (*Besitz & Freigabe*) gibt der Besitzer sie
@@ -44,26 +53,6 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 - **Schutz vor gefälschten Rechnernamen**: Der Ingest verändert nur Platten des eigenen Benutzers
   (Verbindungsstatus, Dateiindex), holt nur eigene Aufträge ab und meldet Ergebnisse nur für
   eigene Aufträge.
-
-### Behoben
-- **Datenverlust bei der Migration auf SQLite verhindert.** Für manche Änderungen baut SQLite eine
-  Tabelle neu auf; bei aktivem Fremdschlüsselschutz löschte das per `ON DELETE CASCADE` alle
-  abhängigen Zeilen (Volumes, Dateiindex, SMART-Verlauf, Labels-Zuordnung). Die Migration schaltet
-  den Schutz jetzt währenddessen ab und danach wieder ein; ein Test mit Daten in allen Tabellen
-  sichert das ab. (Aufgefallen beim Test von `0005` mit einer Kopie der echten Datenbank.)
-
-### Geändert (Achtung, bricht bestehende Einrichtungen)
-- **Agenten weisen sich mit dem Token ihres Clients aus** (Phase 2 der Mehrbenutzer-Umstellung).
-  Der gemeinsame `DISKATLAS_API_TOKEN` des Servers entfällt: `/api/v1/ingest/*` akzeptiert nur noch
-  Client-Tokens (keine Browser-Sitzung), und die übrige API akzeptiert sie als Alternative zur
-  Anmeldung. Der Container verlangt nur noch `DISKATLAS_PASSWORD`; die Variable
-  `DISKATLAS_API_TOKEN` wird vom Server ignoriert (der Agent liest sie weiter als sein Token), ein
-  alter Eintrag `[server] api_token` in der Konfigurationsdatei wird mit Warnung übergangen.
-  **Umstieg:** als „Master“ anmelden, unter *Konto* je Rechner einen Client anlegen und dessen Token
-  als `api_token` im Agenten eintragen (Tray-Fenster: Feld „Client-Token“). Bis dahin melden sich
-  die Agenten mit „Client-Token abgelehnt“. Ohne Anmeldung (lokal) bleibt der Ingest offen.
-
-### Hinzugefügt
 - **Benutzerkonten** (Phase 1 der Mehrbenutzer-Umstellung). Die Anmeldung an der Weboberfläche
   läuft jetzt mit **Name und Passwort**. Beim allerersten Start legt `DISKATLAS_PASSWORD` den
   Benutzer **„Master“** an (danach gilt sein Passwort in der Datenbank, die Variable wird nicht
@@ -93,6 +82,11 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   Übertragung, Rechte 99:100); Sicherungshinweis zu `-wal`/`-shm`.
 
 ### Behoben
+- **Datenverlust bei der Migration auf SQLite verhindert.** Für manche Änderungen baut SQLite eine
+  Tabelle neu auf; bei aktivem Fremdschlüsselschutz löschte das per `ON DELETE CASCADE` alle
+  abhängigen Zeilen (Volumes, Dateiindex, SMART-Verlauf, Labels-Zuordnung). Die Migration schaltet
+  den Schutz jetzt währenddessen ab und danach wieder ein; ein Test mit Daten in allen Tabellen
+  sichert das ab. (Aufgefallen beim Test von `0005` mit einer Kopie der echten Datenbank.)
 - Unraid zeigte beim Container ein Fragezeichen statt des Programmsymbols: Die Vorlage
   `deploy/unraid/diskatlas.xml` hat jetzt ein `<Icon>`, das Docker-Image zusätzlich die Labels
   `net.unraid.docker.icon`/`webui`. Image-Lizenz-Label auf `MIT` gesetzt.
