@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-27
+
 ### Behoben
 - **Dauerlauf beim Indizieren der Systemplatte.** Der Agent startete einen Neuindex bei *jeder*
   Änderung der Belegung nach 30 s Ruhe – auf einer laufenden Systemplatte (Protokolle, Caches)
