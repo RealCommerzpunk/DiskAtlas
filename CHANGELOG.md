@@ -11,6 +11,11 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Behoben
+- Unraid zeigte beim Container ein Fragezeichen statt des Programmsymbols: Die Vorlage
+  `deploy/unraid/diskatlas.xml` hat jetzt ein `<Icon>`, das Docker-Image zusätzlich die Labels
+  `net.unraid.docker.icon`/`webui`. Image-Lizenz-Label auf `MIT` gesetzt.
+
 ## [0.4.0] - 2026-09-26
 
 ### Hinzugefügt
