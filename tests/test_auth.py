@@ -316,3 +316,11 @@ def test_create_app_without_explicit_paths_and_legacy_import(db, tmp_path, monke
     with db.session() as s:
         cfg = bays.load_config(s)
     assert cfg.ports[:2] == ["ata6", "ata5"] and cfg.reverse is True
+
+
+def test_user_menu_replaces_the_loose_logout_button(db, tmp_path):
+    c = _client(db, tmp_path, password="geheim")
+    _login(c)
+    html = c.get("/").text
+    assert 'class="usermenu"' in html and "Abmelden" in html and "logout-form" not in html
+    assert "Verwaltung" in html  # Admin

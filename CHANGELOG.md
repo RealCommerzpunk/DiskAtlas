@@ -12,6 +12,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Geändert
+- **Benutzermenü** rechts in der Kopfleiste (Kreis mit Anfangsbuchstabe, Name, Rolle) statt des einzeln
+  stehenden „Abmelden“-Knopfes: *Konto*, *Übernahmen* (mit Zähler), *Verwaltung* (Admin), *Abmelden*.
+  Funktioniert ohne JavaScript, Esc/Klick daneben schließt es.
 - **„Master“ heißt jetzt „Admin“** (Oberfläche, Doku, Anmeldename des ersten Kontos). Ein bestehendes
   Konto „Master“ wird beim Start zu „Admin“ umbenannt (Passwort bleibt).
 - **`DISKATLAS_PASSWORD` nur noch beim allerersten Start nötig.** Existiert schon ein Benutzer, startet

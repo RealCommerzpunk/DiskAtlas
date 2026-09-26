@@ -29,12 +29,24 @@
       <a href="/scan" class="{{ 'active' if path.startswith('/scan') }}">Scannen</a>
       <a href="/labels" class="{{ 'active' if path.startswith('/labels') }}">Labels</a>
       <a href="/docs">API</a>
-      {% set who = identity(request) %}
-      {% if who %}{% set open_transfers = pending_transfer_count(request) %}<a href="/transfers" class="{{ 'active' if path.startswith('/transfers') }}">Übernahmen{% if open_transfers %} <span class="badge">{{ open_transfers }}</span>{% endif %}</a>{% endif %}
-      {% if who and who.is_master %}<a href="/admin/users" class="{{ 'active' if path.startswith('/admin') }}">Verwaltung</a>{% endif %}
-      {% if who %}<a href="/account" class="{{ 'active' if path.startswith('/account') }}" title="Konto von {{ who.nickname }}">Konto</a>{% endif %}
-      {% if auth_enabled(request) %}<form method="post" action="/logout" class="logout-form"><button class="link" title="Abmelden">Abmelden</button></form>{% endif %}
     </nav>
+    {% set who = identity(request) %}
+    {% if who %}
+    {% set open_transfers = pending_transfer_count(request) %}
+    <details class="usermenu">
+      <summary aria-label="Benutzermenü von {{ who.nickname }}">
+        <span class="avatar">{{ who.nickname[:1] | upper }}{% if open_transfers %}<span class="avatar-dot" aria-hidden="true"></span>{% endif %}</span>
+        <span class="who"><strong>{{ who.nickname }}</strong><small>{{ 'Admin' if who.is_master else 'Benutzer' }}</small></span>
+        <span class="caret" aria-hidden="true">▾</span>
+      </summary>
+      <div class="usermenu-panel" role="menu">
+        <a role="menuitem" href="/account" class="{{ 'active' if path.startswith('/account') }}">Konto</a>
+        <a role="menuitem" href="/transfers" class="{{ 'active' if path.startswith('/transfers') }}">Übernahmen{% if open_transfers %} <span class="badge">{{ open_transfers }}</span>{% endif %}</a>
+        {% if who.is_master %}<a role="menuitem" href="/admin/users" class="{{ 'active' if path.startswith('/admin') }}">Verwaltung</a>{% endif %}
+        {% if auth_enabled(request) %}<form method="post" action="/logout"><button role="menuitem" class="menu-logout">Abmelden</button></form>{% endif %}
+      </div>
+    </details>
+    {% endif %}
   </header>
   <div id="activity" class="activity" role="status" aria-live="polite" hidden></div>
   <main>

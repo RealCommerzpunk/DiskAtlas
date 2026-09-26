@@ -267,7 +267,25 @@ table.disks th.rail, table.disks td.rail { width: 74px; min-width: 74px; padding
 .login-card form { display: flex; flex-direction: column; gap: .8rem; text-align: left; }
 .login-card label { display: flex; flex-direction: column; gap: .3rem; }
 .login-logo { margin: 0 auto; border-radius: 12px; }
-.logout-form { display: inline; margin: 0 0 0 auto; }
+
+/* Benutzermenü */
+nav { flex: 1; }
+.usermenu { position: relative; margin-left: auto; }
+.usermenu summary { list-style: none; display: flex; align-items: center; gap: .55rem; cursor: pointer; padding: .2rem .5rem .2rem .25rem; border-radius: 999px; }
+.usermenu summary::-webkit-details-marker { display: none; }
+.usermenu summary:hover, .usermenu[open] summary { background: var(--surface-2); }
+.usermenu summary:focus-visible { outline: 2px solid var(--accent); }
+.avatar { position: relative; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-weight: 700; }
+.avatar-dot { position: absolute; top: -1px; right: -1px; width: .6rem; height: .6rem; border-radius: 50%; background: var(--bad, #d92d20); border: 2px solid var(--surface); }
+.who { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+.who small { color: var(--muted); font-size: .72rem; }
+.caret { color: var(--muted); font-size: .8rem; }
+.usermenu-panel { position: absolute; right: 0; top: calc(100% + .4rem); min-width: 12rem; display: flex; flex-direction: column; padding: .3rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 20; }
+.usermenu-panel a, .usermenu-panel .menu-logout { display: flex; justify-content: space-between; align-items: center; padding: .5rem .7rem; border-radius: 8px; color: var(--text); background: none; border: none; font: inherit; font-weight: normal; text-align: left; width: 100%; cursor: pointer; }
+.usermenu-panel a:hover, .usermenu-panel .menu-logout:hover { background: var(--surface-2); text-decoration: none; }
+.usermenu-panel a.active { font-weight: 600; }
+.usermenu-panel form { margin: .2rem 0 0; padding-top: .2rem; border-top: 1px solid var(--border); }
+@media (max-width: 40rem) { .who { display: none; } .topbar { gap: .8rem; padding: .6rem 1rem; } }
 
 /* iPhone-Web-App: Scanner */
 .scan { max-width: 34rem; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom); }
