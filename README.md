@@ -139,6 +139,8 @@ Projektstruktur, Datenmodell, Migrationen und Release-Ablauf: siehe
 
 ## Lizenz
 
-[MIT](LICENSE). Die Windows-Programmdatei enthält zusätzlich `smartctl.exe` aus smartmontools
-(GPL v2, siehe [docs/AGENT.md](docs/AGENT.md#enthaltene-fremdsoftware)).
+[MIT](LICENSE). Ausnahmen (Fremdbestandteile): Das Programmsymbol stammt von
+[Streamline](https://github.com/webalys-hq/streamline-vectors) (CC BY 4.0, verändert); die
+Windows-Programmdatei enthält `smartctl.exe` aus smartmontools (GPL v2). Details:
+[THIRD_PARTY.md](THIRD_PARTY.md).
 Signatur der Windows-Datei: [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md).

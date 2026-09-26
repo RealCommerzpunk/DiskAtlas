@@ -62,6 +62,7 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 - **Tray-Symbol einfarbig wie die Systemsymbole** (Linux im Cinnamon-Grauton und sichtbar so groß
   wie die 16-px-Systemsymbole, Windows weiß bzw. dunkel) mit Statuspunkt unten rechts; unter Windows passend zur Taskleiste hell/dunkel (auch
   beim Umschalten) und in exakt der Systemgröße (DPI-bewusst, keine Unschärfe durch Skalieren).
+  Symbol von Streamline (CC BY 4.0), Nachweis in [THIRD_PARTY.md](THIRD_PARTY.md).
   Neue Option `[agent] tray_icon_color` (`auto`/`light`/`dark`), im Einstellungsfenster unter
   *Erweitert*. Autostart-Eintrag unter Linux zeigt jetzt das Programmsymbol.
 - Linux-Programmdatei nutzt GTK, AppIndicator und WebKit des Systems statt eigener Kopien:

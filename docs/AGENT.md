@@ -107,5 +107,8 @@ Programm, das der Agent nur aufruft. Lizenztext und Herkunft zeigt das Einstellu
 (*Lizenz und Quellcode*); der zugehörige Quellcode (`smartmontools-<Version>.tar.gz`) liegt bei
 jeder Version auf der Release-Seite neben der Programmdatei.
 
+Das Programmsymbol stammt von [Streamline](https://github.com/webalys-hq/streamline-vectors)
+(CC BY 4.0, für App- und Tray-Symbol verändert). Übersicht: [THIRD_PARTY.md](../THIRD_PARTY.md).
+
 DiskAtlas selbst steht unter der [MIT-Lizenz](../LICENSE). Zur Signatur der Windows-Datei:
 [CODE_SIGNING.md](CODE_SIGNING.md).

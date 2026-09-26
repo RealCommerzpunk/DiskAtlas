@@ -95,7 +95,8 @@ SMART mit sudo lesen (Linux)</label>
 <button type="button" class="primary" id="save">Speichern</button>
 <button type="button" id="dash">Dashboard öffnen</button></div>
 <div id="msg"></div>
-<p><small id="path"></small></p><p><small id="notice"></small></p></div>
+<p><small id="path"></small></p><p><small id="notice"></small></p>
+<p><small>Symbol: „hard-disk-remix“ von Streamline, CC BY 4.0 (verändert)</small></p></div>
 
 <script>
 const TEXT = ["server_url","api_token","host_name","smartctl_path","tray_icon_color"];
