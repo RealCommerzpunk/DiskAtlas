@@ -28,18 +28,13 @@ unbeabsichtigt offen im Netz steht.
 ## 2. Container auf Unraid einrichten
 
 Das Image wird bei jeder Version (`v*`-Tag) von GitHub gebaut und liegt unter
-`ghcr.io/realcommerzpunk/diskatlas`. Da das Repository privat ist, ist das Paket zunächst ebenfalls
-privat. Zwei Wege:
-
-- **Paket öffentlich machen** (GitHub → dein Profil → Packages → `diskatlas` → *Package settings* →
-  *Change visibility*). Das Image enthält nur den Programmcode, keine Daten. Danach zieht Unraid es ohne Anmeldung.
-- **Oder** auf dem Unraid einmal anmelden: `docker login ghcr.io -u RealCommerzpunk` mit einem
-  *Personal Access Token* (Berechtigung `read:packages`) als Passwort.
+`ghcr.io/realcommerzpunk/diskatlas`. Repository und Paket sind öffentlich, Unraid lädt das Image
+ohne Anmeldung.
 
 Dann den Container anlegen, am einfachsten mit der mitgelieferten Vorlage:
 
-1. Datei `deploy/unraid/diskatlas.xml` auf den Unraid nach
-   `/boot/config/plugins/dockerMan/templates-user/diskatlas.xml` kopieren.
+1. Vorlage im Unraid-Terminal herunterladen:
+   `wget -O /boot/config/plugins/dockerMan/templates-user/my-diskatlas.xml https://raw.githubusercontent.com/RealCommerzpunk/DiskAtlas/main/deploy/unraid/diskatlas.xml`
 2. Unraid → *Docker* → *Add Container* → Vorlage **DiskAtlas** wählen.
 3. Port (Standard 8765), Datenpfad (`/mnt/user/appdata/diskatlas`), Passwort und API-Token eintragen → *Apply*.
 
