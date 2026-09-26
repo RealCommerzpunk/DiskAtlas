@@ -61,6 +61,7 @@ class DiskOut(ORMModel):
     model: str | None
     vendor: str | None
     product_line: str | None
+    location: str | None
     transport: str | None
     media_type: str | None
     size_bytes: int | None
@@ -95,6 +96,7 @@ class DiskDetailOut(DiskOut):
 class DiskPatch(BaseModel):
     custom_name: str | None = Field(default=None, max_length=200)
     notes: str | None = None
+    location: str | None = Field(default=None, max_length=500)
 
 
 class LabelAssignment(BaseModel):
@@ -204,3 +206,18 @@ class RunningIndexOut(BaseModel):
     volume_label: str | None
     mountpoint: str | None
     files_so_far: int
+
+
+class LookupOut(BaseModel):
+    id: int
+    name: str
+    brand: str | None
+    model: str | None
+    serial: str | None
+    size_bytes: int | None
+    health: str
+    is_connected: bool
+    state: str  # bay | connected | offline
+    host: str | None
+    bay: int | None
+    location: str | None

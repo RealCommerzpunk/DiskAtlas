@@ -12,11 +12,24 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **iPhone-Web-App:** installierbar über „Zum Home-Bildschirm“ (Manifest, Icons, Apple-Metadaten).
+  Neue Seite **Scannen** (`/scan`): Kamera-Barcode-Scanner mit lokal ausgelieferter ZXing-Bibliothek
+  (Apache-2.0, kein Internet/CDN nötig; Code128, Code39, DataMatrix, QR u. a.) und Handeingabe.
+  Der Treffer zeigt die Platte und ihren Ort: „Steckt in Schacht N“, „Angeschlossen an …“ oder bei
+  abgesteckten Platten der **Lagerort**. Der Lagerort lässt sich direkt am Handy eintragen
+  (`PATCH /api/v1/disks/{id}`, Detailseite, Suche; sichtbar im Dashboard bei Offline-Platten).
+  Abgleich über Seriennummer oder WWN, tolerant gegenüber Trennzeichen, Etikett-Zusatztext und
+  Prüfziffern (`GET /api/v1/lookup?code=`). Die Kamera braucht HTTPS (Anleitung: `docs/UNRAID.md`).
+- Neue Spalte `disks.location` (Migration 0003).
 - Server-Paket für Unraid/Docker: `docker-compose.yml` verlangt Passwort und Token,
   Unraid-Vorlage `deploy/unraid/diskatlas.xml`, GitHub-Actions-Workflow, der das Image bei
   `v*`-Tags nach `ghcr.io/realcommerzpunk/diskatlas` veröffentlicht, systemd-User-Dienst für den
   Agenten (`deploy/linux/diskatlas-agent.service`) und die Anleitung `docs/UNRAID.md`
   (Container, Tailscale-HTTPS, Agent, Schächte, Update, Sicherung).
+
+### Behoben
+- Ein ohne Testpfad gestarteter Server (`diskatlas serve`) stürzte beim Umbau ab
+  (`default_bays_path` fehlte); durch Regressionstest abgesichert.
 
 ### Sicherheit
 - **Anmeldung:** Die Weboberfläche und die API sind jetzt per Passwort geschützt

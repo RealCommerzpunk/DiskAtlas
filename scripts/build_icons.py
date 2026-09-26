@@ -42,6 +42,8 @@ def main() -> int:
     render(256, ROOT / "packaging" / "icons" / "icon_256.png")
     render(256, ROOT / "src" / "diskatlas" / "web" / "static" / "icon_256.png")
     render(180, ROOT / "src" / "diskatlas" / "web" / "static" / "apple-touch-icon.png")
+    render(192, ROOT / "src" / "diskatlas" / "web" / "static" / "icon-192.png")
+    render(512, ROOT / "src" / "diskatlas" / "web" / "static" / "icon-512.png")
     shutil.copyfile(SVG, ROOT / "src" / "diskatlas" / "web" / "static" / "favicon.svg")
     print("Icons erzeugt.")
     return 0

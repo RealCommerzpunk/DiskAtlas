@@ -11,6 +11,7 @@ from diskatlas import __version__
 from diskatlas.db.models import Disk, Label
 from diskatlas.probe.types import FileRecord
 from diskatlas.services import commands, duplicates, hosts, ingest, queries
+from diskatlas.services import lookup as lookup_service
 from diskatlas.web.deps import get_session, require_ingest_token
 from diskatlas.web.schemas import (
     CommandResult,
@@ -33,6 +34,7 @@ from diskatlas.web.schemas import (
     LabelIn,
     LabelOut,
     LabelPatch,
+    LookupOut,
     RunningIndexOut,
     StatsOut,
 )
@@ -259,6 +261,26 @@ def bays_live(host: str = "", session: Session = Depends(get_session)):
         "ports": snapshot.all_ports,
         "occupied": [p.__dict__ for p in snapshot.present],
     }
+
+
+@router.get("/lookup", response_model=list[LookupOut], tags=["disks"])
+def lookup(
+    code: str = Query(..., min_length=1, max_length=500),
+    session: Session = Depends(get_session),
+):
+    """Festplatte per Seriennummer/WWN finden (Barcode oder Text) und ihren Ort nennen."""
+    result = []
+    for disk in lookup_service.find_disks(session, code)[:10]:
+        where = lookup_service.whereabouts(session, disk)
+        result.append(
+            LookupOut(
+                id=disk.id, name=disk.display_name, brand=disk.brand, model=disk.model,
+                serial=disk.serial, size_bytes=disk.size_bytes, health=disk.health,
+                is_connected=disk.is_connected, state=where.state, host=where.host,
+                bay=where.bay, location=disk.location,
+            )
+        )
+    return result
 
 
 @router.get("/commands/recent", tags=["system"])

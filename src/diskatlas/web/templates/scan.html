@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Platte finden{% endblock %}
+{% block content %}
+<section class="scan">
+  <h1>Platte finden</h1>
+  <p class="muted">Halte die Kamera auf den <strong>Barcode der Seriennummer</strong> auf dem Etikett der Festplatte.
+    DiskAtlas zeigt, ob und wo sie steckt – oder wo sie liegt.</p>
+
+  <div class="scan-view" id="scan-view" hidden>
+    <video id="scan-video" playsinline muted autoplay></video>
+    <div class="scan-frame" aria-hidden="true"></div>
+  </div>
+  <button type="button" id="scan-toggle" class="scan-toggle">Kamera starten</button>
+  <p id="scan-status" class="muted" role="status" aria-live="polite"></p>
+
+  <form id="scan-form" class="scan-manual">
+    <label for="scan-input">Oder Seriennummer eintippen</label>
+    <div class="scan-manual-row">
+      <input id="scan-input" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="z. B. WD-WCC4E2VRR0CJ">
+      <button type="submit">Suchen</button>
+    </div>
+  </form>
+
+  <div id="scan-results" aria-live="polite"></div>
+</section>
+<script src="{{ url_for('static', path='vendor/zxing.min.js') }}?v={{ version }}"></script>
+<script src="{{ url_for('static', path='scan.js') }}?v={{ version }}"></script>
+{% endblock %}

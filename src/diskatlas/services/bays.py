@@ -13,11 +13,17 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from diskatlas.config import default_data_dir
 from diskatlas.db.models import Disk, Setting
 from diskatlas.services.hosts import HostSnapshot
 
 BAY_COUNT = 4
 SETTING_KEY = "bays"
+
+
+def default_bays_path() -> Path:
+    """Ort der früheren lokalen Schachtdatei (wird nur noch einmalig importiert)."""
+    return default_data_dir() / "bays.json"
 
 
 @dataclass

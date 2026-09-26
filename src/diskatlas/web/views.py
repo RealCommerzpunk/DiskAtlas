@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
@@ -262,10 +262,12 @@ def disk_update(
     disk_id: int,
     custom_name: str = Form(""),
     notes: str = Form(""),
+    location: str = Form(""),
     session: Session = Depends(get_session),
 ):
     disk = _disk_or_404(session, disk_id)
     disk.custom_name = custom_name.strip() or None
+    disk.location = location.strip()[:500] or None
     disk.notes = notes.strip() or None
     return _redirect(f"/disks/{disk_id}")
 
@@ -417,6 +419,28 @@ def files(
             "labels": [lab for lab, _ in queries.list_labels(session)],
         },
     )
+
+
+# ------------------------------------------------------------------ iPhone-Web-App
+@router.get("/scan", response_class=HTMLResponse)
+def scan_page(request: Request):
+    return templates.TemplateResponse(request, "scan.html", {})
+
+
+@router.get("/manifest.webmanifest")
+def manifest():
+    icons = [
+        {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+        {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png",
+         "purpose": "maskable"},
+    ]
+    body = {
+        "name": "DiskAtlas", "short_name": "DiskAtlas", "start_url": "/scan", "scope": "/",
+        "display": "standalone", "background_color": "#000000", "theme_color": "#000000",
+        "lang": "de", "icons": icons,
+    }
+    return JSONResponse(body, media_type="application/manifest+json")
 
 
 # ------------------------------------------------------------------ Doubletten

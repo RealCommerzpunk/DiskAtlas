@@ -7,6 +7,7 @@
 <span class="badge online" title="an {{ disk.last_host or '?' }}">angeschlossen</span>
 {% else %}
 <span class="badge offline" title="zuletzt {{ disk.last_seen | dt }}">offline · {{ disk.last_seen | ago }}</span>
+{% if disk.location %}<div class="muted small" title="Lagerort">📦 {{ disk.location }}</div>{% endif %}
 {% endif %}
 {%- endmacro %}
 

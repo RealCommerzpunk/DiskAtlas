@@ -136,6 +136,7 @@ def filter_disks(disks: list[Disk], flt: DiskFilter) -> list[Disk]:
                     disk.vendor,
                     disk.product_line,
                     disk.notes,
+                    disk.location,
                     disk.last_host,
                     *[v.label for v in disk.volumes],
                     *disk.fs_types,

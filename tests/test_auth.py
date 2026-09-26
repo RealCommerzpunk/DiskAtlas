@@ -80,3 +80,18 @@ def test_login_throttle(db, tmp_path):
 def test_no_password_means_open_locally(client):
     assert client.get("/").status_code == 200
     assert client.get("/login", follow_redirects=False).status_code == 303
+
+
+def test_create_app_without_explicit_paths_and_legacy_import(db, tmp_path, monkeypatch):
+    """Regression: `diskatlas serve` ruft create_app ohne Testpfade auf."""
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    legacy = tmp_path / "diskatlas" / "bays.json"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text('{"ports": ["ata6", "ata5"], "reverse": true}', encoding="utf-8")
+    client = TestClient(create_app(Config(), db))
+    assert client.get("/").status_code == 200
+    from diskatlas.services import bays
+
+    with db.session() as s:
+        cfg = bays.load_config(s)
+    assert cfg.ports[:2] == ["ata6", "ata5"] and cfg.reverse is True

@@ -36,7 +36,10 @@
       <label>Anzeigename
         <input name="custom_name" value="{{ disk.custom_name or '' }}" placeholder="{{ disk.display_name }}">
       </label>
-      <label>Notizen (Standort, Inhalt, Kaufdatum …)
+      <label>Lagerort (wo liegt die Platte, wenn sie nicht eingebaut ist?)
+        <input name="location" value="{{ disk.location or '' }}" maxlength="500" placeholder="z. B. Karton 3, Regal B">
+      </label>
+      <label>Notizen (Inhalt, Kaufdatum …)
         <textarea name="notes" rows="4">{{ disk.notes or '' }}</textarea>
       </label>
       <button type="submit">Speichern</button>
