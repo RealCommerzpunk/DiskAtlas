@@ -2,9 +2,10 @@
 
 Ohne Benutzerkonten (kein Passwort konfiguriert) ist keine Anmeldung nötig – das ist nur erlaubt,
 solange der Server ausschließlich lokal (Loopback) lauscht (siehe `check_exposure`). Das Passwort
-aus `DISKATLAS_PASSWORD` legt beim ersten Start den Master an. Agenten weisen sich weiterhin mit
-dem globalen API-Token aus (`/api/v1/ingest/*`); dasselbe Token oder das Token eines Clients
-darf auch Skripte für die übrige API authentifizieren (`Authorization: Bearer …`).
+aus `DISKATLAS_PASSWORD` legt beim ersten Start den Master an. Agenten weisen sich mit dem Token
+ihres Clients aus (`Authorization: Bearer …`); das gilt für `/api/v1/ingest/*` (nur so, keine
+Sitzung) und darf auch Skripte für die übrige API authentifizieren – jeweils als Besitzer des
+Clients.
 """
 
 from __future__ import annotations
@@ -28,7 +29,8 @@ COOKIE = "diskatlas_session"
 SESSION_SECONDS = 30 * 24 * 3600
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
 OPEN_EXACT = {"/login", "/register", "/api/v1/health", "/manifest.webmanifest", "/sw.js"}
-OPEN_PREFIX = ("/static/", "/api/v1/ingest/")  # Ingest prüft das Agenten-Token selbst
+OPEN_PREFIX = ("/static/",)
+INGEST_PREFIX = "/api/v1/ingest/"
 MAX_FAILURES, FAILURE_WINDOW = 5, 300.0
 
 
@@ -37,18 +39,12 @@ def check_exposure(config: Config) -> None:
     server = config.server
     if server.host in LOOPBACK or server.allow_insecure:
         return
-    missing = [
-        name
-        for name, value in (("DISKATLAS_PASSWORD", server.password),
-                            ("DISKATLAS_API_TOKEN", server.api_token))
-        if not value
-    ]
-    if missing:
+    if not server.password:
         raise RuntimeError(
-            f"Der Server lauscht auf {server.host}, aber {' und '.join(missing)} "
-            "fehlt/fehlen. Ohne Passwort und Token wäre die Weboberfläche für jeden im Netz "
-            "offen. Bitte setzen (siehe config.example.toml / docker-compose.yml) oder den "
-            "Server nur lokal betreiben (host = 127.0.0.1)."
+            f"Der Server lauscht auf {server.host}, aber DISKATLAS_PASSWORD fehlt. Ohne "
+            "Anmeldung wäre die Weboberfläche für jeden im Netz offen. Bitte setzen (siehe "
+            "config.example.toml / docker-compose.yml) oder den Server nur lokal betreiben "
+            "(host = 127.0.0.1)."
         )
 
 
@@ -107,15 +103,10 @@ def _bearer(request: Request) -> str:
     return header[7:].strip() if header.lower().startswith("bearer ") else ""
 
 
-def _bearer_ok(request: Request, token: str) -> bool:
-    supplied = _bearer(request)
-    return bool(token) and bool(supplied) and hmac.compare_digest(supplied.encode(), token.encode())
-
-
-def identify(request: Request) -> Identity | None:
+def identify(request: Request, allow_cookie: bool = True) -> Identity | None:
     """Benutzer der Sitzung bzw. Besitzer des Client-Tokens; None, wenn beides fehlt/ungültig."""
     with request.app.state.db.session() as session:
-        user = _user_from_cookie(request, session)
+        user = _user_from_cookie(request, session) if allow_cookie else None
         if user is not None:
             return Identity(user.id, user.nickname, user.is_master)
         client = users.find_client_by_token(session, _bearer(request))
@@ -162,9 +153,13 @@ async def auth_middleware(request: Request, call_next):
     path = request.url.path
     if path in OPEN_EXACT or path.startswith(OPEN_PREFIX):
         return await call_next(request)
-    request.state.identity = identify(request)
-    if request.state.identity or _bearer_ok(request, request.app.state.config.server.api_token):
+    ingest = path.startswith(INGEST_PREFIX)
+    # Der Ingest gehört den Agenten: nur mit Client-Token, nie mit einer Browser-Sitzung.
+    request.state.identity = identify(request, allow_cookie=not ingest)
+    if request.state.identity:
         return await call_next(request)
+    if ingest:
+        return JSONResponse({"detail": "Ungültiges oder fehlendes Client-Token"}, status_code=401)
     if path.startswith("/api/"):
         return JSONResponse({"detail": "Anmeldung erforderlich"}, status_code=401)
     target = path + (f"?{request.url.query}" if request.url.query else "")

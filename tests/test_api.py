@@ -40,13 +40,10 @@ def test_labels_and_patch(client, db):
     assert client.get(f"/api/v1/disks/{disk_id}").json()["labels"] == []
 
 
-def test_ingest_token(client, config):
-    config.server.api_token = "geheim"
+def test_ingest_is_open_without_login(client):
+    """Lokaler Betrieb ohne Anmeldung: keine Clients, also auch kein Token nötig."""
     payload = {"host": "x", "disk_keys": []}
-    assert client.post("/api/v1/ingest/connected", json=payload).status_code == 401
-    ok = client.post("/api/v1/ingest/connected", json=payload,
-                     headers={"Authorization": "Bearer geheim"})
-    assert ok.status_code == 200
+    assert client.post("/api/v1/ingest/connected", json=payload).status_code == 200
 
 
 def test_ingest_unknown_volume_404(client, db):

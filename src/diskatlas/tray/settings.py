@@ -18,7 +18,7 @@ from diskatlas.config import AgentConfig
 # Im Fenster bearbeitbare [agent]-Optionen mit Typ und Bezeichnung für Fehlermeldungen.
 FIELDS: dict[str, tuple[type, str]] = {
     "server_url": (str, "Server-Adresse"),
-    "api_token": (str, "API-Token"),
+    "api_token": (str, "Client-Token"),
     "host_name": (str, "Rechnername"),
     "smartctl_path": (str, "Pfad zu smartctl"),
     "poll_interval": (float, "Abfrageintervall"),
@@ -131,7 +131,7 @@ def save(path: Path, values: dict[str, Any]) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     with contextlib.suppress(OSError):
-        tmp.chmod(0o600)  # enthält den API-Token
+        tmp.chmod(0o600)  # enthält das Client-Token
     os.replace(tmp, path)
 
 
@@ -167,7 +167,7 @@ def check_connection(
             f"{url}/api/v1/ingest/commands", params={"host": TEST_HOST}, headers=headers
         )
         if response.status_code in (401, 403):
-            return False, "Server erreichbar, aber der API-Token wird abgelehnt."
+            return False, "Server erreichbar, aber das Client-Token wird abgelehnt."
         if response.status_code != 200:
             return False, f"Die Agent-Schnittstelle antwortet mit {response.status_code}."
         return True, f"Verbindung in Ordnung (Server-Version {version}, Token akzeptiert)."

@@ -19,7 +19,16 @@ def test_load_config_file_and_env(tmp_path, monkeypatch):
     assert cfg.database_url == "sqlite:///x.db"
     assert cfg.agent.poll_interval == 2.5
     assert cfg.server.port == 9100
-    assert cfg.agent.api_token == cfg.server.api_token == "t"
+    assert cfg.agent.api_token == "t"
+    assert not hasattr(cfg.server, "api_token"), "der Server hält kein gemeinsames Token mehr"
+
+
+def test_legacy_server_api_token_is_ignored_with_warning(tmp_path, caplog):
+    path = tmp_path / "c.toml"
+    path.write_text('[server]\napi_token = "alt"\nport = 9000\n', encoding="utf-8")
+    cfg = load_config(path)
+    assert cfg.server.port == 9000
+    assert "api_token" in caplog.text
 
 
 def test_load_config_rejects_unknown(tmp_path):

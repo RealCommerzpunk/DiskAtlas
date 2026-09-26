@@ -122,7 +122,7 @@ ihre Scans per Agent dorthin. Einrichtung auf Unraid inkl. HTTPS fürs iPhone:
 **[docs/UNRAID.md](docs/UNRAID.md)**.
 
 ```bash
-DISKATLAS_PASSWORD=... DISKATLAS_API_TOKEN=... docker compose up -d
+DISKATLAS_PASSWORD=... docker compose up -d
 ```
 
 Auf jedem Rechner in `config.toml`:
@@ -130,7 +130,7 @@ Auf jedem Rechner in `config.toml`:
 ```toml
 [agent]
 server_url = "http://unraid.local:8765"
-api_token  = "gleiches-token-wie-im-container"
+api_token  = "token-deines-clients"   # Weboberfläche: Konto → Client anlegen
 ```
 
 und dann `diskatlas agent` starten (oder das [Agent-Programm](docs/AGENT.md) nutzen).
@@ -145,9 +145,8 @@ diskatlas db copy --to "postgresql+psycopg://diskatlas:pw@unraid.local:5432/disk
 Die Weboberfläche verlangt eine Anmeldung. Beim allerersten Start wird `DISKATLAS_PASSWORD` das
 Passwort des Benutzers **Master**; weitere Personen beantragen den Zugang unter `/register`, der
 Master schaltet sie unter *Verwaltung* frei. Jeder Benutzer legt unter *Konto* **Clients** an (einen
-je Rechner mit Agent) mit eigenem Token. Bis die Umstellung auf Client-Tokens abgeschlossen ist,
-melden sich Agenten weiter mit dem gemeinsamen `DISKATLAS_API_TOKEN`. Der Container startet nur,
-wenn beide Variablen gesetzt sind.
+je Rechner mit Agent) mit eigenem Token; damit weisen sich die Agenten aus. Der Container startet
+nur, wenn `DISKATLAS_PASSWORD` gesetzt ist.
 
 ## Entwicklung
 

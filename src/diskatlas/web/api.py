@@ -12,7 +12,7 @@ from diskatlas.db.models import Disk, Label
 from diskatlas.probe.types import FileRecord
 from diskatlas.services import commands, duplicates, hosts, ingest, queries
 from diskatlas.services import lookup as lookup_service
-from diskatlas.web.deps import get_session, require_ingest_token
+from diskatlas.web.deps import get_session, require_client
 from diskatlas.web.schemas import (
     CommandResult,
     DiskDetailOut,
@@ -299,7 +299,7 @@ def stats(session: Session = Depends(get_session)):
 
 # ------------------------------------------------------------------ Ingest (für Agenten)
 ingest_router = APIRouter(
-    prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_ingest_token)]
+    prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_client)]
 )
 
 

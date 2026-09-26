@@ -13,12 +13,10 @@ def _client(db, tmp_path, **server):
     return TestClient(create_app(cfg, db, bays_path=tmp_path / "none.json"), follow_redirects=False)
 
 
-def test_exposed_server_requires_password_and_token(db, tmp_path):
-    with pytest.raises(RuntimeError, match="DISKATLAS_PASSWORD und DISKATLAS_API_TOKEN"):
+def test_exposed_server_requires_password(db, tmp_path):
+    with pytest.raises(RuntimeError, match="DISKATLAS_PASSWORD"):
         _client(db, tmp_path, host="0.0.0.0")
-    with pytest.raises(RuntimeError, match="DISKATLAS_API_TOKEN"):
-        _client(db, tmp_path, host="0.0.0.0", password="pw")
-    _client(db, tmp_path, host="0.0.0.0", password="pw", api_token="tok")  # ok
+    _client(db, tmp_path, host="0.0.0.0", password="pw")  # ok
     _client(db, tmp_path, host="0.0.0.0", allow_insecure=True)  # ausdrücklich erlaubt
     _client(db, tmp_path)  # Loopback ohne Passwort bleibt möglich
 
@@ -28,7 +26,7 @@ def _login(c, nickname="Master", password="geheim", next="/"):
 
 
 def test_login_flow(db, tmp_path):
-    c = _client(db, tmp_path, password="geheim", api_token="tok")
+    c = _client(db, tmp_path, password="geheim")
     r = c.get("/files?q=x")
     assert r.status_code == 303 and r.headers["location"].startswith("/login?next=%2Ffiles")
     assert c.get("/api/v1/disks").status_code == 401
@@ -86,19 +84,45 @@ def test_cookie_is_bound_to_user_and_password(db, tmp_path):
     assert _login(c, password="neues-passwort-1").headers["location"] == "/"
 
 
-def test_token_and_ingest_paths(db, tmp_path):
-    c = _client(db, tmp_path, password="geheim", api_token="tok")
-    assert c.get("/api/v1/disks", headers={"Authorization": "Bearer tok"}).status_code == 200
-    assert c.get("/api/v1/disks", headers={"Authorization": "Bearer nope"}).status_code == 401
-    # Ingest prüft sein eigenes Token (nicht die Sitzung)
+def test_ingest_needs_a_client_token(db, tmp_path):
+    c = _client(db, tmp_path, password="geheim")
+    _login(c)
+    token = _make_client(c, "Arbeits-PC")
     body = {"host": "h", "disk_keys": []}
+    bearer = {"Authorization": f"Bearer {token}"}
+
+    assert c.post("/api/v1/ingest/connected", json=body, headers=bearer).status_code == 200
+    assert c.get("/api/v1/ingest/commands", params={"host": "h"}, headers=bearer).status_code == 200
+
+    agent = _client(db, tmp_path, password="geheim")  # ohne Sitzung, wie ein Agent
+    assert agent.post("/api/v1/ingest/connected", json=body).status_code == 401
+    wrong = {"Authorization": "Bearer falsch"}
+    assert agent.post("/api/v1/ingest/connected", json=body, headers=wrong).status_code == 401
+    # Eine Browser-Sitzung reicht für den Ingest nicht aus
     assert c.post("/api/v1/ingest/connected", json=body).status_code == 401
-    ok = c.post("/api/v1/ingest/connected", json=body, headers={"Authorization": "Bearer tok"})
-    assert ok.status_code == 200
+    # Der frühere gemeinsame Token (Passwort des Servers o. Ä.) ist kein Ausweis mehr
+    old = {"Authorization": "Bearer geheim"}
+    assert agent.post("/api/v1/ingest/connected", json=body, headers=old).status_code == 401
+
+
+def test_deleted_client_loses_ingest_access(db, tmp_path):
+    from diskatlas.db.models import Client
+
+    c = _client(db, tmp_path, password="geheim")
+    _login(c)
+    token = _make_client(c)
+    body = {"host": "h", "disk_keys": []}
+    agent = _client(db, tmp_path, password="geheim")
+    bearer = {"Authorization": f"Bearer {token}"}
+    assert agent.post("/api/v1/ingest/connected", json=body, headers=bearer).status_code == 200
+    with db.session() as s:
+        client_id = s.query(Client).one().id
+    c.post(f"/account/clients/{client_id}/delete")
+    assert agent.post("/api/v1/ingest/connected", json=body, headers=bearer).status_code == 401
 
 
 def test_login_throttle(db, tmp_path):
-    c = _client(db, tmp_path, password="geheim", api_token="tok")
+    c = _client(db, tmp_path, password="geheim")
     for _ in range(auth.MAX_FAILURES):
         _login(c, password="x")
     blocked = _login(c)

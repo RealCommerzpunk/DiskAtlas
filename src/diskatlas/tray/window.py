@@ -63,7 +63,7 @@ Nur dieser PC – Oberfläche und Datenbank laufen lokal</label>
 <div id="server_fields">
 <label for="server_url">Server-Adresse</label>
 <input type="text" id="server_url" placeholder="http://unraid:8765" spellcheck="false">
-<label for="api_token">API-Token</label>
+<label for="api_token">Client-Token (Weboberfläche: Konto → Client anlegen)</label>
 <div class="row"><input type="password" id="api_token" spellcheck="false" autocomplete="off">
 <button type="button" id="toggle">Zeigen</button></div></div>
 <label for="host_name">Rechnername (leer = automatisch)</label>

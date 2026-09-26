@@ -5,6 +5,7 @@
 # Alle Werte sind optional; auskommentierte Zeilen zeigen die Standardwerte.
 # Umgebungsvariablen (DISKATLAS_DATABASE_URL, DISKATLAS_SERVER_URL, DISKATLAS_API_TOKEN,
 # DISKATLAS_PASSWORD, DISKATLAS_HOST, DISKATLAS_PORT) haben Vorrang vor dieser Datei.
+# (DISKATLAS_API_TOKEN gilt nur für den Agenten: das Token seines Clients.)
 
 # Datenbank (SQLAlchemy-URL). Leer = lokale SQLite-Datei:
 #   Linux:   ~/.local/share/diskatlas/diskatlas.db
@@ -25,12 +26,11 @@
 
 # Zentraler Server (z. B. Docker-Container auf dem Unraid). Leer = direkt in database_url schreiben.
 # server_url = "http://unraid.local:8765"   # oder https://<name>.<tailnet>.ts.net
-# api_token = "gleiches-token-wie-auf-dem-server"
+# api_token = "..."                # Token deines Clients (Weboberfläche: Konto → Client anlegen)
 # host_name = ""                  # Anzeigename dieses Rechners (Standard: Hostname)
 # tray_icon_color = "auto"        # Tray-Programm: Symbolfarbe "auto", "light" oder "dark"
 
 [server]
 # host = "127.0.0.1"              # "0.0.0.0" für Zugriff aus dem Netzwerk
 # port = 8765
-# api_token = ""                  # Token, das Agenten für /api/v1/ingest mitsenden müssen
-# password = ""                   # Passwort der Weboberfläche; Pflicht, wenn host nicht 127.0.0.1 ist
+# password = ""                   # Startpasswort des Benutzers "Master"; Pflicht, wenn host nicht 127.0.0.1 ist

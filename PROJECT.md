@@ -61,7 +61,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Indizierungs-Warnbanner | „nicht abziehen“ mit Zwischenstand auf jeder Seite (`/api/v1/activity`) | ✅ 0.2.0 |
 | Doubletten | Dateien (Name+Größe) und Ordner (identischer Inhalt) aus dem Index, ohne Prüfsummen | ✅ 0.2.0 |
 | API | REST `/api/v1`, OpenAPI unter `/docs` | ✅ 0.1.0 |
-| Verteilt | Agent → HTTP-Ingest → zentraler Server, Token-Schutz | ✅ 0.1.0 |
+| Verteilt | Agent → HTTP-Ingest → zentraler Server; jeder Client mit eigenem Token | ✅ 0.1.0 (Client-Tokens: Unreleased) |
 | Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy` | ✅ 0.1.0 |
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
@@ -206,6 +206,7 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-26 | **Server führt nichts auf Platten aus; Agenten holen Aufträge ab (Polling)** | Der Server läuft auf einem anderen Rechner (Unraid) und darf keine Kommandos an Rechner „durchreichen“. Der Agent verbindet sich ausgehend (NAT/Firewall-freundlich), prüft jeden Auftrag gegen seinen eigenen Stand und ignoriert Gerätepfade aus dem Auftrag. Aufträge sind auf eine feste Liste (`rename_label`, `rescan`) beschränkt. |
 | 2026-09-26 | ~~Ein Passwort + signiertes Cookie statt Benutzerverwaltung~~ (ersetzt, s. u.); **Server im Netz nur mit Passwort und Token** | Ein fehlendes Passwort darf den Server nicht unbemerkt öffnen. Bleibt bestehen: `DISKATLAS_PASSWORD` ist Pflicht bei Betrieb im Netz. |
 | 2026-09-26 | **Benutzer mit Antrag und Master-Freischaltung; Clients mit eigenem Token** | Der Server soll über einen Reverse-Proxy im Internet erreichbar sein und mehrere Personen bedienen. `DISKATLAS_PASSWORD` legt nur noch den Master an (nur beim allerersten Start, danach zählt das Passwort in der Datenbank). Jeder darf einen Antrag stellen, aber erst der Master schaltet frei; abgelehnte Anträge werden gelöscht. |
+| 2026-09-26 | **Ingest nur mit Client-Token, nie mit Browser-Sitzung; kein gemeinsames Server-Token mehr** | Ein gemeinsames Token macht jeden Agenten zum Vollzugriff und lässt sich nicht einzeln widerrufen. Jetzt hat jeder Client ein eigenes Token (Widerruf = Client löschen) und handelt als sein Besitzer – Grundlage für Besitz und Berechtigungen je Platte. Ohne Anmeldung (lokaler Betrieb) gibt es keine Clients, der Ingest ist dort offen wie die übrige Oberfläche. Alte `[server] api_token`-Einträge in Konfigurationsdateien werden mit Warnung ignoriert. |
 | 2026-09-26 | **PBKDF2 aus der Standardbibliothek statt bcrypt/argon2** | Das Projekt hält die Abhängigkeiten bewusst klein (PyInstaller-Größe). 600 000 Runden SHA-256 mit Salt je Passwort (Wert steht im Hash, kann später erhöht werden). Client-Tokens sind zufällig und lang, dort genügt SHA-256. |
 | 2026-09-26 | **Sitzung pro Benutzer, Passwort-Hash in der Cookie-Signatur** | Passwortwechsel meldet alle Sitzungen dieses Benutzers ab, ohne Sitzungstabelle. Namen werden ohne Beachtung der Groß-/Kleinschreibung verglichen („Anna“ vs. „anna“ wären verwechselbar). |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |
@@ -238,10 +239,10 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 
 **Docker / Unraid**
 - Container betreibt nur den Server. Scans erfolgen durch Agenten auf den Rechnern
-  (`[agent] server_url = "http://unraid:8765"`, `api_token` wie im Container).
-- Der Container startet **nur mit `DISKATLAS_PASSWORD` und `DISKATLAS_API_TOKEN`**.
-  `DISKATLAS_PASSWORD` ist das Startpasswort des Benutzers „Master“ (wird beim allerersten Start
-  in die Datenbank übernommen). Weitere Benutzer beantragen den Zugang unter `/register`.
+  (`[agent] server_url = "http://unraid:8765"`, `api_token` = Token des Clients aus der Konto-Seite).
+- Der Container startet **nur mit `DISKATLAS_PASSWORD`**: Startpasswort des Benutzers „Master“
+  (wird beim allerersten Start in die Datenbank übernommen). Weitere Benutzer beantragen den
+  Zugang unter `/register`. Ein gemeinsames Server-Token gibt es nicht mehr.
 - Daten unter `/data` (SQLite) oder PostgreSQL per `DISKATLAS_DATABASE_URL`.
 - Image: `ghcr.io/realcommerzpunk/diskatlas` (GitHub Actions bei `v*`-Tags), Unraid-Vorlage
   `deploy/unraid/diskatlas.xml`. Einrichtung, Tailscale-HTTPS (Voraussetzung für die iPhone-
@@ -251,7 +252,7 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 
 Siehe [`config.example.toml`](config.example.toml). Reihenfolge: Standardwerte < Datei
 (`~/.config/diskatlas/config.toml` bzw. `%APPDATA%\diskatlas\config.toml`) < Umgebungsvariablen
-(`DISKATLAS_DATABASE_URL`, `DISKATLAS_SERVER_URL`, `DISKATLAS_API_TOKEN`, `DISKATLAS_HOST`,
+(`DISKATLAS_DATABASE_URL`, `DISKATLAS_SERVER_URL`, `DISKATLAS_API_TOKEN` (nur Agent), `DISKATLAS_HOST`,
 `DISKATLAS_PORT`, `DISKATLAS_HOST_NAME`, `DISKATLAS_SMARTCTL`). Unbekannte Optionen führen zu
 einem Fehler, damit Tippfehler auffallen.
 
