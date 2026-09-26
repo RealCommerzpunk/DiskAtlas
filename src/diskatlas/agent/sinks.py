@@ -13,7 +13,8 @@ from diskatlas.services import commands, hosts, ingest
 
 class Sink(ABC):
     @abstractmethod
-    def report_disk(self, host: str, disk: DiskInfo) -> None: ...
+    def report_disk(self, host: str, disk: DiskInfo) -> bool:
+        """Meldet die Platte; False = gehört einem anderen Benutzer (Übernahme beantragt)."""
 
     @abstractmethod
     def report_connected(
@@ -47,9 +48,10 @@ class DatabaseSink(Sink):
     def __init__(self, db: Database):
         self.db = db
 
-    def report_disk(self, host: str, disk: DiskInfo) -> None:
+    def report_disk(self, host: str, disk: DiskInfo) -> bool:
         with self.db.session() as s:
             ingest.upsert_disk(s, host, disk)
+        return True
 
     def report_connected(
         self, host: str, disk_keys: list[str], ports_info: dict | None = None
@@ -93,8 +95,9 @@ class HttpSink(Sink):
         response.raise_for_status()
         return response.json() if response.content else {}
 
-    def report_disk(self, host: str, disk: DiskInfo) -> None:
-        self._post("/ingest/disk", {"host": host, "disk": disk.model_dump(mode="json")})
+    def report_disk(self, host: str, disk: DiskInfo) -> bool:
+        reply = self._post("/ingest/disk", {"host": host, "disk": disk.model_dump(mode="json")})
+        return not (isinstance(reply, dict) and reply.get("transfer_pending"))
 
     def report_connected(
         self, host: str, disk_keys: list[str], ports_info: dict | None = None

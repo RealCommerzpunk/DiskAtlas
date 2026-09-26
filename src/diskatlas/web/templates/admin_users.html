@@ -2,6 +2,7 @@
 {% block title %}Verwaltung{% endblock %}
 {% block content %}
 <h1>Benutzerverwaltung</h1>
+{% if msg %}<p class="notice ok" role="status">{{ msg }}</p>{% endif %}
 
 <section class="card">
   <h2>Offene Anträge{% if pending %} ({{ pending | length }}){% endif %}</h2>
@@ -28,6 +29,20 @@
   </table>
   </div>
 </section>
+
+{% if unowned %}
+<section class="card">
+  <h2>Herrenlose Platten ({{ unowned }})</h2>
+  <p class="muted">Platten ohne Besitzer (z. B. aus einer früheren Einzelplatz-Datenbank) sieht nur der Master. Hier übergibst du sie samt ihren Labels einem Benutzer; danach gehören sie ihm.</p>
+  <form method="post" action="/admin/disks/assign-unowned" class="inline" data-confirm="Alle herrenlosen Platten und Labels dem gewählten Benutzer übergeben?">
+    <select name="user_id" aria-label="Benutzer" required>
+      <option value="">Benutzer wählen …</option>
+      {% for u in active %}<option value="{{ u.id }}">{{ u.nickname }}</option>{% endfor %}
+    </select>
+    <button type="submit">Alle übergeben</button>
+  </form>
+</section>
+{% endif %}
 
 <section class="card">
   <h2>Benutzer</h2>

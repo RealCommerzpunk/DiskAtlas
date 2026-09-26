@@ -166,6 +166,19 @@ chown 99:100 /mnt/user/appdata/diskatlas/diskatlas.db && chmod 664 /mnt/user/app
 Dann den Container starten. Er bringt die Datenbank bei Bedarf selbst auf den neuesten Stand.
 Passt alles, kann der Ordner `vorher` gelöscht werden.
 
+## Benutzer, Platten und Freigaben
+
+- **Jede Platte gehört dem Benutzer, dessen Client sie zuerst meldet.** Benutzer sehen nur ihre
+  eigenen und die ihnen freigegebenen Platten; nur der Besitzer (und der Master) darf ändern.
+- **Freigeben:** auf der Plattenseite unter *Besitz & Freigabe* einzelne Benutzer wählen – sie
+  sehen die Platte dann *nur lesend*.
+- **Platte weitergeben:** Steckt sie an einem Rechner eines anderen Benutzers, entsteht dort ein
+  Übernahmeantrag. Der bisherige Besitzer bestätigt oder lehnt ihn unter *Übernahmen* ab; bis dahin
+  bleibt alles unverändert. Bei Zustimmung entfallen seine Notizen, Labels und Freigaben dazu.
+- **Der Master sieht alles**, verwaltet Benutzer und Anträge und übergibt Altbestand.
+- **Nach dem Umstieg** sind alle bisherigen Platten *herrenlos* (nur für den Master sichtbar):
+  *Verwaltung → Herrenlose Platten* übergibt sie samt Labels einem Benutzer.
+
 ## Aktualisieren
 
 Neue Version: Tag `vX.Y.Z` pushen → GitHub baut das Image → in Unraid den Container *aktualisieren*.

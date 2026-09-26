@@ -6,12 +6,12 @@ import json
 import os
 import uuid
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.orm import Session, selectinload
 
-from diskatlas.db.models import Disk, FileEntry, SmartSnapshot, Volume
+from diskatlas.db.models import Client, Disk, DiskTransferRequest, FileEntry, SmartSnapshot, Volume
 from diskatlas.probe import catalog
 from diskatlas.probe.types import DiskInfo, FileRecord, SmartInfo, VolumeInfo
 
@@ -34,14 +34,61 @@ def utcnow() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
-def upsert_disk(session: Session, host: str, info: DiskInfo, now: datetime | None = None) -> Disk:
+REJECTED_TRANSFER_PAUSE = timedelta(days=30)  # so lange stellt ein abgelehnter Antrag nicht neu
+
+
+def request_transfer(
+    session: Session, disk: Disk, client: Client, now: datetime
+) -> DiskTransferRequest:
+    """Übernahmeantrag für `disk`; ein offener/frisch abgelehnter Antrag wird wiederverwendet."""
+    existing = session.scalar(
+        select(DiskTransferRequest)
+        .where(
+            DiskTransferRequest.disk_id == disk.id,
+            DiskTransferRequest.to_user_id == client.user_id,
+            (DiskTransferRequest.status == "pending")
+            | (
+                (DiskTransferRequest.status == "rejected")
+                & (DiskTransferRequest.resolved_at > now - REJECTED_TRANSFER_PAUSE)
+            ),
+        )
+        .order_by(DiskTransferRequest.id.desc())
+    )
+    if existing is not None:
+        return existing
+    request = DiskTransferRequest(
+        disk_id=disk.id, from_user_id=disk.owner_user_id, to_user_id=client.user_id,
+        requested_by_client_id=client.id, status="pending", created_at=now,
+    )
+    session.add(request)
+    return request
+
+
+def upsert_disk(
+    session: Session, host: str, info: DiskInfo, now: datetime | None = None,
+    client: Client | None = None,
+) -> Disk:
+    """Legt die Platte an bzw. aktualisiert sie.
+
+    Mit `client` (Server-Betrieb) gehört eine neue oder herrenlose Platte dessen Benutzer. Gehört
+    sie schon jemand anderem, wird nichts verändert, sondern nur ein Übernahmeantrag für den
+    Besitzer angelegt – fremde Clients schreiben nie in Platten anderer Benutzer.
+    """
     now = now or utcnow()
     disk = session.scalar(
         select(Disk).where(Disk.disk_key == info.key).options(selectinload(Disk.volumes))
     )
     if disk is None:
-        disk = Disk(disk_key=info.key, first_seen=now, health="unknown", volumes=[])
+        disk = Disk(disk_key=info.key, first_seen=now, health="unknown", volumes=[],
+                    owner_user_id=client.user_id if client else None)
         session.add(disk)
+    elif client is not None:
+        if disk.owner_user_id is None:
+            disk.owner_user_id = client.user_id
+        elif disk.owner_user_id != client.user_id:
+            request_transfer(session, disk, client, now)
+            session.flush()
+            return disk
 
     for attr in _DISK_FIELDS:
         value = getattr(info, attr)
@@ -175,45 +222,59 @@ def apply_smart(session: Session, disk: Disk, smart: SmartInfo, now: datetime) -
 
 
 def mark_connected(
-    session: Session, host: str, disk_keys: Iterable[str], now: datetime | None = None
+    session: Session, host: str, disk_keys: Iterable[str], now: datetime | None = None,
+    user_id: int | None = None,
 ) -> None:
-    """Heartbeat eines Agenten: genau diese Festplatten hängen gerade an `host`."""
+    """Heartbeat eines Agenten: genau diese Festplatten hängen gerade an `host`.
+
+    Mit `user_id` betrifft das nur Platten dieses Benutzers (der Rechnername ist frei wählbar
+    und darf fremde Platten nicht „abstecken“).
+    """
     now = now or utcnow()
     keys = list(disk_keys)
-    session.execute(
-        update(Disk)
-        .where(Disk.last_host == host, Disk.is_connected.is_(True), Disk.disk_key.not_in(keys))
-        .values(is_connected=False)
+    gone = update(Disk).where(
+        Disk.last_host == host, Disk.is_connected.is_(True), Disk.disk_key.not_in(keys)
     )
+    if user_id is not None:
+        gone = gone.where(Disk.owner_user_id == user_id)
+    session.execute(gone.values(is_connected=False))
     if keys:
-        session.execute(
-            update(Disk)
-            .where(Disk.disk_key.in_(keys))
-            .values(is_connected=True, last_seen=now, last_host=host)
-        )
+        here = update(Disk).where(Disk.disk_key.in_(keys))
+        if user_id is not None:
+            here = here.where(Disk.owner_user_id == user_id)
+        session.execute(here.values(is_connected=True, last_seen=now, last_host=host))
 
 
-def get_volume(session: Session, disk_key: str, volume_key: str) -> Volume:
-    volume = session.scalar(
-        select(Volume)
+def get_volume(
+    session: Session, disk_key: str, volume_key: str, user_id: int | None = None
+) -> Volume:
+    """Das Volume; mit `user_id` nur, wenn die Platte ihm gehört (sonst PermissionError)."""
+    row = session.execute(
+        select(Volume, Disk.owner_user_id)
         .join(Disk)
         .where(Disk.disk_key == disk_key, Volume.volume_key == volume_key)
-    )
-    if volume is None:
+    ).first()
+    if row is None:
         raise LookupError(f"Volume {volume_key!r} auf {disk_key!r} unbekannt")
+    volume, owner_user_id = row
+    if user_id is not None and owner_user_id != user_id:
+        raise PermissionError("Die Platte gehört einem anderen Benutzer.")
     return volume
 
 
-def begin_index(session: Session, disk_key: str, volume_key: str) -> str:
-    volume = get_volume(session, disk_key, volume_key)
+def begin_index(
+    session: Session, disk_key: str, volume_key: str, user_id: int | None = None
+) -> str:
+    volume = get_volume(session, disk_key, volume_key, user_id)
     volume.index_status = "running"
     return uuid.uuid4().hex
 
 
 def add_files(
-    session: Session, disk_key: str, volume_key: str, scan_id: str, records: Iterable[FileRecord]
+    session: Session, disk_key: str, volume_key: str, scan_id: str, records: Iterable[FileRecord],
+    user_id: int | None = None,
 ) -> int:
-    volume = get_volume(session, disk_key, volume_key)
+    volume = get_volume(session, disk_key, volume_key, user_id)
     rows = [_file_row(volume.id, scan_id, rec) for rec in records]
     if rows:
         session.execute(insert(FileEntry), rows)
@@ -228,8 +289,9 @@ def finish_index(
     errors: int = 0,
     success: bool = True,
     now: datetime | None = None,
+    user_id: int | None = None,
 ) -> Volume:
-    volume = get_volume(session, disk_key, volume_key)
+    volume = get_volume(session, disk_key, volume_key, user_id)
     if not success:
         session.execute(
             delete(FileEntry).where(FileEntry.volume_id == volume.id, FileEntry.scan_id == scan_id)

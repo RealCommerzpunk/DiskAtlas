@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from diskatlas.db.models import Disk, FileEntry, Label, SmartSnapshot, Volume, disk_labels
 from diskatlas.probe.smart import health_reasons as smart_health_reasons
+from diskatlas.services.authz import Viewer
 
 HEALTH_LABELS = {"ok": "Gut", "warning": "Warnung", "failed": "Kritisch", "unknown": "Unbekannt"}
 
@@ -80,30 +81,38 @@ class DashboardStats:
     health: dict[str, int] = field(default_factory=dict)
 
 
-def load_disks(session: Session) -> list[Disk]:
+def load_disks(session: Session, visible: Select | None = None) -> list[Disk]:
+    """Alle Platten; `visible` = Unterabfrage der erlaubten IDs (None: ohne Beschränkung)."""
     stmt = select(Disk).options(selectinload(Disk.labels), selectinload(Disk.volumes))
+    if visible is not None:
+        stmt = stmt.where(Disk.id.in_(visible))
     return list(session.scalars(stmt))
 
 
 SYSTEM_LABEL = "system"
 
 
-def system_disk_ids(session: Session) -> tuple[int, ...]:
-    """IDs aller Festplatten mit dem Label „System“ (Groß-/Kleinschreibung egal)."""
+def system_disk_ids(session: Session, visible: Select | None = None) -> tuple[int, ...]:
+    """IDs der (sichtbaren) Festplatten mit dem Label „System“ (Groß-/Kleinschreibung egal)."""
     stmt = (
         select(disk_labels.c.disk_id)
         .join(Label, Label.id == disk_labels.c.label_id)
         .where(func.lower(Label.name) == SYSTEM_LABEL)
     )
+    if visible is not None:
+        stmt = stmt.where(disk_labels.c.disk_id.in_(visible))
     return tuple(sorted(set(session.scalars(stmt))))
 
 
-def get_disk(session: Session, disk_id: int) -> Disk | None:
-    return session.scalar(
+def get_disk(session: Session, disk_id: int, visible: Select | None = None) -> Disk | None:
+    stmt = (
         select(Disk)
         .where(Disk.id == disk_id)
         .options(selectinload(Disk.labels), selectinload(Disk.volumes))
     )
+    if visible is not None:
+        stmt = stmt.where(Disk.id.in_(visible))
+    return session.scalar(stmt)
 
 
 def filter_disks(disks: list[Disk], flt: DiskFilter) -> list[Disk]:
@@ -210,13 +219,16 @@ def dashboard_stats(disks: list[Disk]) -> DashboardStats:
     return stats
 
 
-def list_labels(session: Session) -> list[tuple[Label, int]]:
+def list_labels(session: Session, viewer: Viewer | None = None) -> list[tuple[Label, int]]:
+    """Labels mit Anzahl Platten; ein Benutzer sieht nur seine eigenen."""
     stmt = (
         select(Label, func.count(disk_labels.c.disk_id))
         .outerjoin(disk_labels, disk_labels.c.label_id == Label.id)
         .group_by(Label.id)
         .order_by(func.coalesce(Label.category, ""), Label.name)
     )
+    if viewer is not None and not viewer.unrestricted:
+        stmt = stmt.where(Label.owner_user_id == viewer.user_id)
     return [(label, count) for label, count in session.execute(stmt)]
 
 
@@ -275,6 +287,7 @@ class FileQuery:
     limit: int = 100
     offset: int = 0
     exclude_disk_ids: tuple[int, ...] = ()
+    visible: Select | None = None  # Unterabfrage der erlaubten Platten-IDs
 
 
 def _escape_like(term: str) -> str:
@@ -301,6 +314,8 @@ def _file_base_query(fq: FileQuery) -> Select:
     )
     if fq.exclude_disk_ids:
         stmt = stmt.where(Disk.id.notin_(fq.exclude_disk_ids))
+    if fq.visible is not None:
+        stmt = stmt.where(Disk.id.in_(fq.visible))
     for term in fq.q.split():
         stmt = stmt.where(_term_condition(term))
     if fq.extension:
@@ -339,18 +354,21 @@ class RunningIndex:
     files_so_far: int
 
 
-def running_indexes(session: Session) -> list[RunningIndex]:
+def running_indexes(session: Session, visible: Select | None = None) -> list[RunningIndex]:
     """Volumes angeschlossener Festplatten, die gerade indiziert werden (mit Zwischenstand).
 
     Der Zwischenstand sind die bereits geschriebenen Zeilen des neuen Scans; der bisherige
     Index bleibt bis zum erfolgreichen Abschluss unverändert aktiv.
     """
-    rows = session.execute(
+    stmt = (
         select(Volume, Disk)
         .join(Disk, Volume.disk_id == Disk.id)
         .where(Volume.index_status == "running", Disk.is_connected.is_(True))
         .order_by(Disk.id, Volume.id)
-    ).all()
+    )
+    if visible is not None:
+        stmt = stmt.where(Disk.id.in_(visible))
+    rows = session.execute(stmt).all()
     result = []
     for volume, disk in rows:
         so_far = session.scalar(

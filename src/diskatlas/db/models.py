@@ -75,6 +75,11 @@ class Disk(Base):
     smart_checked_at: Mapped[datetime | None]
     smart_error: Mapped[str | None] = mapped_column(Text)
 
+    # Besitzer; NULL = herrenlos (nur der Master sieht und verwaltet solche Platten)
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+
     # Verbindungsstatus
     is_connected: Mapped[bool] = mapped_column(default=False)
     last_host: Mapped[str | None] = mapped_column(String(200))
@@ -249,10 +254,16 @@ class SmartSnapshot(Base):
 
 
 class Label(Base):
+    """Label eines Benutzers (`owner_user_id` NULL: ohne Anmeldung oder aus früherer Zeit)."""
+
     __tablename__ = "labels"
+    __table_args__ = (UniqueConstraint("owner_user_id", "name", name="uq_labels_owner_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True)
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(100))
     category: Mapped[str | None] = mapped_column(String(100))
     color: Mapped[str] = mapped_column(String(20), default="#4f7cff")
 
@@ -266,6 +277,8 @@ class HostState(Base):
     __tablename__ = "host_states"
 
     host: Mapped[str] = mapped_column(String(200), primary_key=True)
+    # Der erste Client, der einen Rechnernamen meldet, besitzt ihn (Namen sind frei wählbar).
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     updated_at: Mapped[datetime]
     # JSON: {"present": [...], "ports": [...]}
     data: Mapped[str] = mapped_column(Text, default="{}")
@@ -294,6 +307,10 @@ class Command(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     result: Mapped[str | None] = mapped_column(Text)
     disk_key: Mapped[str | None] = mapped_column(String(200))
+    # Benutzer, dessen Client den Auftrag ausführen darf (Besitzer der Platte)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
 
@@ -330,3 +347,40 @@ class Client(Base):
     last_seen: Mapped[datetime | None]
 
     user: Mapped[User] = relationship(back_populates="clients")
+
+
+class DiskShare(Base):
+    """Lesefreigabe: `viewer_user_id` darf die Platte sehen (nie ändern)."""
+
+    __tablename__ = "disk_shares"
+
+    disk_id: Mapped[int] = mapped_column(
+        ForeignKey("disks.id", ondelete="CASCADE"), primary_key=True
+    )
+    viewer_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class DiskTransferRequest(Base):
+    """Antrag auf eine schon vergebene Platte; nur der bisherige Besitzer entscheidet."""
+
+    __tablename__ = "disk_transfer_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    disk_id: Mapped[int] = mapped_column(
+        ForeignKey("disks.id", ondelete="CASCADE"), index=True
+    )
+    from_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    requested_by_client_id: Mapped[int | None] = mapped_column(
+        ForeignKey("clients.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|approved|rejected
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    resolved_at: Mapped[datetime | None]
+
+    disk: Mapped[Disk] = relationship()
+    from_user: Mapped[User | None] = relationship(foreign_keys=[from_user_id])
+    to_user: Mapped[User] = relationship(foreign_keys=[to_user_id])

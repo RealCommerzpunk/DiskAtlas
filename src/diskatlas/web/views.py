@@ -10,16 +10,27 @@ from urllib.parse import urlencode, urlparse
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from diskatlas import __version__
-from diskatlas.db.models import Disk, FileEntry, Label, Volume
+from diskatlas.db.models import Disk, FileEntry, Label, User, Volume
+from diskatlas.services import (
+    authz,
+    commands,
+    duplicates,
+    fslabel,
+    hosts,
+    ownership,
+    queries,
+    users,
+)
 from diskatlas.services import bays as bay_service
-from diskatlas.services import commands, duplicates, fslabel, hosts, queries, users
+from diskatlas.services import labels as label_service
+from diskatlas.services.authz import Viewer
 from diskatlas.web import auth, formatting
-from diskatlas.web.deps import get_session
+from diskatlas.web.deps import disk_or_404, get_session, get_viewer, label_or_404
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 formatting.register(templates.env)
@@ -31,6 +42,18 @@ templates.env.globals.update(
 )
 templates.env.globals["auth_enabled"] = lambda request: request.app.state.auth_enabled
 templates.env.globals["identity"] = lambda request: getattr(request.state, "identity", None)
+
+
+def _pending_transfer_count(request: Request) -> int:
+    """Offene Übernahmeanträge, über die der Benutzer entscheiden muss (für das Menü)."""
+    who = getattr(request.state, "identity", None)
+    if who is None:
+        return 0
+    with request.app.state.db.session() as session:
+        return len(ownership.pending_transfers(session, None if who.is_master else who.user_id))
+
+
+templates.env.globals["pending_transfer_count"] = _pending_transfer_count
 
 router = APIRouter(include_in_schema=False)
 PAGE_SIZE = 100
@@ -51,8 +74,10 @@ def _hide_system(request: Request) -> bool:
     return request.cookies.get(HIDE_SYSTEM_COOKIE, "1") != "0"
 
 
-def _excluded_disks(request: Request, session: Session) -> tuple[int, ...]:
-    return queries.system_disk_ids(session) if _hide_system(request) else ()
+def _excluded_disks(request: Request, session: Session, viewer: Viewer) -> tuple[int, ...]:
+    if not _hide_system(request):
+        return ()
+    return queries.system_disk_ids(session, authz.visible_ids(viewer))
 
 
 @router.post("/prefs/hide-system")
@@ -139,13 +164,16 @@ def dashboard(
     sort: str = "name",
     desc: bool = False,
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    excluded = set(_excluded_disks(request, session))
-    all_disks = [d for d in queries.load_disks(session) if d.id not in excluded]
+    excluded = set(_excluded_disks(request, session, viewer))
+    all_disks = [
+        d for d in queries.load_disks(session, authz.visible_ids(viewer)) if d.id not in excluded
+    ]
     flt = queries.DiskFilter(
         q=q, health=health, connected=connected, label_id=_int_or_none(label), fs=fs, usage=usage
     )
-    bays = _bays(session)
+    bays = _bays(session, viewer)
     in_bay = {b.disk.id for b in bays or [] if b.disk}  # stehen als Schachtzeilen oben
     disks = queries.sort_disks(
         queries.filter_disks([d for d in all_disks if d.id not in in_bay], flt), sort, desc
@@ -160,7 +188,7 @@ def dashboard(
             "bays": bays,
             "filtered_count": len(disks),
             "groups": queries.group_disks(disks, group),
-            "labels": [lab for lab, _ in queries.list_labels(session)],
+            "labels": [lab for lab, _ in queries.list_labels(session, viewer)],
             "fs_options": queries.known_fs_types(all_disks),
             "NO_FS": queries.NO_FS,
             "f": {"q": q, "health": health, "connected": connected, "label": label,
@@ -169,29 +197,33 @@ def dashboard(
     )
 
 
-def _bay_snapshot(session: Session, config, host: str = ""):
+def _bay_snapshot(session: Session, config, viewer: Viewer, host: str = ""):
     """Rechner, dessen Schächte gezeigt werden: gewählter, konfigurierter oder erster mit Ports."""
     for candidate in (host, config.host):
-        if candidate and (snap := hosts.get(session, candidate)):
+        if candidate and (snap := hosts.get(session, candidate, viewer.scope_id)):
             return snap
-    return next((h for h in hosts.known_hosts(session) if h.all_ports), None)
+    return next((h for h in hosts.known_hosts(session, viewer.scope_id) if h.all_ports), None)
 
 
-def _bays(session: Session):
+def _bays(session: Session, viewer: Viewer):
     """Schachtansicht; None, wenn kein Agent SATA-Ports meldet (Windows, nur NAS …)."""
-    config = bay_service.load_config(session)
-    snapshot = _bay_snapshot(session, config)
+    config = bay_service.load_config(session, viewer.user_id)
+    snapshot = _bay_snapshot(session, config, viewer)
     if snapshot is None or not snapshot.all_ports:
         return None
-    return bay_service.build_bays(session, config, snapshot)
+    return bay_service.build_bays(session, config, snapshot, authz.visible_ids(viewer))
 
 
 @router.get("/bays/setup", response_class=HTMLResponse)
 def bays_setup(
-    request: Request, host: str = "", err: str = "", session: Session = Depends(get_session)
+    request: Request,
+    host: str = "",
+    err: str = "",
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    config = bay_service.load_config(session)
-    snapshot = _bay_snapshot(session, config, host)
+    config = bay_service.load_config(session, viewer.user_id)
+    snapshot = _bay_snapshot(session, config, viewer, host)
     return templates.TemplateResponse(
         request,
         "bays_setup.html",
@@ -214,13 +246,15 @@ def bays_save(
     port: list[str] = Form(default=[]),
     reverse: bool = Form(False),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    snapshot = hosts.get(session, host)
+    snapshot = hosts.get(session, host, viewer.scope_id)
     valid = set(snapshot.all_ports) if snapshot else set()
     chosen = [p if p in valid else None for p in port]
     try:
         bay_service.save_config(
-            session, bay_service.BayConfig(host=host or None, ports=chosen, reverse=reverse)
+            session, bay_service.BayConfig(host=host or None, ports=chosen, reverse=reverse),
+            viewer.user_id,
         )
     except ValueError as exc:
         return _redirect("/bays/setup?" + urlencode({"err": str(exc)}))
@@ -228,42 +262,66 @@ def bays_save(
 
 
 # ------------------------------------------------------------------ Festplatte
-def _disk_or_404(session: Session, disk_id: int) -> Disk:
-    disk = queries.get_disk(session, disk_id)
-    if disk is None:
-        raise HTTPException(404, "Festplatte nicht gefunden")
-    return disk
-
-
 @router.get("/disks/{disk_id}", response_class=HTMLResponse)
 def disk_detail(
     request: Request,
     disk_id: int,
     msg: str = "",
     err: str = "",
+    share_err: str = "",
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    disk = _disk_or_404(session, disk_id)
+    disk = disk_or_404(session, viewer, disk_id)
     assigned = {lab.id for lab in disk.labels}
+    can_write = authz.can_write(viewer, disk)
+    sharing = _sharing_context(request, session, viewer, disk, can_write)
     return templates.TemplateResponse(
         request,
         "disk.html",
         {
+            **sharing,
+            "share_err": share_err,
             "disk": disk,
             "flash_ok": msg,
             "flash_err": err,
             "relabel_block": _relabel_block_reason(session, disk),
-            "commands": commands.recent(session, disk.disk_key, 5),
+            "can_write": can_write,
+            "commands": commands.recent(session, disk.disk_key, 5, viewer.scope_id),
             "history": queries.smart_history(session, disk_id),
             "health_reasons": (
                 queries.health_reasons(session, disk_id) if disk.health != "ok" else []
             ),
             "extensions": queries.extension_summary(session, disk_id),
             "available_labels": [
-                lab for lab, _ in queries.list_labels(session) if lab.id not in assigned
+                lab for lab, _ in queries.list_labels(session, viewer)
+                if lab.id not in assigned and authz.label_fits_disk(lab, disk)
             ],
         },
     )
+
+
+def _sharing_context(
+    request: Request, session: Session, viewer: Viewer, disk: Disk, can_write: bool
+) -> dict:
+    """Besitzer, Freigaben und Auswahllisten für den Abschnitt „Besitz & Freigabe“."""
+    if not request.app.state.auth_enabled:
+        return {"auth_on": False}
+    owner = session.get(User, disk.owner_user_id) if disk.owner_user_id else None
+    everyone = list(session.scalars(
+        select(User).where(User.status == "active").order_by(func.lower(User.nickname))
+    ))
+    shares = ownership.shared_with(session, disk) if can_write and owner else []
+    shared_ids = {u.id for u in shares}
+    return {
+        "auth_on": True,
+        "owner": owner,
+        "shares": shares,
+        "share_candidates": [
+            u for u in everyone if u.id != disk.owner_user_id and u.id not in shared_ids
+        ],
+        "assignable": everyone if viewer.is_master and owner is None else [],
+    }
 
 
 @router.post("/disks/{disk_id}")
@@ -273,8 +331,9 @@ def disk_update(
     notes: str = Form(""),
     location: str = Form(""),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    disk = _disk_or_404(session, disk_id)
+    disk = disk_or_404(session, viewer, disk_id, write=True)
     disk.custom_name = custom_name.strip() or None
     disk.location = location.strip()[:500] or None
     disk.notes = notes.strip() or None
@@ -289,32 +348,44 @@ def disk_add_label(
     new_category: str = Form(""),
     new_color: str = Form("#4f7cff"),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    disk = _disk_or_404(session, disk_id)
+    disk = disk_or_404(session, viewer, disk_id, write=True)
     label = None
+    owner_id = disk.owner_user_id if disk.owner_user_id is not None else viewer.user_id
     if new_name.strip():
         name = new_name.strip()
-        label = session.scalar(select(Label).where(Label.name == name))
+        label = label_service.find(session, owner_id, name)
         if label is None:
-            label = Label(name=name, category=new_category.strip() or None, color=new_color)
+            label = Label(owner_user_id=owner_id, name=name,
+                          category=new_category.strip() or None, color=new_color)
             session.add(label)
     elif _int_or_none(label_id):
-        label = session.get(Label, int(label_id))
+        label = label_or_404(session, viewer, int(label_id))
+        if not authz.label_fits_disk(label, disk):
+            raise HTTPException(404, "Label nicht gefunden")
     if label is not None and label not in disk.labels:
         disk.labels.append(label)
     return _redirect(f"/disks/{disk_id}#labels")
 
 
 @router.post("/disks/{disk_id}/labels/{label_id}/remove")
-def disk_remove_label(disk_id: int, label_id: int, session: Session = Depends(get_session)):
-    disk = _disk_or_404(session, disk_id)
+def disk_remove_label(
+    disk_id: int,
+    label_id: int,
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
+    disk = disk_or_404(session, viewer, disk_id, write=True)
     disk.labels = [lab for lab in disk.labels if lab.id != label_id]
     return _redirect(f"/disks/{disk_id}#labels")
 
 
 @router.post("/disks/{disk_id}/delete")
-def disk_delete(disk_id: int, session: Session = Depends(get_session)):
-    session.delete(_disk_or_404(session, disk_id))
+def disk_delete(
+    disk_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
+    session.delete(disk_or_404(session, viewer, disk_id, write=True))
     return _redirect("/")
 
 
@@ -322,7 +393,7 @@ def _relabel_block_reason(session: Session, disk: Disk) -> str:
     """Leer, wenn das Umbenennen möglich ist; sonst der Grund (für die Oberfläche)."""
     if not disk.is_connected:
         return "Die Festplatte ist nicht angeschlossen."
-    snapshot = hosts.get(session, disk.last_host)
+    snapshot = hosts.get(session, disk.last_host, disk.owner_user_id)
     if snapshot is None or not snapshot.is_online:
         return f"Der Agent von „{disk.last_host or '?'}“ meldet sich gerade nicht."
     return ""
@@ -333,11 +404,12 @@ def volume_label(
     volume_id: int,
     label: str = Form(""),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     volume = session.get(Volume, volume_id)
     if volume is None:
         raise HTTPException(404, "Volume nicht gefunden")
-    disk = volume.disk
+    disk = disk_or_404(session, viewer, volume.disk_id, write=True)
     base = f"/disks/{disk.id}"
 
     def back(kind: str, text: str) -> RedirectResponse:
@@ -356,17 +428,19 @@ def volume_label(
     commands.enqueue(
         session, disk.last_host, "rename_label",
         {"disk_key": disk.disk_key, "volume_key": volume.volume_key, "label": written},
-        disk_key=disk.disk_key,
+        disk_key=disk.disk_key, user_id=disk.owner_user_id,
     )
     return back("msg", f"Auftrag an „{disk.last_host}“ gesendet – das Ergebnis erscheint hier.")
 
 
 @router.post("/volumes/{volume_id}/delete")
-def volume_delete(volume_id: int, session: Session = Depends(get_session)):
+def volume_delete(
+    volume_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
     volume = session.get(Volume, volume_id)
     if volume is None:
         raise HTTPException(404, "Volume nicht gefunden")
-    disk_id = volume.disk_id
+    disk_id = disk_or_404(session, viewer, volume.disk_id, write=True).id
     session.execute(delete(FileEntry).where(FileEntry.volume_id == volume_id))
     session.delete(volume)
     return _redirect(f"/disks/{disk_id}#volumes")
@@ -385,9 +459,10 @@ def files(
     desc: bool = False,
     page: int = 1,
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     page = max(page, 1)
-    excluded = _excluded_disks(request, session)
+    excluded = _excluded_disks(request, session, viewer)
     min_mb_value = None
     with contextlib.suppress(ValueError):
         min_mb_value = float(min_mb.replace(",", ".")) if min_mb else None
@@ -402,7 +477,7 @@ def files(
                 q=q, extension=ext, disk_id=_int_or_none(disk), label_id=_int_or_none(label),
                 min_size=int(min_mb_value * 1_000_000) if min_mb_value else None,
                 sort=sort, descending=desc, limit=PAGE_SIZE, offset=(page - 1) * PAGE_SIZE,
-                exclude_disk_ids=excluded,
+                exclude_disk_ids=excluded, visible=authz.visible_ids(viewer),
             ),
         )
     pages = max((total + PAGE_SIZE - 1) // PAGE_SIZE, 1)
@@ -422,10 +497,13 @@ def files(
                 {**base, "sort": s, "desc": (not desc) if s == sort else (s in ("size", "mtime"))}
             ),
             "disks": sorted(
-                (d for d in queries.load_disks(session) if d.id not in excluded),
+                (
+                    d for d in queries.load_disks(session, authz.visible_ids(viewer))
+                    if d.id not in excluded
+                ),
                 key=lambda d: d.display_name.lower(),
             ),
-            "labels": [lab for lab, _ in queries.list_labels(session)],
+            "labels": [lab for lab, _ in queries.list_labels(session, viewer)],
         },
     )
 
@@ -470,10 +548,12 @@ def duplicate_page(
     hidden: bool = False,
     page: int = 1,
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     mode = mode if mode in ("files", "folders") else "files"
     page = max(page, 1)
-    excluded = _excluded_disks(request, session)
+    excluded = _excluded_disks(request, session, viewer)
+    visible = authz.visible_ids(viewer)
     min_size = _mb_to_bytes(min_mb)
     ctx = {"mode": mode, "f": {"ext": ext, "min_mb": min_mb, "min_files": max(min_files, 1),
                              "hidden": hidden},
@@ -483,7 +563,7 @@ def duplicate_page(
             session,
             duplicates.FileDupQuery(
                 min_size=min_size or 1, extension=ext, limit=PAGE_SIZE // 2,
-                offset=(page - 1) * (PAGE_SIZE // 2), exclude_disk_ids=excluded,
+                offset=(page - 1) * (PAGE_SIZE // 2), exclude_disk_ids=excluded, visible=visible,
             ),
         )
         base = {k: v for k, v in {"mode": mode, "ext": ext, "min_mb": min_mb}.items() if v}
@@ -497,7 +577,7 @@ def duplicate_page(
             session,
             duplicates.FolderDupQuery(
                 min_files=max(min_files, 1), min_size=min_size or 0, include_hidden=hidden,
-                exclude_disk_ids=excluded,
+                exclude_disk_ids=excluded, visible=visible,
             ),
         )
         ctx.update(groups=groups, total=len(groups), wasted=wasted,
@@ -507,9 +587,14 @@ def duplicate_page(
 
 # ------------------------------------------------------------------ Labels
 @router.get("/labels", response_class=HTMLResponse)
-def labels(request: Request, error: str = "", session: Session = Depends(get_session)):
+def labels(
+    request: Request,
+    error: str = "",
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
     return templates.TemplateResponse(
-        request, "labels.html", {"labels": queries.list_labels(session), "error": error}
+        request, "labels.html", {"labels": queries.list_labels(session, viewer), "error": error}
     )
 
 
@@ -519,14 +604,15 @@ def label_create(
     category: str = Form(""),
     color: str = Form("#4f7cff"),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
     if not name.strip():
         return _redirect("/labels")
-    exists = session.scalar(select(Label).where(Label.name == name.strip()))
-    if exists:
+    if label_service.name_taken(session, viewer.user_id, name.strip()):
         message = f"Label „{name.strip()}“ existiert bereits"
         return _redirect("/labels?" + urlencode({"error": message}))
-    session.add(Label(name=name.strip(), category=category.strip() or None, color=color))
+    session.add(Label(owner_user_id=viewer.user_id, name=name.strip(),
+                      category=category.strip() or None, color=color))
     return _redirect("/labels")
 
 
@@ -537,11 +623,13 @@ def label_update(
     category: str = Form(""),
     color: str = Form("#4f7cff"),
     session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
 ):
-    label = session.get(Label, label_id)
-    if label is None:
-        raise HTTPException(404, "Label nicht gefunden")
-    label.name = name.strip() or label.name
+    label = label_or_404(session, viewer, label_id)
+    new_name = name.strip() or label.name
+    if label_service.name_taken(session, label.owner_user_id, new_name, label.id):
+        return _redirect("/labels?" + urlencode({"error": "Name bereits vergeben"}))
+    label.name = new_name
     label.category = category.strip() or None
     label.color = color
     try:
@@ -553,8 +641,8 @@ def label_update(
 
 
 @router.post("/labels/{label_id}/delete")
-def label_delete(label_id: int, session: Session = Depends(get_session)):
-    label = session.get(Label, label_id)
-    if label is not None:
-        session.delete(label)
+def label_delete(
+    label_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
+):
+    session.delete(label_or_404(session, viewer, label_id))
     return _redirect("/labels")

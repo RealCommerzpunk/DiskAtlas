@@ -32,6 +32,15 @@
 
   <section class="card">
     <h2>Eigene Angaben</h2>
+    {% if not can_write %}
+    <dl class="facts">
+      <dt>Anzeigename</dt><dd>{{ disk.custom_name or '–' }}</dd>
+      <dt>Lagerort</dt><dd>{{ disk.location or '–' }}</dd>
+      <dt>Notizen</dt><dd>{{ disk.notes or '–' }}</dd>
+    </dl>
+    <h3>Labels</h3>
+    <div class="chips">{% for lab in disk.labels %}{{ label_chip(lab) }}{% else %}<span class="muted">Keine Labels</span>{% endfor %}</div>
+    {% else %}
     <form method="post" action="/disks/{{ disk.id }}" class="stack">
       <label>Anzeigename
         <input name="custom_name" value="{{ disk.custom_name or '' }}" placeholder="{{ disk.display_name }}">
@@ -66,8 +75,46 @@
       <input type="color" name="new_color" value="#4f7cff" aria-label="Farbe">
       <button type="submit">Hinzufügen</button>
     </form>
+    {% endif %}
   </section>
 </div>
+
+{% if auth_on %}
+<section class="card" id="share">
+  <h2>Besitz &amp; Freigabe</h2>
+  {% if share_err %}<p class="notice health-reasons failed" role="alert">{{ share_err }}</p>{% endif %}
+  <p>Besitzer: <strong>{{ owner.nickname if owner else 'niemand (herrenlos – nur der Master sieht diese Platte)' }}</strong>{% if not can_write %} · Sie ist dir nur zum Ansehen freigegeben.{% endif %}</p>
+  {% if can_write and owner %}
+  <h3>Lesend freigegeben für</h3>
+  <div class="chips">
+    {% for u in shares %}
+    <form method="post" action="/disks/{{ disk.id }}/shares/{{ u.id }}/remove" class="chip-form">
+      <span class="chip" style="background: var(--surface-2); color: var(--text)">{{ u.nickname }}</span><button class="link" title="Freigabe entziehen" aria-label="Freigabe für {{ u.nickname }} entziehen">✕</button>
+    </form>
+    {% else %}<span class="muted">Niemand</span>{% endfor %}
+  </div>
+  {% if share_candidates %}
+  <form method="post" action="/disks/{{ disk.id }}/shares" class="inline">
+    <select name="user_id" aria-label="Benutzer" required>
+      <option value="">Benutzer wählen …</option>
+      {% for u in share_candidates %}<option value="{{ u.id }}">{{ u.nickname }}</option>{% endfor %}
+    </select>
+    <button type="submit">Lesend freigeben</button>
+  </form>
+  <p class="muted small">Freigegebene Benutzer sehen Stammdaten, SMART, Volumes und Dateiliste – ändern können sie nichts.</p>
+  {% endif %}
+  {% endif %}
+  {% if assignable %}
+  <form method="post" action="/disks/{{ disk.id }}/owner" class="inline">
+    <select name="user_id" aria-label="Neuer Besitzer" required>
+      <option value="">Besitzer zuweisen …</option>
+      {% for u in assignable %}<option value="{{ u.id }}">{{ u.nickname }}</option>{% endfor %}
+    </select>
+    <button type="submit">Zuweisen</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
 
 <section class="card">
   <h2>SMART</h2>
@@ -128,7 +175,7 @@
     {% for v in disk.volumes %}
       <tr class="{{ 'is-offline' if not v.present }}">
         <td><strong>{{ v.label or '(ohne Bezeichnung)' }}</strong><div class="muted small">{{ v.device or '' }}{% if v.is_system %} · System{% endif %}{% if not v.present %} · nicht mehr vorhanden{% endif %}</div>
-          {% if v.present and v.device %}
+          {% if can_write and v.present and v.device %}
           <details class="relabel">
             <summary class="small">Bezeichnung ändern</summary>
             {% if relabel_block %}<p class="muted small">{{ relabel_block }}</p>
@@ -150,9 +197,9 @@
         <td><span class="badge index-{{ v.index_status }}">{{ {'never': 'nie', 'running': 'läuft', 'done': 'fertig', 'failed': 'fehlgeschlagen'}.get(v.index_status, v.index_status) }}</span>
             <div class="muted small">{{ v.indexed_at | dt }}{% if v.index_errors %} · {{ v.index_errors }} unlesbar{% endif %}</div></td>
         <td>
-          <form method="post" action="/volumes/{{ v.id }}/delete" data-confirm="Volume „{{ v.label or v.device }}“ samt Dateiindex aus der Datenbank löschen?">
+          {% if can_write %}<form method="post" action="/volumes/{{ v.id }}/delete" data-confirm="Volume „{{ v.label or v.device }}“ samt Dateiindex aus der Datenbank löschen?">
             <button class="link danger" title="Aus Datenbank löschen">Löschen</button>
-          </form>
+          </form>{% endif %}
         </td>
       </tr>
     {% else %}
@@ -183,9 +230,11 @@
 </section>
 {% endif %}
 
+{% if can_write %}
 <section class="danger-zone">
   <form method="post" action="/disks/{{ disk.id }}/delete" data-confirm="Festplatte „{{ disk.display_name }}“ mit allen Daten aus dem Inventar löschen? Sie wird beim nächsten Anschließen neu erfasst.">
     <button class="danger">Festplatte aus Inventar löschen</button>
   </form>
 </section>
+{% endif %}
 {% endblock %}

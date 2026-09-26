@@ -145,7 +145,11 @@ diskatlas db copy --to "postgresql+psycopg://diskatlas:pw@unraid.local:5432/disk
 Die Weboberfläche verlangt eine Anmeldung. Beim allerersten Start wird `DISKATLAS_PASSWORD` das
 Passwort des Benutzers **Master**; weitere Personen beantragen den Zugang unter `/register`, der
 Master schaltet sie unter *Verwaltung* frei. Jeder Benutzer legt unter *Konto* **Clients** an (einen
-je Rechner mit Agent) mit eigenem Token; damit weisen sich die Agenten aus. Der Container startet
+je Rechner mit Agent) mit eigenem Token; damit weisen sich die Agenten aus. Jede Platte gehört dem
+Benutzer, dessen Client sie zuerst gemeldet hat: Benutzer sehen nur eigene und ihnen (je Platte,
+nur lesend) freigegebene Platten, ändern darf nur der Besitzer (oder der Master). Meldet der Client
+eines anderen Benutzers eine vergebene Platte, ändert sich nichts – der Besitzer bekommt nur einen
+Übernahmeantrag. Labels sind je Benutzer privat. Der Container startet
 nur, wenn `DISKATLAS_PASSWORD` gesetzt ist.
 
 ## Entwicklung
