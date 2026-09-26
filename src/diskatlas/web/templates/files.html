@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Dateisuche{% endblock %}
 {% block content %}
-<h1>Dateisuche</h1>
-<p class="muted">Durchsucht den Index aller erfassten Festplatten – auch wenn sie gerade nicht angeschlossen sind.</p>
+<h1>Dateien</h1>
+<p class="muted">Durchsucht den Index aller erfassten Festplatten oder blättert darin – auch wenn sie gerade nicht angeschlossen sind.</p>
 
 <form class="filters" method="get" action="/files">
   <input type="search" name="q" value="{{ f.q }}" placeholder="Name oder Pfad (mehrere Wörter = alle müssen vorkommen)" autofocus>
@@ -27,13 +27,80 @@
   <button type="submit">Suchen</button>
 </form>
 
-{% if has_query %}
+{% macro request_bar() %}
+<div class="selection-bar">
+  <span class="muted small"><span data-selected-count>0</span> ausgewählt</span>
+  <button type="submit" data-request-button disabled title="Wähle Dateien oder Ordner aus. (Das Anfordern wird in einem der nächsten Schritte freigeschaltet.)">Datei anfordern</button>
+</div>
+{% endmacro %}
+
+{% if mode == 'browse' %}
+<nav class="crumbs" aria-label="Pfad">
+  <a href="/files">Festplatten</a> ›
+  <a href="{{ browse_url('') }}">{{ disk.display_name }}{% if volume.label and volume.label != disk.display_name %} · {{ volume.label }}{% endif %}</a>
+  {% for name, p in listing.crumbs %} › <a href="{{ browse_url(p) }}">{{ name }}</a>{% endfor %}
+  <span class="muted small">{% if disk.is_connected %}<span class="dot online"></span> angeschlossen{% else %}<span class="dot offline"></span> offline{% endif %}</span>
+</nav>
+<form method="post" action="/requests/preview" class="selection" data-selection>
+{{ request_bar() }}
+<div class="table-wrap">
+<table class="files browser">
+  <thead><tr><th class="pick"><input type="checkbox" data-select-all aria-label="Alle auswählen"></th><th>Name</th><th class="num">Größe</th><th>Geändert</th></tr></thead>
+  <tbody>
+  {% if listing.path %}<tr><td></td><td colspan="3"><a href="{{ browse_url(listing.path.rpartition('/')[0]) }}">↑ eine Ebene höher</a></td></tr>{% endif %}
+  {% for d in listing.folders %}
+    <tr>
+      <td class="pick"><input type="checkbox" name="sel" value="d:{{ volume.id }}:{{ d.path }}" aria-label="Ordner {{ d.name }} auswählen"></td>
+      <td class="filename"><a href="{{ browse_url(d.path) }}">📁 {{ d.name }}</a> <span class="muted small">{{ d.file_count | number }} Dateien</span></td>
+      <td class="num">{{ d.total_size | filesize }}</td>
+      <td></td>
+    </tr>
+  {% endfor %}
+  {% for file in listing.files %}
+    <tr>
+      <td class="pick"><input type="checkbox" name="sel" value="f:{{ volume.id }}:{{ file.path }}" aria-label="{{ file.name }} auswählen"></td>
+      <td class="filename">{{ file.name }}</td>
+      <td class="num">{{ file.size | filesize }}</td>
+      <td>{{ file.mtime | date }}</td>
+    </tr>
+  {% endfor %}
+  {% if not listing.folders and not listing.files %}<tr><td colspan="4" class="muted">Dieser Ordner ist leer.</td></tr>{% endif %}
+  </tbody>
+</table>
+</div>
+</form>
+{% if listing.next_after %}<nav class="pager"><a href="{{ browse_url(listing.path, listing.next_after) }}">weitere Dateien →</a></nav>{% endif %}
+
+{% elif mode == 'disks' %}
+{% if browsable %}
+<h2>Durchblättern</h2>
+<div class="table-wrap"><table class="files">
+  <thead><tr><th>Festplatte</th><th>Partition</th><th class="num">Dateien</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for disk, vols in browsable %}{% for v in vols %}
+    <tr>
+      <td>{% if loop.first %}<a href="/disks/{{ disk.id }}">{{ disk.display_name }}</a>{% endif %}</td>
+      <td><a href="/files?volume={{ v.id }}">{{ v.label or v.mountpoint or v.volume_key }}</a></td>
+      <td class="num">{{ v.file_count | number }}</td>
+      <td>{% if disk.is_connected %}<span class="dot online"></span> angeschlossen{% else %}<span class="dot offline"></span> offline{% endif %}</td>
+    </tr>
+  {% endfor %}{% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+<div class="empty"><p>Noch keine indizierten Dateien. Suchbegriff, Dateiendung, Festplatte oder Mindestgröße angeben.</p></div>
+{% endif %}
+
+{% elif has_query %}
 <p class="muted">{{ total | number }} Treffer{% if pages > 1 %} · Seite {{ page }} von {{ pages }}{% endif %}</p>
 {% if rows %}
+<form method="post" action="/requests/preview" class="selection" data-selection>
+{{ request_bar() }}
 <div class="table-wrap">
 <table class="files">
   <thead>
     <tr>
+      <th class="pick"><input type="checkbox" data-select-all aria-label="Alle auswählen"></th>
       {% for key, text in [('name', 'Name'), ('path', 'Pfad'), ('size', 'Größe'), ('mtime', 'Geändert')] %}
       <th class="{{ 'num' if key == 'size' }}"><a href="{{ sort_url(key) }}">{{ text }}{% if f.sort == key %} {{ '▼' if f.desc else '▲' }}{% endif %}</a></th>
       {% endfor %}
@@ -43,6 +110,7 @@
   <tbody>
   {% for file, volume, disk in rows %}
     <tr>
+      <td class="pick"><input type="checkbox" name="sel" value="f:{{ volume.id }}:{{ file.path }}" aria-label="{{ file.name }} auswählen"></td>
       <td class="filename">{{ file.name }}</td>
       <td class="path muted small" title="{{ file.path }}">{{ file.path }}</td>
       <td class="num">{{ file.size | filesize }}</td>
@@ -56,6 +124,7 @@
   </tbody>
 </table>
 </div>
+</form>
 {% if pages > 1 %}
 <nav class="pager">
   {% if page > 1 %}<a href="{{ page_url(page - 1) }}">← zurück</a>{% endif %}
@@ -64,7 +133,5 @@
 </nav>
 {% endif %}
 {% endif %}
-{% else %}
-<div class="empty"><p>Suchbegriff, Dateiendung, Festplatte oder Mindestgröße angeben.</p></div>
 {% endif %}
 {% endblock %}

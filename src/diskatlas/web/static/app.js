@@ -112,3 +112,21 @@
     if (e.key === "Escape" && menu.open) { menu.open = false; menu.querySelector("summary").focus(); }
   });
 })();
+
+// Dateiauswahl: Zähler, „alle“, Anfordern-Knopf erst bei Auswahl aktiv.
+(function () {
+  document.querySelectorAll("form[data-selection]").forEach((form) => {
+    const boxes = () => Array.from(form.querySelectorAll('input[name="sel"]'));
+    const update = () => {
+      const n = boxes().filter((b) => b.checked).length;
+      form.querySelector("[data-selected-count]").textContent = n;
+      const button = form.querySelector("[data-request-button]");
+      if (button && button.dataset.enabled) button.disabled = n === 0;
+    };
+    form.addEventListener("change", (e) => {
+      if (e.target.matches("[data-select-all]")) boxes().forEach((b) => { b.checked = e.target.checked; });
+      update();
+    });
+    update();
+  });
+})();

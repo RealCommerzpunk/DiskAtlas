@@ -50,6 +50,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Eigene Angaben | Anzeigename, Notizen | ✅ 0.1.0 |
 | Dashboard | Kennzahlen, Suche, Filter, Gruppierung, Sortierung, Detailseite | ✅ 0.1.0 |
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
+| Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser), „Datei anfordern“ folgt | 🚧 |
 | iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ 0.3.0 |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |
@@ -168,7 +169,8 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 | `clients` | Agent-Installation eines Benutzers, Token nur als SHA-256-Hash, `last_seen` | (`user_id`, `nickname`), `token_hash` |
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
-| `files` | Dateiindex (Pfad relativ zum Volume, Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
+| `files` | Dateiindex (Pfad relativ zum Volume, `parent` = Ordner (vom Server berechnet), Name, Endung, Größe, Änderungsdatum) | `volume_id` + `scan_id` |
+| `directories` | Ordnerindex je Scan für den Dateibrowser (Pfad, Elternordner, Dateizahl und Größe samt Unterordnern); entsteht bei `finish_index`, `volumes.dirs_scan_id` merkt den Stand | `volume_id` + `scan_id` + `path` |
 | `smart_snapshots` | SMART-Verlauf inkl. Roh-JSON | `disk_id`, `taken_at` |
 | `labels` | Name (je Besitzer eindeutig), Kategorie, Farbe, `owner_user_id` | (`owner_user_id`, `name`) |
 | `disk_labels` | n:m-Zuordnung | (`disk_id`, `label_id`) |

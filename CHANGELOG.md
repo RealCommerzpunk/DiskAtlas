@@ -11,6 +11,14 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Dateibrowser** (Migration `0008`): Unter *Dateien* lassen sich Festplatten durchklicken (Ordner und
+  Unterordner mit Anzahl und Größe, Pfadleiste, Dateien seitenweise nach Name). Bei Suchergebnissen und
+  im Browser steht vor jeder Datei (im Browser auch vor Ordnern) eine Checkbox samt Knopf
+  „Datei anfordern“ (noch nicht freigeschaltet, folgt in den nächsten Schritten). Sichtbar sind nur
+  eigene und freigegebene Platten. Für den Bestand wird der Ordnerindex bei der ersten Ansicht
+  nachgebaut (auf der 576 000-Dateien-Platte 1,4 s).
+
 ### Geändert
 - **Benutzermenü** rechts in der Kopfleiste (Kreis mit Anfangsbuchstabe, Name, Rolle) statt des einzeln
   stehenden „Abmelden“-Knopfes: *Konto*, *Übernahmen* (mit Zähler), *Verwaltung* (Admin), *Abmelden*.

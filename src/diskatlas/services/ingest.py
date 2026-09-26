@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 from diskatlas.db.models import Client, Disk, DiskTransferRequest, FileEntry, SmartSnapshot, Volume
 from diskatlas.probe import catalog
 from diskatlas.probe.types import DiskInfo, FileRecord, SmartInfo, VolumeInfo
+from diskatlas.services import browse
 
 # Diese Felder werden nur überschrieben, wenn der neue Wert bekannt ist – z. B. kennt
 # Windows kein ext4 und würde sonst Label/Dateisystem eines Linux-Volumes löschen.
@@ -317,17 +318,20 @@ def finish_index(
     volume.index_errors = errors
     volume.indexed_at = now or utcnow()
     volume.index_status = "done"
+    browse.build_directories(session, volume)
     return volume
 
 
 def _file_row(volume_id: int, scan_id: str, rec: FileRecord) -> dict:
     path, size, mtime = rec
     name = path.rsplit("/", 1)[-1]
+    parent = path.rsplit("/", 1)[0] if "/" in path else ""
     ext = os.path.splitext(name)[1][1:].lower()[:50] or None
     return {
         "volume_id": volume_id,
         "scan_id": scan_id,
         "path": path,
+        "parent": parent,
         "name": name[:1024],
         "extension": ext,
         "size": int(size or 0),

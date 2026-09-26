@@ -209,6 +209,7 @@ class Volume(Base):
     last_seen: Mapped[datetime | None]
 
     active_scan_id: Mapped[str | None] = mapped_column(String(36))
+    dirs_scan_id: Mapped[str | None] = mapped_column(String(36))  # Scan, zu dem `directories` passt
     index_status: Mapped[str] = mapped_column(String(20), default="never")
     indexed_at: Mapped[datetime | None]
     index_errors: Mapped[int] = mapped_column(default=0)
@@ -231,18 +232,40 @@ class FileEntry(Base):
         Index("ix_files_volume_scan", "volume_id", "scan_id"),
         Index("ix_files_name", "name"),
         Index("ix_files_extension", "extension"),
+        Index("ix_files_parent", "volume_id", "scan_id", "parent", "name"),
     )
 
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     volume_id: Mapped[int] = mapped_column(ForeignKey("volumes.id", ondelete="CASCADE"))
     scan_id: Mapped[str] = mapped_column(String(36))
     path: Mapped[str] = mapped_column(Text)
+    # Ordner (Pfad ohne Dateiname, "" = Wurzel); der Server berechnet ihn selbst aus `path`
+    parent: Mapped[str] = mapped_column(Text, default="", server_default="")
     name: Mapped[str] = mapped_column(String(1024))
     extension: Mapped[str | None] = mapped_column(String(50))
     size: Mapped[int] = mapped_column(BigInteger, default=0)
     mtime: Mapped[datetime | None]
 
     volume: Mapped[Volume] = relationship()
+
+
+class Directory(Base):
+    """Ordnerindex eines Scans (für den Dateibrowser); Summen zählen alle Unterordner mit."""
+
+    __tablename__ = "directories"
+    __table_args__ = (
+        UniqueConstraint("volume_id", "scan_id", "path", name="uq_directory_path"),
+        Index("ix_directories_parent", "volume_id", "scan_id", "parent", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
+    volume_id: Mapped[int] = mapped_column(ForeignKey("volumes.id", ondelete="CASCADE"))
+    scan_id: Mapped[str] = mapped_column(String(36))
+    path: Mapped[str] = mapped_column(Text)
+    parent: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(String(1024))
+    file_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_size: Mapped[int] = mapped_column(BigInteger, default=0)
 
 
 class SmartSnapshot(Base):

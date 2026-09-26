@@ -18,6 +18,7 @@ from diskatlas import __version__
 from diskatlas.db.models import Disk, FileEntry, Label, User, Volume
 from diskatlas.services import (
     authz,
+    browse,
     commands,
     duplicates,
     fslabel,
@@ -458,7 +459,32 @@ def volume_delete(
     return _redirect(f"/disks/{disk_id}#volumes")
 
 
-# ------------------------------------------------------------------ Dateisuche
+# ------------------------------------------------------------------ Dateisuche und -browser
+def _browse(request, session, viewer, volume_id, raw_path, after):
+    vol = session.get(Volume, int(volume_id)) if volume_id.isdigit() else None
+    path = browse.normalize_path(raw_path)
+    if vol is None or path is None:
+        raise HTTPException(404, "Ordner nicht gefunden")
+    disk = disk_or_404(session, viewer, vol.disk_id)  # unsichtbare Platten: 404
+    listing = browse.list_dir(session, vol, path, after)
+    if not listing.exists:
+        raise HTTPException(404, "Ordner nicht gefunden")
+    return templates.TemplateResponse(
+        request,
+        "files.html",
+        {
+            "mode": "browse", "disk": disk, "volume": vol, "listing": listing, "after": after,
+            "f": {"q": "", "ext": "", "disk": "", "label": "", "min_mb": "", "client": "",
+                  "sort": "name", "desc": False},
+            "has_query": False, "rows": [], "total": 0, "page": 1, "pages": 1,
+            "disks": [], "labels": [], "client_options": [],
+            "browse_url": lambda p, a="": "/files?" + urlencode(
+                {"volume": vol.id, "path": p, **({"after": a} if a else {})}
+            ),
+        },
+    )
+
+
 @router.get("/files", response_class=HTMLResponse)
 def files(
     request: Request,
@@ -471,10 +497,15 @@ def files(
     sort: str = "name",
     desc: bool = False,
     page: int = 1,
+    volume: str = "",
+    path: str = "",
+    after: str = "",
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
 ):
     page = max(page, 1)
+    if volume:
+        return _browse(request, session, viewer, volume, path, after)
     excluded = _excluded_disks(request, session, viewer)
     min_mb_value = None
     with contextlib.suppress(ValueError):
@@ -518,8 +549,21 @@ def files(
             ),
             "labels": [lab for lab, _ in queries.list_labels(session, viewer)],
             "client_options": queries.client_options(session, authz.visible_ids(viewer)),
+            "mode": "search" if has_query else "disks",
+            "browsable": [] if has_query else _browsable(session, viewer, excluded),
         },
     )
+
+
+def _browsable(session: Session, viewer: Viewer, excluded) -> list[tuple[Disk, list[Volume]]]:
+    """Platten mit mindestens einem indizierten Volume – Einstieg in den Dateibrowser."""
+    out = []
+    for disk in sorted(queries.load_disks(session, authz.visible_ids(viewer)),
+                       key=lambda d: d.display_name.lower()):
+        vols = [v for v in disk.present_volumes if v.active_scan_id]
+        if vols and disk.id not in excluded:
+            out.append((disk, vols))
+    return out
 
 
 # ------------------------------------------------------------------ iPhone-Web-App
