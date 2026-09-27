@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -19,6 +20,7 @@ from diskatlas.services import (
     ingest,
     labels,
     queries,
+    relay,
     transfers,
 )
 from diskatlas.services import lookup as lookup_service
@@ -505,6 +507,74 @@ def ingest_transfer_fail(
     client: Client | None = Depends(require_client),
 ):
     _transfer(transfers.fail, session, client, item_id, body.message, body.retry)
+    return {"ok": True}
+
+
+# ------------------------------------------------------------------ Relay (verschlüsselte Stücke)
+async def _read_limited(request: Request, limit: int) -> bytes:
+    """Liest den Rumpf, bricht aber bei mehr als `limit` Bytes ab (kein Speicher-Überlauf)."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > limit:
+        raise HTTPException(413, "Stück zu groß")
+    data = bytearray()
+    async for part in request.stream():
+        data += part
+        if len(data) > limit:
+            raise HTTPException(413, "Stück zu groß")
+    return bytes(data)
+
+
+def _relay_call(request: Request, client_id: int | None, func, *args, **kwargs):
+    """Führt eine Relay-Aktion in einer eigenen Sitzung aus (Threadpool) und übersetzt Fehler."""
+    if client_id is None:
+        raise HTTPException(404, "Ohne Anmeldung gibt es keinen Relay.")
+    try:
+        with request.app.state.db.session() as session:
+            client = session.get(Client, client_id)
+            return func(session, client, *args, **kwargs)
+    except relay.RelayError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+
+
+@ingest_router.put("/relay/{item_id}/chunks/{n}")
+async def relay_put(
+    request: Request, item_id: str, n: int,
+    client: Client | None = Depends(require_client),
+):
+    """Sender: das n-te Stück hochladen (`X-Epk` bei Stück 0, `X-Final` beim letzten)."""
+    data = await _read_limited(request, relay.MAX_CHUNK)
+    await run_in_threadpool(
+        _relay_call, request, client.id if client else None, relay.put_chunk, item_id, n, data,
+        request.headers.get("x-epk"), request.headers.get("x-final") == "1",
+    )
+    return {"ok": True}
+
+
+@ingest_router.get("/relay/{item_id}/status")
+def relay_status(
+    request: Request, item_id: str, client: Client | None = Depends(require_client),
+):
+    return _relay_call(request, client.id if client else None, relay.status, item_id)
+
+
+@ingest_router.get("/relay/{item_id}/chunks/{n}")
+def relay_get(
+    request: Request, item_id: str, n: int, client: Client | None = Depends(require_client),
+):
+    """Empfänger: das anstehende Stück abholen (204 = noch nichts da)."""
+    found = _relay_call(request, client.id if client else None, relay.get_chunk, item_id, n)
+    if found is None:
+        return Response(status_code=204)
+    data, epk, final = found
+    return Response(data, media_type="application/octet-stream",
+                    headers={"X-Epk": epk, "X-Final": "1" if final else "0"})
+
+
+@ingest_router.post("/relay/{item_id}/chunks/{n}/ack")
+def relay_ack(
+    request: Request, item_id: str, n: int, client: Client | None = Depends(require_client),
+):
+    _relay_call(request, client.id if client else None, relay.ack_chunk, item_id, n)
     return {"ok": True}
 
 

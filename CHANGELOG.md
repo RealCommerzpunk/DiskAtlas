@@ -12,6 +12,16 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Relay: Kopien zwischen verschiedenen Rechnern.** Liegen Quelle und Ziel an verschiedenen Clients,
+  läuft die Datei über den Server – **Ende-zu-Ende verschlüsselt** (X25519 + AES-256-GCM; nur die
+  Agenten kennen die Schlüssel, der Server sieht Chiffretext unter Zufallsnamen, keine Dateinamen,
+  Inhalte oder Schlüssel; verfälschte, vertauschte oder fehlende Stücke fallen auf, die Prüfsumme
+  wird am Ziel verglichen). **Strikt seriell:** höchstens eine Datei gleichzeitig, davon immer nur
+  ein Stück (8 MiB) im Relay – das nächste geht erst hoch, wenn der Empfänger das vorige quittiert hat
+  und der Server es gelöscht hat. Zusätzlich begrenzt `DISKATLAS_RELAY_MAX_BYTES` (Standard 20 GiB)
+  den Platz; ist er voll, wartet der Sender. Abbrechen, entzogene Berechtigung, abgelaufene Lease und
+  Serverneustart räumen den Relay auf. Der Agent braucht dafür das Paket `cryptography`
+  (in den Agent-Programmen enthalten; `pip install "diskatlas[transfer]"`).
 - **Agent führt „Datei anfordern“ aus (lokale Kopie, Migration `0011`)**: Nur mit dem neuen Haken
   *„Angeforderte Dateien kopieren erlauben“* (Tray-Einstellungen bzw. `allow_transfer = true`,
   Standard **aus**) holt der Agent Kopieraufträge ab. Laufwerke und Pfade leitet er aus seiner eigenen
