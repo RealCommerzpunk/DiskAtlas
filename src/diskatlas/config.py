@@ -84,9 +84,9 @@ class ServerConfig:
     password: str = ""
     # Nur für Tests/Sonderfälle: Betrieb im Netz ohne Passwort erlauben (nicht empfohlen).
     allow_insecure: bool = False
-    # „Datei anfordern“ (Kopieren zwischen Benutzern/Clients) freischalten; solange die
-    # Agenten-Seite fehlt, standardmäßig aus.
-    copy_enabled: bool = False
+    # „Datei anfordern“ (Kopieren zwischen Benutzern/Clients). Die Agenten kopieren nur, wenn es an
+    # ihrem Rechner ausdrücklich erlaubt ist (`allow_transfer`); der Server kann es hier abschalten.
+    copy_enabled: bool = True
     # Relay für Kopien zwischen verschiedenen Rechnern: verschlüsselte Stücke liegen kurz auf dem
     # Server. `relay_max_bytes` ist der Höchstplatz, `relay_dir` leer = neben der Datenbank.
     relay_max_bytes: int = 20 * 1024**3

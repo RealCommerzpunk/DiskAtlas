@@ -16,4 +16,5 @@
   <Config Name="Web-Port" Target="8765" Default="8765" Mode="tcp" Description="Port der Weboberfläche und API" Type="Port" Display="always" Required="true" Mask="false">8765</Config>
   <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/diskatlas" Mode="rw" Description="Datenbank (SQLite)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/diskatlas</Config>
   <Config Name="Passwort" Target="DISKATLAS_PASSWORD" Default="" Mode="" Description="Startpasswort des Benutzers Admin – nur beim allerersten Start nötig, danach darf das Feld leer bleiben (Anmeldename: Admin)" Type="Variable" Display="advanced-hide" Required="false" Mask="true"/>
+  <Config Name="Relay-Platz (Bytes)" Target="DISKATLAS_RELAY_MAX_BYTES" Default="21474836480" Mode="" Description="Höchstplatz für Dateien, die zwischen Rechnern über den Server laufen (verschlüsselt, immer nur ein Stück gleichzeitig). Standard 20 GiB." Type="Variable" Display="advanced" Required="false" Mask="false">21474836480</Config>
 </Container>

@@ -11,7 +11,26 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Sicherheit
+- **Schutz vor Fremdseiten-Anfragen (CSRF):** Zustandsändernde Anfragen (POST/PUT/PATCH/DELETE) mit
+  fremdem `Origin`/`Referer` werden abgelehnt (auch hinter Reverse-Proxy per `X-Forwarded-Host`);
+  Agenten mit Token sind nicht betroffen.
+
+### Geändert
+- **„Datei anfordern“ ist jetzt standardmäßig freigeschaltet** (`copy_enabled = true`, abschaltbar mit
+  `DISKATLAS_COPY_ENABLED=false`). Die Agenten kopieren weiterhin nur mit `allow_transfer` am Rechner.
+- **Benutzermenü** rechts in der Kopfleiste (Kreis mit Anfangsbuchstabe, Name, Rolle) statt des einzeln
+  stehenden „Abmelden“-Knopfes: *Konto*, *Übernahmen* (mit Zähler), *Verwaltung* (Admin), *Abmelden*.
+  Funktioniert ohne JavaScript, Esc/Klick daneben schließt es.
+- **„Master“ heißt jetzt „Admin“** (Oberfläche, Doku, Anmeldename des ersten Kontos). Ein bestehendes
+  Konto „Master“ wird beim Start zu „Admin“ umbenannt (Passwort bleibt).
+- **`DISKATLAS_PASSWORD` nur noch beim allerersten Start nötig.** Existiert schon ein Benutzer, startet
+  der Container auch ohne die Variable (Unraid-Vorlage: nicht mehr Pflicht, `docker-compose.yml`
+  ohne Abbruch). Ohne Benutzer und ohne Passwort verweigert ein im Netz lauschender Server weiter den Start.
+
 ### Hinzugefügt
+- Anleitung „Dateien anfordern“ in `docs/UNRAID.md`, README (englisch und deutsch); Unraid-Vorlage und
+  `docker-compose.yml` kennen `DISKATLAS_RELAY_MAX_BYTES`.
 - **Relay: Kopien zwischen verschiedenen Rechnern.** Liegen Quelle und Ziel an verschiedenen Clients,
   läuft die Datei über den Server – **Ende-zu-Ende verschlüsselt** (X25519 + AES-256-GCM; nur die
   Agenten kennen die Schlüssel, der Server sieht Chiffretext unter Zufallsnamen, keine Dateinamen,
@@ -53,16 +72,6 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   „Datei anfordern“ (noch nicht freigeschaltet, folgt in den nächsten Schritten). Sichtbar sind nur
   eigene und freigegebene Platten. Für den Bestand wird der Ordnerindex bei der ersten Ansicht
   nachgebaut (auf der 576 000-Dateien-Platte 1,4 s).
-
-### Geändert
-- **Benutzermenü** rechts in der Kopfleiste (Kreis mit Anfangsbuchstabe, Name, Rolle) statt des einzeln
-  stehenden „Abmelden“-Knopfes: *Konto*, *Übernahmen* (mit Zähler), *Verwaltung* (Admin), *Abmelden*.
-  Funktioniert ohne JavaScript, Esc/Klick daneben schließt es.
-- **„Master“ heißt jetzt „Admin“** (Oberfläche, Doku, Anmeldename des ersten Kontos). Ein bestehendes
-  Konto „Master“ wird beim Start zu „Admin“ umbenannt (Passwort bleibt).
-- **`DISKATLAS_PASSWORD` nur noch beim allerersten Start nötig.** Existiert schon ein Benutzer, startet
-  der Container auch ohne die Variable (Unraid-Vorlage: nicht mehr Pflicht, `docker-compose.yml`
-  ohne Abbruch). Ohne Benutzer und ohne Passwort verweigert ein im Netz lauschender Server weiter den Start.
 
 ## [0.6.0] - 2026-09-27
 

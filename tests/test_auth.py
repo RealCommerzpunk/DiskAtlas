@@ -324,3 +324,35 @@ def test_user_menu_replaces_the_loose_logout_button(db, tmp_path):
     html = c.get("/").text
     assert 'class="usermenu"' in html and "Abmelden" in html and "logout-form" not in html
     assert "Verwaltung" in html  # Admin
+
+
+def test_cross_site_posts_are_refused(db, tmp_path):
+    c = _client(db, tmp_path, password="geheim")
+    _login(c)
+    host = {"host": "atlas.example"}
+    evil = c.post("/prefs/hide-system", data={"hide": "1"},
+                  headers={**host, "origin": "https://evil.example"})
+    assert evil.status_code == 403
+    null = c.post("/prefs/hide-system", data={"hide": "1"}, headers={**host, "origin": "null"})
+    assert null.status_code == 403
+    via_referer = c.post("/prefs/hide-system", data={"hide": "1"},
+                         headers={**host, "referer": "https://evil.example/x"})
+    assert via_referer.status_code == 403
+    same = c.post("/prefs/hide-system", data={"hide": "1"},
+                  headers={**host, "origin": "https://atlas.example"})
+    assert same.status_code == 303
+    proxied = c.post("/prefs/hide-system", data={"hide": "1"}, headers={
+        "host": "127.0.0.1:8765", "x-forwarded-host": "atlas.example",
+        "origin": "https://atlas.example"})
+    assert proxied.status_code == 303, "hinter dem Reverse-Proxy"
+    without = c.post("/prefs/hide-system", data={"hide": "1"})
+    assert without.status_code == 303, "ohne Origin (Skript)"
+    get = c.get("/", headers={"origin": "https://evil.example"})
+    assert get.status_code == 200, "GET ändert nichts"
+
+
+def test_agents_are_not_subject_to_the_origin_check(db, tmp_path):
+    c = _client(db, tmp_path, password="geheim")
+    r = c.post("/api/v1/ingest/connected", json={"host": "x", "disk_keys": []},
+               headers={"origin": "https://evil.example"})
+    assert r.status_code == 401, "abgelehnt wegen fehlendem Token, nicht wegen der Herkunft"

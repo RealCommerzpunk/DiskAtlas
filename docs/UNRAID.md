@@ -181,6 +181,34 @@ Passt alles, kann der Ordner `vorher` gelöscht werden.
 - **Nach dem Umstieg** sind alle bisherigen Platten *herrenlos* (nur für den Admin sichtbar):
   *Verwaltung → Herrenlose Platten* übergibt sie samt Labels einem Benutzer.
 
+## Dateien anfordern (Kopieren zwischen Platten und Rechnern)
+
+Unter *Dateien* lassen sich Festplatten durchklicken; vor Dateien und Ordnern (auch in den
+Suchergebnissen) steht eine Checkbox, dazu der Knopf **„Datei anfordern“**.
+
+1. **Ziel wählen:** ein Ordner auf einer *angeschlossenen, eigenen* Platte eines deiner Clients
+   (Systemplatten nicht). Der Ordner wird bei Bedarf angelegt und pro Client als Standard gemerkt.
+2. **Wer darf was?** Eigene Dateien werden direkt eingeplant. Für Dateien anderer Benutzer legt der
+   Besitzer an der Freigabe (Plattenseite → *Besitz & Freigabe*) pro Benutzer fest: **nie erlauben**
+   (Standard), **immer nachfragen** (er stimmt unter *Anfragen* zu) oder **immer erlauben**. Der Admin
+   hat hier keinen Sonderstatus.
+3. **Platte fehlt?** Dann wartet die Datei bis zu 14 Tage. Der Besitzer der fehlenden Platte bekommt
+   einen Hinweis (Weboberfläche unter *Anfragen*, Tray-Meldung des Agenten), höchstens einmal je Platte
+   und Tag. Sobald die Platte angeschlossen ist, geht es automatisch weiter.
+4. **Ausgeführt** wird es vom Agenten – **nur wenn du es an dem Rechner erlaubst**: Tray →
+   Einstellungen → *„Angeforderte Dateien kopieren erlauben“* (`allow_transfer = true`, Standard aus).
+   Der Agent leitet Laufwerke und Pfade aus seiner eigenen Erkennung ab, fasst Systemvolumes nie an,
+   verlässt das Volume nie (kein `..`, keine Symlinks/Junctions nach draußen), überschreibt nichts
+   (`name (1).ext`), schreibt erst in eine Teildatei und prüft die Prüfsumme.
+5. **Zwischen verschiedenen Rechnern** läuft die Datei über den Server (Relay), **Ende-zu-Ende
+   verschlüsselt**: Der Server sieht nur Chiffretext unter Zufallsnamen – weder Inhalt noch Dateinamen.
+   Es geht **strikt seriell**: eine Datei zur Zeit, davon immer nur ein 8-MiB-Stück im Relay; das
+   nächste folgt erst, wenn der Empfänger das vorige abgeholt hat. So kann der Relay nicht volllaufen;
+   zusätzlich begrenzt `DISKATLAS_RELAY_MAX_BYTES` (Standard 20 GiB, Ablage neben der Datenbank unter
+   `relay/`, oder `DISKATLAS_RELAY_DIR`) den Platz. Grenze: Ein Server, der aktiv manipuliert, könnte
+   dem Sender einen falschen öffentlichen Schlüssel unterschieben; gegen Mitlesen schützt das Verfahren.
+6. **Abschalten:** `DISKATLAS_COPY_ENABLED=false` am Server blendet die Funktion aus.
+
 ## Schächte und Clients
 
 Wechselschächte (Hot-Swap-Rahmen) sind Sache des jeweiligen Rechners, also des **Clients**:
