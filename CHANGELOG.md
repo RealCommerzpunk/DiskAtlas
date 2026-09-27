@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-27
+
 ### Sicherheit
 - **Schutz vor Fremdseiten-Anfragen (CSRF):** Zustandsändernde Anfragen (POST/PUT/PATCH/DELETE) mit
   fremdem `Origin`/`Referer` werden abgelehnt (auch hinter Reverse-Proxy per `X-Forwarded-Host`);
