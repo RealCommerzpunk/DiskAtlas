@@ -10,9 +10,9 @@ import threading
 import time
 from collections.abc import Callable
 
-from diskatlas.agent import transfer
+from diskatlas.agent import relaycrypto, transfer
 from diskatlas.agent.sinks import Sink
-from diskatlas.config import AgentConfig
+from diskatlas.config import AgentConfig, default_data_dir
 from diskatlas.probe import list_disks
 from diskatlas.probe import ports as sata
 from diskatlas.probe.files import iter_files
@@ -94,7 +94,15 @@ class Agent:
         # Hinweise des Servers (z. B. „Platte anschließen“); der Tray zeigt sie an
         self.notices: list[str] = []
         self.progress_interval = 2.0  # Sekunden zwischen Fortschrittsmeldungen einer Übertragung
+        self._relay_key = None
         self.sink.capabilities = {"transfer": bool(config.allow_transfer)}
+        if config.allow_transfer and relaycrypto.AVAILABLE:
+            try:
+                self._relay_key, pubkey = relaycrypto.load_or_create_key(
+                    default_data_dir() / "relay.key")
+                self.sink.capabilities["pubkey"] = pubkey
+            except OSError:
+                log.exception("Schlüsselpaar für Kopien zwischen Rechnern nicht nutzbar")
         self._mount_enabled = config.auto_mount and (mounter is not None or mounting.available())
 
     # ------------------------------------------------------------------ Einmal-Scan
@@ -354,11 +362,19 @@ class Agent:
             return self.sink.transfer_progress(item, done)
 
         try:
-            if job.get("role") != "local":
+            role, disks, stop = job.get("role"), self.prober(), self.stop_event.is_set
+            if role == "local":
+                digest, size, name, note = transfer.copy_local(job, disks, progress, stop)
+            elif role == "send":
+                sent, note = transfer.send_relay(job, disks, self.sink, progress, stop)
+                log.info("Datei gesendet: %s (%d Bytes)", job.get("source", {}).get("path"), sent)
+                return  # „fertig“ meldet der Empfänger
+            elif role == "receive" and self._relay_key is not None:
+                digest, size, name, note = transfer.receive_relay(
+                    job, disks, self.sink, self._relay_key, progress, stop
+                )
+            else:
                 raise transfer.TransferFailed("Diese Übertragungsart wird nicht unterstützt.")
-            digest, size, name, note = transfer.copy_local(
-                job, self.prober(), progress, self.stop_event.is_set
-            )
             self.sink.transfer_done(item, digest, size, name, note)
             log.info("Datei kopiert: %s → %s", job.get("source", {}).get("path"), name)
         except transfer.TransferAborted:

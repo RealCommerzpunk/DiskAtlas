@@ -272,9 +272,13 @@ def _active_keys(session, user_id, client_id, volume_id, path) -> set[tuple[int,
 
 # ------------------------------------------------------------------ Zustandsmaschine
 def set_state(item: CopyItem, state: str, now: datetime, reason: str | None = None) -> None:
+    from diskatlas.services import relay
+
     item.state = state
     item.wait_reason = reason
     item.updated_at = now
+    if state != "running":  # nichts darf im Relay zurückbleiben, wenn die Übertragung nicht läuft
+        relay.reset(item)
     if state in FINAL_STATES:
         item.lease_until = None
 
@@ -324,6 +328,7 @@ def sweep(session: Session, now: datetime | None = None) -> int:
         if item.attempts >= MAX_ATTEMPTS:
             set_state(item, "failed", now, "Der Agent hat die Übertragung nicht abgeschlossen.")
         else:
+            item.claimed_by_client_id = None
             set_state(item, "queued", now)
     return len(items)
 

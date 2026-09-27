@@ -12,7 +12,7 @@ from starlette.responses import Response
 from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
-from diskatlas.services import bays, users
+from diskatlas.services import bays, relay, users
 from diskatlas.web import accounts, api, auth, copyrequests, sharing, views
 
 
@@ -38,6 +38,9 @@ def create_app(
     )
     app.state.config = config
     app.state.db = db
+    relay.configure(relay.RelayStore(relay.default_dir(config), config.server.relay_max_bytes))
+    with db.session() as session:
+        relay.recover(session)
     with db.session() as session:
         auth.check_exposure(config, users.has_users(session))
         users.bootstrap_master(session, config.server.password)

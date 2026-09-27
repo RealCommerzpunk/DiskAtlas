@@ -29,6 +29,12 @@ class Adapter:
         pass
 
 
+@pytest.fixture(autouse=True)
+def _isolated_agent_data(tmp_path, monkeypatch):
+    """Der Agent legt seinen Schlüssel im Datenordner ab – nie im echten des Entwicklers."""
+    monkeypatch.setattr("diskatlas.agent.agent.default_data_dir", lambda: tmp_path / "agentdata")
+
+
 @pytest.fixture
 def world(db, tmp_path) -> World:
     w = World(db, tmp_path)

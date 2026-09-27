@@ -39,12 +39,15 @@ gui = [
 # Agent als Tray-Programm (Symbol im Systembereich + Einstellungsfenster). Linux zusätzlich:
 # python3-gi und gir1.2-ayatanaappindicator3-0.1 (auf Linux Mint meist vorhanden).
 tray = [
+    "cryptography>=42",
     "pystray>=0.19.5",
     "pillow>=10.0",
     "pywebview>=5.0",
     "pythonnet>=3.0.3; sys_platform == 'win32'",
 ]
-dev = ["pytest>=8", "ruff>=0.5"]
+# Ende-zu-Ende-Verschlüsselung für „Datei anfordern“ zwischen Rechnern (nur im Agenten nötig)
+transfer = ["cryptography>=42"]
+dev = ["pytest>=8", "ruff>=0.5", "cryptography>=42"]
 build = ["pyinstaller>=6.10", "pyinstaller-hooks-contrib>=2024.9"]
 
 [project.scripts]

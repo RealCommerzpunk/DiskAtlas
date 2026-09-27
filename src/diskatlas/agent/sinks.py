@@ -11,6 +11,10 @@ from diskatlas.probe.types import DiskInfo, FileRecord
 from diskatlas.services import commands, hosts, ingest
 
 
+class RelayGone(Exception):
+    """Der Server kennt die Übertragung nicht mehr (abgebrochen, abgelaufen oder nicht deine)."""
+
+
 class Sink(ABC):
     @abstractmethod
     def report_disk(self, host: str, disk: DiskInfo) -> bool:
@@ -57,6 +61,19 @@ class Sink(ABC):
 
     def transfer_fail(self, item_id: str, message: str, retry: bool) -> None:  # noqa: B027
         pass
+
+    # Relay: verschlüsselte Stücke über den Server (siehe services/relay.py auf der Serverseite)
+    def relay_put(self, item_id: str, n: int, data: bytes, epk: str | None, final: bool) -> str:
+        raise NotImplementedError
+
+    def relay_status(self, item_id: str) -> dict:
+        raise NotImplementedError
+
+    def relay_get(self, item_id: str, n: int) -> tuple[bytes, str, bool] | None:
+        raise NotImplementedError
+
+    def relay_ack(self, item_id: str, n: int) -> None:
+        raise NotImplementedError
 
     def close(self) -> None:  # noqa: B027 - optionaler Hook
         pass
@@ -142,6 +159,42 @@ class HttpSink(Sink):
 
     def transfer_fail(self, item_id: str, message: str, retry: bool) -> None:
         self._post(f"/ingest/transfers/{item_id}/fail", {"message": message, "retry": retry})
+
+    @staticmethod
+    def _check_relay(response) -> None:
+        if response.status_code in (404, 410):
+            raise RelayGone(f"Übertragung nicht mehr aktuell ({response.status_code})")
+        response.raise_for_status()
+
+    def relay_put(self, item_id: str, n: int, data: bytes, epk: str | None, final: bool) -> str:
+        headers = {"Content-Type": "application/octet-stream", "X-Final": "1" if final else "0"}
+        if epk:
+            headers["X-Epk"] = epk
+        response = self.client.put(f"/ingest/relay/{item_id}/chunks/{n}", content=data,
+                                   headers=headers)
+        if response.status_code == 409:
+            return "wait"
+        if response.status_code == 507:
+            return "full"
+        self._check_relay(response)
+        return "ok"
+
+    def relay_status(self, item_id: str) -> dict:
+        response = self.client.get(f"/ingest/relay/{item_id}/status")
+        self._check_relay(response)
+        return response.json()
+
+    def relay_get(self, item_id: str, n: int) -> tuple[bytes, str, bool] | None:
+        response = self.client.get(f"/ingest/relay/{item_id}/chunks/{n}")
+        if response.status_code == 204:
+            return None
+        self._check_relay(response)
+        return (response.content, response.headers.get("X-Epk", ""),
+                response.headers.get("X-Final") == "1")
+
+    def relay_ack(self, item_id: str, n: int) -> None:
+        response = self.client.post(f"/ingest/relay/{item_id}/chunks/{n}/ack", json={})
+        self._check_relay(response)
 
     def fetch_commands(self, host: str) -> list[dict]:
         response = self.client.get("/ingest/commands", params={"host": host})
