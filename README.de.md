@@ -152,6 +152,18 @@ eines anderen Benutzers eine vergebene Platte, ändert sich nichts – der Besit
 Übernahmeantrag. Labels sind je Benutzer privat. Der Container braucht
 `DISKATLAS_PASSWORD` nur beim allerersten Start.
 
+### Dateien anfordern
+
+Unter *Dateien* lassen sich alle indizierten Platten Ordner für Ordner durchklicken; Dateien und
+Ordner (auch in Suchergebnissen) können angehakt und **angefordert** werden: Sie werden in einen Ordner
+auf einer eigenen, angeschlossenen Platte kopiert. Eigene Dateien werden direkt kopiert; bei Dateien
+anderer Benutzer legt der Besitzer an der Freigabe je Platte fest, ob das nie, nur nach Rückfrage oder
+immer erlaubt ist. Ist eine Platte nicht angeschlossen, wird ihr Besitzer gebeten, sie anzuschließen
+(Weboberfläche und Tray-Meldung). Der Agent kopiert nur, wenn es lokal eingeschaltet ist
+(`allow_transfer`, Standard aus), fasst Systemvolumes nie an und verlässt das Volume nie. Zwischen
+verschiedenen Rechnern läuft die Datei **Ende-zu-Ende verschlüsselt** über den Server (X25519 +
+AES-256-GCM, Zufallsnamen, strikt ein Stück nach dem anderen, begrenzt durch `DISKATLAS_RELAY_MAX_BYTES`).
+
 ## Entwicklung
 
 ```bash

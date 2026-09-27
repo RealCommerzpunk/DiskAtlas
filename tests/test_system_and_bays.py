@@ -68,10 +68,13 @@ def test_system_disk_hidden_in_search_duplicates_and_dashboard(db, client):
 def test_hide_system_toggle_sets_cookie_and_stays_local(client):
     r = client.post(
         "/prefs/hide-system", data={"hide": ["0"]}, follow_redirects=False,
-        headers={"referer": "http://evil.example/files?q=a"},
+        headers={"referer": "http://testserver/files?q=a"},
     )
     assert r.status_code == 303
     assert r.headers["location"] == "/files?q=a", "nur lokaler Pfad, kein Open-Redirect"
+    foreign = client.post("/prefs/hide-system", data={"hide": ["0"]}, follow_redirects=False,
+                          headers={"referer": "http://evil.example/files?q=a"})
+    assert foreign.status_code == 403, "Fremdseiten-Anfragen werden gar nicht erst bearbeitet"
     assert "diskatlas_hide_system=0" in r.headers["set-cookie"]
     r = client.post("/prefs/hide-system", data={"hide": ["0", "1"]}, follow_redirects=False)
     assert "diskatlas_hide_system=1" in r.headers["set-cookie"]

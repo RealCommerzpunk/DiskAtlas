@@ -20,6 +20,8 @@ services:
       # Startpasswort des Benutzers „Admin“ (nur beim allerersten Start nötig,
       # danach darf die Zeile leer bleiben)
       DISKATLAS_PASSWORD: "${DISKATLAS_PASSWORD:-}"
+      # Relay für Kopien zwischen Rechnern (verschlüsselt, seriell): Höchstplatz in Bytes
+      # DISKATLAS_RELAY_MAX_BYTES: "21474836480"
       # DISKATLAS_DATABASE_URL: "postgresql+psycopg://diskatlas:diskatlas@db:5432/diskatlas"
     # depends_on: [db]
 

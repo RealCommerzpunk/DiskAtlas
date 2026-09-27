@@ -15,7 +15,7 @@ import hmac
 import secrets
 import time
 from dataclasses import dataclass
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from fastapi import Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -149,8 +149,35 @@ def set_session(request: Request, response: Response, user: User) -> None:
     )
 
 
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def foreign_origin(request: Request) -> bool:
+    """Kommt eine zustandsändernde Anfrage von einer anderen Webseite (CSRF)?
+
+    Browser senden bei POST `Origin` (oder `Referer`). Weicht dessen Host von dem der Anfrage ab
+    (auch hinter einem Reverse-Proxy: `X-Forwarded-Host`), wird sie abgelehnt. Ohne beide Kopfzeilen
+    (Skripte, Tests) gibt es nichts zu prüfen; Agenten mit Token sind ohnehin nicht betroffen.
+    """
+    origin = request.headers.get("origin") or request.headers.get("referer")
+    if not origin:
+        return False
+    if origin == "null":
+        return True
+    theirs = urlsplit(origin).netloc.lower()
+    allowed = {request.headers.get("host", "").lower()}
+    forwarded = request.headers.get("x-forwarded-host")
+    if forwarded:
+        allowed.update(h.strip().lower() for h in forwarded.split(","))
+    return theirs not in allowed
+
+
 async def auth_middleware(request: Request, call_next):
     request.state.identity = None
+    if (request.method in UNSAFE_METHODS and not request.url.path.startswith(INGEST_PREFIX)
+            and foreign_origin(request)):
+        return JSONResponse({"detail": "Anfrage von einer fremden Webseite abgelehnt"},
+                            status_code=403)
     if not request.app.state.auth_enabled:
         return await call_next(request)
     path = request.url.path

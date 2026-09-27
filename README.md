@@ -155,6 +155,17 @@ user's client reports an owned drive, nothing changes – the owner just gets a 
 Labels are private per user. The container needs
 `DISKATLAS_PASSWORD` only for the very first start.
 
+### Requesting files
+
+The *Files* page lets you browse every indexed drive folder by folder and tick files or folders
+(also in search results) to **request** them: they are copied to a folder on one of your own connected
+drives. Your own files are copied directly; for files of other users the owner sets a per-drive copy
+permission next to the read share (never / always ask / always allow). If a drive is not connected, the
+owner is asked to plug it in (web UI and tray notification). The agent only copies when it is switched
+on locally (`allow_transfer`, off by default), never touches system volumes and never leaves the volume.
+Between different computers the file travels through the server, **end-to-end encrypted** (X25519 +
+AES-256-GCM, random object names, strictly one chunk at a time, capped by `DISKATLAS_RELAY_MAX_BYTES`).
+
 ## Development
 
 ```bash
