@@ -12,6 +12,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Knopf „Jetzt neu scannen“** auf der Plattenseite (Roadmap M3): Der Agent, an dem die Platte
+  hängt, liest SMART, Belegung und Dateiindex neu ein. Nur für den Besitzer (und den Admin), nur bei
+  angeschlossener Platte und erreichbarem Agenten; ein zweiter Klick legt keinen doppelten Auftrag an.
 - **Löschprotokolle automatisch zuordnen** (Migration `0014`, Roadmap M2.3): Neue Seite
   *Löschprotokolle* im Hauptmenü für bis zu 50 PDFs auf einmal. DiskAtlas liest den Text der PDFs
   (neue Abhängigkeit `pypdf`, nur die ersten Seiten) und hängt jedes an die Platte, deren
@@ -39,6 +42,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   bestehende Label um (und umgekehrt). Beim Serverstart werden auch Platten im Regal bewertet.
 
 ### Behoben
+- **Umbenennen von Volumes war im Server-Betrieb gesperrt** („Agent meldet sich gerade nicht“), weil
+  die Plattenseite den Agenten-Zustand seit 0.6.0 unter dem Rechnernamen statt je Client suchte.
 - **CI hing unter Windows**, weil pytest einen Testparameter mit 20 MB im Fehlerbericht ausgab. Die
   Testdaten entstehen jetzt im Test; außerdem bricht `pytest-timeout` hängende Tests nach 5 Minuten
   ab und jeder CI-Lauf hat ein Zeitlimit von 30 Minuten.

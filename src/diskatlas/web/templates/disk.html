@@ -171,7 +171,14 @@
 </section>
 
 <section class="card" id="volumes">
-  <h2>Partitionen / Volumes</h2>
+  <div class="page-head">
+    <h2>Partitionen / Volumes</h2>
+    {% if can_write %}
+    <form method="post" action="/disks/{{ disk.id }}/rescan">
+      <button type="submit" class="secondary" {{ 'disabled' if relabel_block }} title="{{ relabel_block or 'SMART, Belegung und Dateiindex jetzt neu einlesen' }}">Jetzt neu scannen</button>
+    </form>
+    {% endif %}
+  </div>
   {% if flash_ok %}<p class="notice ok" role="status">{{ flash_ok }}</p>{% endif %}
   {% if flash_err %}<p class="notice health-reasons failed" role="alert">{{ flash_err }}</p>{% endif %}
   {% if commands %}
