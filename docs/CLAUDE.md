@@ -15,3 +15,15 @@
   Ausnahmen (für internationale Leser und die SignPath-Prüfung): `README.md` und
   `docs/CODE_SIGNING.md` englisch; `README.de.md` ist die deutsche Fassung und wird bei jeder
   README-Änderung mitgepflegt.
+
+## Fallen (aus der Praxis)
+
+- **SQLite hat einen Schreiber zur Zeit**, auf Unraid (`/mnt/user`, FUSE) besonders langsam: In
+  Anfragen nie viele Zeilen in einer Transaktion löschen oder schreiben – große Aufräumarbeiten
+  gehören in `services/maintenance.py` (Hintergrund, kleine Häppchen mit Pausen).
+- **Ablage-Ordner** (Relay, Anhänge, Import) immer aus `db.url` ableiten, nie aus `Config()` –
+  sonst fassen Tests das echte `~/.local/share/diskatlas` an.
+- **Tests:** große Daten nie als `pytest.mark.parametrize`-Werte (pytest schreibt sie in jeden
+  Bericht; unter Windows hing die CI daran).
+- **Shell:** kein `pkill -f <muster>`, wenn das Muster in der eigenen Befehlszeile steht (beendet
+  die eigene Shell); Prozesse per Port (`ss -ltnp`) oder PID beenden.
