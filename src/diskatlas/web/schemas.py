@@ -164,6 +164,7 @@ class TransferDone(BaseModel):
 class TransferFail(BaseModel):
     message: str
     retry: bool = False
+    restart: bool = False  # Agent kann nicht fortsetzen: Relay-Stand verwerfen
 
 
 class CommandResult(BaseModel):

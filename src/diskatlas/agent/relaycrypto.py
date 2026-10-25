@@ -110,12 +110,17 @@ def _aad(item_id: str, index: int, final: bool) -> bytes:
 class Sealer:
     """Sender: verschlüsselt die Stücke einer Datei für den Empfänger."""
 
-    def __init__(self, target_pubkey_b64: str, item_id: str):
-        ephemeral = X25519PrivateKey.generate()
+    def __init__(self, target_pubkey_b64: str, item_id: str, ephemeral_b64: str | None = None):
+        """`ephemeral_b64`: gespeicherter Einmal-Schlüssel, um nach einem Abbruch fortzusetzen."""
+        ephemeral = (X25519PrivateKey.from_private_bytes(base64.b64decode(ephemeral_b64))
+                     if ephemeral_b64 else X25519PrivateKey.generate())
         peer = X25519PublicKey.from_public_bytes(base64.b64decode(target_pubkey_b64))
         self.item_id = item_id
         self._aes = AESGCM(_file_key(ephemeral.exchange(peer), item_id))
         self.epk = _b64(_raw_public(ephemeral.public_key()))
+        self.ephemeral_b64 = _b64(ephemeral.private_bytes(
+            serialization.Encoding.Raw, serialization.PrivateFormat.Raw,
+            serialization.NoEncryption()))
 
     def seal(self, index: int, data: bytes, final: bool = False) -> bytes:
         return self._aes.encrypt(_nonce(index), data, _aad(self.item_id, index, final))

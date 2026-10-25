@@ -59,8 +59,14 @@ class Sink(ABC):
     ) -> None:
         pass
 
-    def transfer_fail(self, item_id: str, message: str, retry: bool) -> None:  # noqa: B027
+    def transfer_fail(  # noqa: B027
+        self, item_id: str, message: str, retry: bool, restart: bool = False
+    ) -> None:
         pass
+
+    def transfer_state(self, item_id: str) -> str | None:
+        """Zustand der Datei beim Server (None: unbekannt bzw. nicht mehr vorhanden)."""
+        return None
 
     # Relay: verschlüsselte Stücke über den Server (siehe services/relay.py auf der Serverseite)
     def relay_put(self, item_id: str, n: int, data: bytes, epk: str | None, final: bool) -> str:
@@ -157,8 +163,18 @@ class HttpSink(Sink):
         self._post(f"/ingest/transfers/{item_id}/done",
                    {"sha256": sha256, "size": size, "result_name": name, "message": message})
 
-    def transfer_fail(self, item_id: str, message: str, retry: bool) -> None:
-        self._post(f"/ingest/transfers/{item_id}/fail", {"message": message, "retry": retry})
+    def transfer_fail(
+        self, item_id: str, message: str, retry: bool, restart: bool = False
+    ) -> None:
+        self._post(f"/ingest/transfers/{item_id}/fail",
+                   {"message": message, "retry": retry, "restart": restart})
+
+    def transfer_state(self, item_id: str) -> str | None:
+        response = self.client.get(f"/ingest/transfers/{item_id}/state")
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json().get("state")
 
     @staticmethod
     def _check_relay(response) -> None:

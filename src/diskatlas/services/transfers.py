@@ -126,6 +126,9 @@ def jobs_for(session: Session, client: Client, now: datetime | None = None) -> l
             continue
         if _claim(session, item, client, now):
             job = _job(item, "send")
+            # Fortsetzen: ab dem Stück nach dem letzten, das schon im Relay liegt oder quittiert ist
+            job["resume_from"] = item.relay_next + (1 if item.relay_pending else 0)
+            job["epk"] = item.relay_epk
             job["target_pubkey"] = target.pubkey
             # zum Merken des Schlüssels im Agenten (Schutz gegen untergeschobene Schlüssel)
             job["target_client_id"] = target.id
@@ -135,7 +138,9 @@ def jobs_for(session: Session, client: Client, now: datetime | None = None) -> l
     for item in _candidates(session, CopyItem.phase == "upload",
                             CopyRequest.target_client_id == client.id, state="running"):
         if item.claimed_by_client_id is not None and item.claimed_by_client_id != client.id:
-            jobs.append(_job(item, "receive"))
+            job = _job(item, "receive")
+            job["resume_from"] = item.relay_next  # so viele Stücke hat der Empfänger quittiert
+            jobs.append(job)
     return jobs
 
 
@@ -156,6 +161,18 @@ def _mine(session: Session, client: Client, item_id: str, roles: tuple[str, ...]
 
 def _end(item: CopyItem, state: str, now: datetime, reason: str | None = None) -> None:
     copies.set_state(item, state, now, reason)  # räumt auch den Relay auf
+
+
+def item_state(session: Session, client: Client, item_id: str) -> str | None:
+    """Zustand einer Datei für einen beteiligten Agenten (Quell- oder Ziel-Client), sonst None.
+    Damit unterscheidet ein Agent „abgebrochen“ von „erneut eingereiht, fortsetzen“."""
+    item = session.get(CopyItem, item_id)
+    if item is None:
+        return None
+    if item.request.target_client_id == client.id or item.claimed_by_client_id == client.id \
+            or item.source_disk.last_client_id == client.id:
+        return item.state
+    return None
 
 
 def progress(
@@ -192,11 +209,17 @@ def finish(
 
 def fail(
     session: Session, client: Client, item_id: str, message: str, retry: bool = False,
-    now: datetime | None = None,
+    now: datetime | None = None, restart: bool = False,
 ) -> None:
+    """Abbruch melden. `retry`: neuer Versuch (setzt im Relay fort), `restart`: der Agent kann
+    nicht fortsetzen (Schlüssel/Teildatei fehlt) – dann beginnen beide Seiten von vorn."""
+    from diskatlas.services import relay
+
     now = now or utcnow()
     item = _mine(session, client, item_id, ("local", "sender", "receiver"))
     item.message = message[:MAX_MESSAGE]
+    if restart:
+        relay.reset(item)
     if retry and item.attempts < copies.MAX_ATTEMPTS:
         item.claimed_by_client_id = None
         _end(item, "queued", now, "Neuer Versuch folgt.")

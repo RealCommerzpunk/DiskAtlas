@@ -479,6 +479,18 @@ def _transfer(func, session: Session, client: Client | None, *args, **kwargs):
         raise HTTPException(404, str(exc)) from exc
 
 
+@ingest_router.get("/transfers/{item_id}/state")
+def ingest_transfer_state(
+    item_id: str,
+    session: Session = Depends(get_session),
+    client: Client | None = Depends(require_client),
+):
+    state = transfers.item_state(session, client, item_id) if client is not None else None
+    if state is None:
+        raise HTTPException(404, "Auftrag nicht gefunden")
+    return {"state": state}
+
+
 @ingest_router.post("/transfers/{item_id}/progress")
 def ingest_transfer_progress(
     item_id: str,
@@ -510,7 +522,8 @@ def ingest_transfer_fail(
     session: Session = Depends(get_session),
     client: Client | None = Depends(require_client),
 ):
-    _transfer(transfers.fail, session, client, item_id, body.message, body.retry)
+    _transfer(transfers.fail, session, client, item_id, body.message, body.retry,
+              restart=body.restart)
     return {"ok": True}
 
 

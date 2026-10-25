@@ -28,10 +28,12 @@ FREE_MARGIN = 64 * 1024 * 1024  # so viel bleibt mindestens frei
 class TransferFailed(Exception):
     """Die Übertragung ist gescheitert; `retry` = ein neuer Versuch kann sich lohnen."""
 
-    def __init__(self, message: str, retry: bool = False, notify: bool = False):
+    def __init__(self, message: str, retry: bool = False, notify: bool = False,
+                 restart: bool = False):
         super().__init__(message)
         self.retry = retry
         self.notify = notify  # auch als Meldung am Rechner zeigen (Sicherheitsrelevantes)
+        self.restart = restart  # Fortsetzen unmöglich: Relay-Stand verwerfen, von vorn beginnen
 
 
 class TransferAborted(Exception):
@@ -126,19 +128,37 @@ IDLE_TIMEOUT = 600.0  # so lange darf die Gegenseite schweigen, bevor wir aufgeb
 POLL = 0.5
 
 
+FINAL_STATES = ("done", "failed", "denied", "cancelled", "expired")
+
+
 def _gone(exc: RelayGone) -> TransferAborted:
     return TransferAborted(str(exc))
+
+
+def _finished_for_good(sink: Sink, item: str, exc: BaseException) -> bool:
+    """Soll der Fortsetzen-Zustand (Schlüssel, Teildatei) weg? Nur wenn die Übertragung
+    endgültig vorbei ist – nicht, wenn sie nur erneut eingereiht wurde."""
+    if isinstance(exc, TransferFailed):
+        return not exc.retry or exc.restart
+    if isinstance(exc, TransferAborted):
+        try:
+            state = sink.transfer_state(item)
+        except Exception:
+            return False  # Server nicht erreichbar: lieber behalten (wird später aufgeräumt)
+        return state is None or state in FINAL_STATES
+    return False
 
 
 def send_relay(
     job: dict, disks: list[DiskInfo], sink: Sink, progress: Callable[[int], bool],
     stop: Callable[[], bool] = lambda: False, sleep: Callable[[float], object] = time.sleep,
-    known_peers=None,
+    known_peers=None, resume=None,
 ) -> tuple[int, str]:
     """Liest die Quelle, verschlüsselt sie stückweise und schickt sie über den Server.
 
     Es liegt immer nur ein Stück im Relay: das nächste geht erst hoch, wenn der Empfänger das vorige
-    abgeholt hat. Gibt (Größe, Hinweis) zurück; „fertig“ meldet der Empfänger."""
+    abgeholt hat. Nach einem Abbruch geht es ab `job["resume_from"]` weiter (gleicher Schlüssel,
+    unveränderte Quelle). Gibt (Größe, Hinweis) zurück; „fertig“ meldet der Empfänger."""
     if not relaycrypto.AVAILABLE:
         raise TransferFailed("Verschlüsselung nicht verfügbar (Paket „cryptography“ fehlt).")
     if known_peers is not None and job.get("target_client_id") is not None:
@@ -157,7 +177,22 @@ def send_relay(
     note = "" if info.st_size == job.get("size") else (
         "Die Datei hat sich seit der Indizierung geändert (Größe).")
     item = job["id"]
-    sealer = relaycrypto.Sealer(job["target_pubkey"], item)
+    resume_from = max(0, int(job.get("resume_from") or 0))
+    source_sig = {"size": info.st_size, "mtime_ns": info.st_mtime_ns,
+                  "target_pubkey": job["target_pubkey"]}
+    if resume_from:
+        saved = resume.load("send", item) if resume is not None else None
+        if (not saved or saved.get("epk") != job.get("epk")
+                or any(saved.get(k) != v for k, v in source_sig.items())):
+            handle.close()
+            raise TransferFailed("Fortsetzen nicht möglich (Schlüssel fehlt oder Quelle "
+                                 "geändert) – beginnt von vorn.", retry=True, restart=True)
+        sealer = relaycrypto.Sealer(job["target_pubkey"], item, saved["key"])
+    else:
+        sealer = relaycrypto.Sealer(job["target_pubkey"], item)
+        if resume is not None:
+            resume.save("send", item, {"key": sealer.ephemeral_b64, "epk": sealer.epk,
+                                       **source_sig})
     digest, sent, index = hashlib.sha256(), 0, 0
 
     def put(blob: bytes, final: bool) -> None:
@@ -177,36 +212,56 @@ def send_relay(
             sleep(POLL)
             waited += POLL
 
-    with handle:
-        while chunk := handle.read(CHUNK):
-            put(sealer.seal(index, chunk), False)
-            digest.update(chunk)
-            sent += len(chunk)
-            index += 1
-            if not progress(sent):
+    try:
+        with handle:
+            while index < resume_from:  # schon übertragene Stücke nur für die Prüfsumme lesen
+                chunk = handle.read(CHUNK)
+                if not chunk:
+                    break
+                digest.update(chunk)
+                sent += len(chunk)
+                index += 1
+            if index >= resume_from:  # sonst liegt der Abschluss schon im Relay
+                while chunk := handle.read(CHUNK):
+                    put(sealer.seal(index, chunk), False)
+                    digest.update(chunk)
+                    sent += len(chunk)
+                    index += 1
+                    if not progress(sent):
+                        raise TransferAborted
+                put(sealer.seal_trailer(index, digest.digest(), sent), True)
+        waited = 0.0
+        while True:  # auf das Quittieren des letzten Stücks warten (hält die Lease am Leben)
+            try:
+                state = sink.relay_status(item)
+            except RelayGone as exc:
+                raise _gone(exc) from exc
+            if state.get("abort"):
                 raise TransferAborted
-        put(sealer.seal_trailer(index, digest.digest(), sent), True)
-    waited = 0.0
-    while True:  # auf das Quittieren des letzten Stücks warten (hält die Lease am Leben)
-        try:
-            state = sink.relay_status(item)
-        except RelayGone as exc:
-            raise _gone(exc) from exc
-        if state.get("abort"):
-            raise TransferAborted
-        if state.get("next", 0) > index and not state.get("pending"):
-            return sent, note
-        if stop() or waited >= IDLE_TIMEOUT:
-            raise TransferFailed("Der Empfänger hat die Datei nicht abgeschlossen.", retry=True)
-        sleep(POLL)
-        waited += POLL
+            if state.get("next", 0) > index and not state.get("pending"):
+                break
+            if stop() or waited >= IDLE_TIMEOUT:
+                raise TransferFailed("Der Empfänger hat die Datei nicht abgeschlossen.",
+                                     retry=True)
+            sleep(POLL)
+            waited += POLL
+    except BaseException as exc:
+        if resume is not None and _finished_for_good(sink, item, exc):
+            resume.drop("send", item)
+        raise
+    if resume is not None:
+        resume.drop("send", item)
+    return sent, note
 
 
 def receive_relay(
     job: dict, disks: list[DiskInfo], sink: Sink, private_key, progress: Callable[[int], bool],
     stop: Callable[[], bool] = lambda: False, sleep: Callable[[float], object] = time.sleep,
+    resume=None,
 ) -> tuple[str, int, str, str]:
     """Holt die verschlüsselten Stücke ab, prüft und schreibt die Datei ins Zielverzeichnis.
+
+    Nach einem Abbruch geht es mit der behaltenen Teildatei ab `job["resume_from"]` weiter.
     Ergebnis wie bei `copy_local`: (sha256, Größe, Name, Hinweis)."""
     if not relaycrypto.AVAILABLE:
         raise TransferFailed("Verschlüsselung nicht verfügbar (Paket „cryptography“ fehlt).")
@@ -223,9 +278,37 @@ def receive_relay(
         raise TransferFailed("Nicht genug freier Platz auf der Zielplatte.")
     item = job["id"]
     part = safepath.part_path(directory, item)
+    resume_from = max(0, int(job.get("resume_from") or 0))
     opener, index, written, digest, waited = None, 0, 0, hashlib.sha256(), 0.0
+    keep_part = False
+
+    def remember() -> None:
+        if resume is not None:
+            resume.save("receive", item, {"part": part, "chunks": index, "bytes": written})
+
     try:
-        with open(part, "wb") as out:
+        if resume_from:
+            saved = resume.load("receive", item) if resume is not None else None
+            expected = None
+            if saved and saved.get("part") == part:
+                if resume_from == saved.get("chunks"):
+                    expected = saved.get("bytes")
+                elif resume_from < (saved.get("chunks") or 0):
+                    expected = resume_from * CHUNK
+            size_now = os.path.getsize(part) if os.path.isfile(part) else -1
+            if expected is None or size_now < expected:
+                raise TransferFailed("Fortsetzen nicht möglich (Teildatei fehlt) – beginnt "
+                                     "von vorn.", retry=True, restart=True)
+            out = open(part, "r+b")  # noqa: SIM115 - wird unten im with geschlossen
+            out.truncate(expected)
+            while block := out.read(CHUNK):  # Prüfsumme über das schon Geschriebene
+                digest.update(block)
+            out.seek(expected)
+            index, written = resume_from, expected
+        else:
+            out = open(part, "wb")  # noqa: SIM115
+        remember()
+        with out:
             while True:
                 if stop():
                     raise TransferAborted
@@ -260,6 +343,7 @@ def receive_relay(
                 written += len(plain)
                 _ack(sink, item, index)
                 index += 1
+                remember()
                 if not progress(written):
                     raise TransferAborted
             out.flush()
@@ -269,13 +353,18 @@ def receive_relay(
             os.utime(part, (mtime, mtime))
         name = safepath.finalize(part, directory, job["name"])
     except OSError as exc:
-        _drop(part)
+        keep_part = True
         raise TransferFailed(
             f"Schreiben fehlgeschlagen: {exc.strerror or exc}", retry=True
         ) from exc
-    except BaseException:
-        _drop(part)
+    except BaseException as exc:
+        keep_part = not _finished_for_good(sink, item, exc)
         raise
+    finally:
+        if not keep_part and os.path.exists(part):
+            _drop(part)
+        if not keep_part and resume is not None:
+            resume.drop("receive", item)
     note = "" if written == job.get("size") else "Die Datei hat sich seit der Indizierung geändert."
     return digest.hexdigest(), written, name, note
 

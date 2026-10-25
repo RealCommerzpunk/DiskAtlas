@@ -12,6 +12,13 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Relay: Fortsetzen statt Neustart** (Roadmap M3): Bricht eine Übertragung zwischen zwei
+  Rechnern ab (Netz, Neustart, abgelaufene Lease), geht es beim nächsten Versuch beim letzten
+  bestätigten Stück weiter: Der Server behält den Relay-Stand, der Sender seinen Einmal-Schlüssel
+  (nur zusammen mit unveränderter Quelle, sonst neuer Schlüssel und Neubeginn – AES-GCM-Nonces
+  werden nie mit anderem Inhalt wiederverwendet), der Empfänger seine Teildatei. Fehlt etwas,
+  beginnen beide Seiten sauber von vorn. Nur endgültig beendete Übertragungen räumen auf; Reste
+  älter als 15 Tage entfernt der Agent selbst.
 - **Fortschritt laufender Kopien** (Roadmap M3): Die Anfrage zeigt je Datei einen Balken mit
   Prozent (und ob sie über den Server läuft) und lädt sich alle 5 Sekunden neu, solange etwas läuft;
   die Übersicht *Anfragen* zeigt den Gesamtfortschritt. Der Admin sieht unter *Verwaltung* die

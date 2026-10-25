@@ -282,7 +282,7 @@ def test_revoked_share_stops_the_relay(world, tmp_path, monkeypatch):
     assert relay.STORE.names() == set()
 
 
-def test_expired_lease_requeues_and_cleans_the_relay(world, tmp_path, monkeypatch):
+def test_expired_lease_requeues_and_keeps_the_relay_for_resuming(world, tmp_path, monkeypatch):
     anna, bob = two_machines(world, tmp_path, monkeypatch)
     bob_requests(world, anna, bob)
     (send,) = [j for j in anna.jobs() if j["role"] == "send"]
@@ -298,8 +298,10 @@ def test_expired_lease_requeues_and_cleans_the_relay(world, tmp_path, monkeypatc
         copies.sweep(s)
         s.commit()
         item = s.get(CopyItem, send["id"])
-        assert (item.state, item.relay_pending, item.relay_next) == ("queued", False, 0)
-    assert relay.STORE.names() == set()
+        assert (item.state, item.relay_pending, item.relay_next) == ("queued", True, 0)
+    assert len(relay.STORE.names()) == 1, "das hochgeladene Stück bleibt für das Fortsetzen"
+    (again,) = [j for j in anna.jobs() if j["role"] == "send"]
+    assert (again["resume_from"], again["epk"]) == (1, "AAAA")
 
 
 def test_recover_removes_orphans_and_requeues_lost_chunks(world, tmp_path, monkeypatch):
@@ -354,3 +356,134 @@ def test_key_file_is_created_once_and_private(tmp_path):
 
     if sys.platform != "win32":
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+# ------------------------------------------------------------------ Fortsetzen nach Abbruch
+def _interrupt_after(monkeypatch, sink_cls, method, calls):
+    """Lässt `method` nach `calls` Aufrufen mit einem Netzwerkfehler scheitern (einmalig)."""
+    real = getattr(sink_cls, method)
+    state = {"n": 0, "done": False}
+
+    def flaky(self, *args, **kwargs):
+        state["n"] += 1
+        if not state["done"] and state["n"] > calls:
+            state["done"] = True
+            raise transfer.TransferFailed("Netz weg", retry=True)
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(sink_cls, method, flaky)
+    return state
+
+
+def _uploads(monkeypatch):
+    seen = []
+    real = relay.RelayStore.write
+
+    def spy(self, data):
+        seen.append(len(data))
+        return real(self, data)
+
+    monkeypatch.setattr(relay.RelayStore, "write", spy)
+    return seen
+
+
+def test_interrupted_receiver_resumes_without_resending(world, tmp_path, monkeypatch):
+    anna, bob = two_machines(world, tmp_path, monkeypatch)
+    bob_requests(world, anna, bob)
+    uploads = _uploads(monkeypatch)
+    _interrupt_after(monkeypatch, HttpSink, "relay_get", 4)  # Empfänger fällt nach 3 Stücken aus
+    send, receive = run_both(anna, bob)
+    assert states(world)["geheim.bin"] == ("queued", "upload")
+    first = len(uploads)
+    assert list((bob.dst / "Von Anna").glob(".diskatlas-*.part")), "Teildatei bleibt"
+    run_both(anna, bob)  # zweiter Versuch
+    assert (bob.dst / "Von Anna" / "geheim.bin").read_bytes() == SECRET
+    assert states(world)["geheim.bin"] == ("done", "upload")
+    chunks = -(-len(SECRET) // transfer.CHUNK) + 1  # Datenstücke + Abschluss
+    assert len(uploads) == chunks and first < chunks, "nichts doppelt hochgeladen"
+    assert relay.STORE.names() == set()
+    assert not list((bob.dst / "Von Anna").glob(".diskatlas-*"))
+    assert not list((tmp_path / "anna" / "d" / "relay-resume").glob("*.json"))
+    assert not list((tmp_path / "bob" / "d" / "relay-resume").glob("*.json"))
+
+
+def test_changed_source_restarts_with_a_new_key(world, tmp_path, monkeypatch):
+    """Ändert sich die Quelle zwischen zwei Versuchen, darf derselbe Schlüssel nicht weiter
+    verwendet werden (AES-GCM-Nonce) – beide Seiten beginnen von vorn."""
+    anna, bob = two_machines(world, tmp_path, monkeypatch)
+    bob_requests(world, anna, bob)
+    _interrupt_after(monkeypatch, HttpSink, "relay_get", 4)
+    run_both(anna, bob)
+    with world.db.session() as s:
+        first_epk = s.scalar(select(CopyItem.relay_epk))
+    changed = SECRET.replace(b"streng", b"STRENG")
+    (anna.src / "geheim.bin").write_bytes(changed)
+    import os
+    os.utime(anna.src / "geheim.bin", ns=(1, 1))
+    (job,) = [j for j in anna.jobs() if j["role"] == "send"]
+    assert job["resume_from"] > 0
+    anna.run(job)  # erkennt die Änderung und meldet „von vorn“
+    with world.db.session() as s:
+        item = s.scalar(select(CopyItem))
+        assert (item.state, item.relay_next, item.relay_epk) == ("queued", 0, None)
+    assert relay.STORE.names() == set()
+    run_both(anna, bob)
+    assert (bob.dst / "Von Anna" / "geheim.bin").read_bytes() == changed
+    with world.db.session() as s:
+        assert s.scalar(select(CopyItem.state)) == "done"
+    assert first_epk
+
+
+def test_lost_part_file_restarts_cleanly(world, tmp_path, monkeypatch):
+    anna, bob = two_machines(world, tmp_path, monkeypatch)
+    bob_requests(world, anna, bob)
+    _interrupt_after(monkeypatch, HttpSink, "relay_get", 4)
+    run_both(anna, bob)
+    for part in (bob.dst / "Von Anna").glob(".diskatlas-*.part"):
+        part.unlink()  # z. B. vom Benutzer gelöscht
+    (send,) = [j for j in anna.jobs() if j["role"] == "send"]
+    sender = threading.Thread(target=anna.run, args=(send,), daemon=True)
+    sender.start()
+    receive = None
+    while receive is None:
+        receive = next((j for j in bob.jobs() if j["role"] == "receive"), None)
+    bob.run(receive)  # Teildatei fehlt: von vorn
+    sender.join(30)
+    with world.db.session() as s:
+        assert (s.scalar(select(CopyItem.state)), s.scalar(select(CopyItem.relay_next))) == (
+            "queued", 0)
+    run_both(anna, bob)
+    assert (bob.dst / "Von Anna" / "geheim.bin").read_bytes() == SECRET
+
+
+def test_old_resume_entries_and_parts_are_cleaned_up(tmp_path):
+    from diskatlas.agent.resume import MAX_AGE, ResumeStore
+
+    store = ResumeStore(tmp_path / "r")
+    part = tmp_path / ".diskatlas-x.part"
+    part.write_bytes(b"halb")
+    store.save("receive", "a" * 32, {"part": str(part), "chunks": 1, "bytes": 4})
+    store.save("send", "b" * 32, {"key": "k"})
+    import time
+
+    assert store.cleanup(time.time()) == 0
+    assert store.cleanup(time.time() + MAX_AGE + 1) == 2
+    assert not part.exists() and store.load("send", "b" * 32) is None
+    try:
+        store.save("send", "../evil", {})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ungültige ID akzeptiert")
+
+
+def test_transfer_state_only_for_involved_agents(world, tmp_path, monkeypatch):
+    anna, bob = two_machines(world, tmp_path, monkeypatch)
+    bob_requests(world, anna, bob)
+    with world.db.session() as s:
+        item_id = s.scalar(select(CopyItem.id))
+    for who, expected in (("anna", 200), ("bob", 200), ("master", 404)):
+        r = world.agent(who).get(f"/api/v1/ingest/transfers/{item_id}/state")
+        assert r.status_code == expected, who
+    assert world.agent("anna").get(
+        f"/api/v1/ingest/transfers/{item_id}/state").json() == {"state": "queued"}
