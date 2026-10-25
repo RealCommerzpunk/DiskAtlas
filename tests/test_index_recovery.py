@@ -72,20 +72,63 @@ def test_old_running_state_from_earlier_versions_expires(db):
         assert _volume(s).index_status == "failed"
 
 
-def test_next_index_removes_leftovers_of_aborted_runs(db, monkeypatch):
+def test_leftovers_are_purged_in_the_background_in_small_steps(db, monkeypatch):
+    from diskatlas.services import maintenance
+
     _setup(db)
-    monkeypatch.setattr(ingest, "_PURGE_BATCH", 7)  # in mehreren Stücken
+    monkeypatch.setattr(maintenance, "BATCH", 7)  # in mehreren kurzen Transaktionen
     with db.session() as s:
         for attempt in range(3):  # drei abgebrochene Läufe ohne Abschluss
             scan = ingest.begin_index(s, KEY, VOL)
             ingest.add_files(s, KEY, VOL, scan, _files(20, f"a{attempt}-"))
-        s.commit()
-        assert _count(s) == 10 + 20  # begin_index räumt jeweils den vorigen Rest weg
+        assert _count(s) == 10 + 60, "begin_index löscht nichts (keine lange Sperre)"
+    maintenance.run_once(db, pause=0)
+    with db.session() as s:
+        assert _count(s) == 10 + 20, "nur aktiver Index und der laufende Versuch bleiben"
+        ingest.add_files(s, KEY, VOL, _volume(s).pending_scan_id, _files(5, "ok"))
+        ingest.finish_index(s, KEY, VOL, _volume(s).pending_scan_id)
+        assert _volume(s).file_count == 25 and _volume(s).index_status == "done"
+    maintenance.run_once(db, pause=0)
+    with db.session() as s:
+        assert _count(s) == 25 and _volume(s).purge_pending is False
+
+
+def test_finish_does_not_delete_the_old_index_itself(db):
+    """Der Abschluss schaltet nur um; 846 000 alte Zeilen zu löschen dauerte auf Unraid so lange,
+    dass andere Anfragen „database is locked“ bekamen."""
+    _setup(db)
+    with db.session() as s:
         scan = ingest.begin_index(s, KEY, VOL)
-        assert _count(s) == 10, "nur noch der gültige Index"
-        ingest.add_files(s, KEY, VOL, scan, _files(5, "ok"))
+        ingest.add_files(s, KEY, VOL, scan, _files(3, "neu"))
         ingest.finish_index(s, KEY, VOL, scan)
-        assert _count(s) == 5 and _volume(s).index_status == "done"
+        assert _count(s) == 13 and _volume(s).file_count == 3
+    with db.session() as s:
+        rows, total = queries.search_files(s, queries.FileQuery(q=".txt"))
+        assert total == 3, "die Suche sieht sofort nur den neuen Index"
+
+
+def test_last_seen_update_never_fails_a_request(db, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+
+    from diskatlas.db.models import Client, User
+    from diskatlas.services import users
+    from diskatlas.web import security
+
+    with db.session() as s:
+        users.bootstrap_master(s, "geheimgeheim")
+        admin = s.scalar(select(User))
+        _, token = users.create_client(s, admin, "pc")
+    with db.session() as s:
+        real = s.commit
+
+        def locked():
+            raise OperationalError("UPDATE clients", {}, Exception("database is locked"))
+
+        monkeypatch.setattr(s, "commit", locked)
+        client = users.find_client_by_token(s, token)
+        assert client is not None and client.token_hash == security.hash_token(token)
+        monkeypatch.setattr(s, "commit", real)
+    assert Client
 
 
 def test_late_batch_revives_an_expired_run(db):

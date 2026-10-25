@@ -47,7 +47,12 @@ Dann den Container anlegen, am einfachsten mit der mitgelieferten Vorlage:
 1. Vorlage im Unraid-Terminal herunterladen:
    `wget -O /boot/config/plugins/dockerMan/templates-user/my-diskatlas.xml https://raw.githubusercontent.com/RealCommerzpunk/DiskAtlas/main/deploy/unraid/diskatlas.xml`
 2. Unraid → *Docker* → *Add Container* → Vorlage **DiskAtlas** wählen.
-3. Port (Standard 8765), Datenpfad (`/mnt/user/appdata/diskatlas`), Passwort eintragen → *Apply*.
+3. Port (Standard 8765), Datenpfad, Passwort eintragen → *Apply*.
+   **Datenpfad:** Mit Cache-Pool besser `/mnt/cache/appdata/diskatlas` statt
+   `/mnt/user/appdata/diskatlas`. Unter `/mnt/user` liegt Unraids FUSE-Dateisystem; SQLite ist dort
+   deutlich langsamer, was bei großen Dateiindizes zu „database is locked“ führen kann. Liegt
+   `appdata` auf dem Cache (Standard), sind das dieselben Dateien – nur der Weg ist direkter.
+   Umstellen: Container stoppen, Pfad *Daten* ändern, starten.
 
 Alternativ per Compose: `docker-compose.yml` verwenden (siehe Kommentar in der Datei).
 

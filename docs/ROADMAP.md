@@ -82,11 +82,10 @@ behoben.
       Formulare nicht blockieren (Kopfzeile `X-Forwarded-Host`).
 - [x] **Hängende Indizierung der Systemplatte** (gemeldet am 25.10.) ✅ behoben, in 0.8.0:
       abgebrochene Läufe werden erkannt, der Agent versucht es nach 10 min erneut.
-- [ ] **Server antwortet beim Indizieren der Systemplatte mit Fehler 500** (gemeldet 25.10., 0.9.0):
-      Der Agent versucht es jetzt alle 10/20/40 min erneut, der Server lehnt Heartbeat und
-      Datei-Stücke aber zeitweise ab und setzt die Verbindung zurück. Ursache steht im
-      Container-Log (ab 0.9.1 auch unter *Verwaltung → Server-Meldungen*). Verdacht: SQLite auf
-      `/mnt/user` (Unraid-FUSE) – dann Datenordner auf `/mnt/cache/appdata/diskatlas` legen.
+- [x] **Server antwortete beim Indizieren der Systemplatte mit Fehler 500** ✅ (0.9.1): Ursache
+      „database is locked“ – große Löschungen in einer Transaktion, verstärkt durch `/mnt/user`
+      (FUSE). Jetzt Aufräumen im Hintergrund in kleinen Schritten; Datenpfad
+      `/mnt/cache/appdata/diskatlas` empfohlen.
 - [x] **Indizierungs-Banner verdeckte das Benutzermenü** ✅ (0.9.1): jetzt kompakte Anzeige in der
       Kopfleiste (pulsierender Punkt, Plattenname, Dateizahl, Tooltip „nicht abziehen“).
 - [ ] **Hinweis „Bitte Platte anschließen“:** kommt die Tray-Meldung an, und nur einmal am Tag?

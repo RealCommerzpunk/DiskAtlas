@@ -11,6 +11,21 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Behoben
+- **„database is locked“ beim Indizieren großer Platten** (Migration `0017`; gemeldet mit dem
+  Container-Log vom 25.10.). Der Server löschte beim Abschluss einer Indizierung den alten Index
+  (bei der Systemplatte 846 000 Zeilen) und beim Start die Reste abgebrochener Läufe jeweils in
+  einem Rutsch und baute den Ordnerindex in derselben Transaktion – auf Unraid (`/mnt/user`, FUSE)
+  sperrte das die Datenbank länger als 30 Sekunden, Heartbeats und Datei-Stücke scheiterten mit
+  Fehler 500. Jetzt schaltet der Abschluss nur noch um (0,13 s statt Minuten); alte Zeilen räumt
+  ein Hintergrund-Aufräumer in Häppchen von 5 000 Zeilen mit Pausen weg, und der Ordnerindex wird
+  erst gelesen und dann kurz geschrieben. Die Aktualisierung „Client zuletzt gesehen“ lässt bei
+  einer Sperre keine Anfrage mehr scheitern.
+
+### Geändert
+- Unraid: Empfehlung, den Datenpfad bei vorhandenem Cache-Pool auf `/mnt/cache/appdata/diskatlas`
+  zu legen (Vorlage und `docs/UNRAID.md`).
+
 ### Geändert
 - **Laufende Indizierung als kompakte Anzeige in der Kopfleiste** statt als breites Banner, das
   oben klebte und das aufgeklappte Benutzermenü verdeckte: pulsierender Punkt, Plattenname und

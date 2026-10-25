@@ -85,6 +85,9 @@ def test_file_index_replaces_previous_scan(db):
     run_scan([FileRecord("Filme/a.mkv", 100, 1_700_000_000.0), FileRecord("b.txt", 5, None)])
     run_scan([FileRecord("Filme/c.mkv", 300, 1_700_000_000.0)])
     run_scan([FileRecord("kaputt.bin", 1, None)], success=False)
+    from diskatlas.services import maintenance
+
+    maintenance.run_once(db, pause=0)  # Reste räumt der Hintergrund weg
 
     with db.session() as s:
         names = sorted(s.scalars(select(FileEntry.name)))

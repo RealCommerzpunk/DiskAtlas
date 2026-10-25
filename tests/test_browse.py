@@ -49,7 +49,10 @@ def _setup(world):
 
 
 def test_ingest_computes_parent_and_directory_totals(world):
+    from diskatlas.services import maintenance
+
     vol = _setup(world)
+    maintenance.run_once(world.db, pause=0)  # Ordnerindex entsteht im Hintergrund
     with world.db.session() as s:
         parents = dict(s.execute(select(FileEntry.path, FileEntry.parent)).all())
         assert parents["readme.txt"] == ""

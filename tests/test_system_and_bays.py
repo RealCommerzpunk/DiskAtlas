@@ -198,5 +198,11 @@ def test_reformat_resets_file_index(db):
     with db.session() as s:
         vol = s.scalar(select(Volume))
         assert vol.index_status == "never" and vol.file_count == 0
-        assert s.scalar(select(FileEntry.id)) is None, "alter Dateiindex ist verworfen"
+        assert vol.active_scan_id is None, "alter Dateiindex ist sofort ungültig"
+    from diskatlas.services import maintenance
+
+    maintenance.run_once(db, pause=0)
+    with db.session() as s:
+        vol = s.scalar(select(Volume))
+        assert s.scalar(select(FileEntry.id)) is None, "und wird im Hintergrund gelöscht"
         assert vol.fs_uuid == "NEW-UUID"

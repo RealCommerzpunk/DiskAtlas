@@ -38,7 +38,7 @@ from diskatlas.db.models import (
     Volume,
     disk_labels,
 )
-from diskatlas.services import emptylabel
+from diskatlas.services import emptylabel, ingest
 from diskatlas.services import labels as label_service
 
 log = logging.getLogger(__name__)
@@ -211,12 +211,17 @@ def _copy_volumes(src: Session, target: Database, disk: Disk, disk_id: int, prog
                 dst.flush()
             elif new.active_scan_id:
                 continue  # schon vollständig übernommen (Import wird fortgesetzt)
-            # Reste eines abgebrochenen Imports dieser Partition entfernen
-            dst.execute(delete(FileEntry).where(FileEntry.volume_id == new.id))
+            scan_id = uuid.uuid4().hex
+            # als „laufend“ markieren: das Aufräumen im Hintergrund lässt diese Zeilen stehen
+            new.pending_scan_id = scan_id
+            dst.commit()
+            # Reste eines abgebrochenen Imports dieser Partition in kurzen Schritten entfernen
+            ingest.purge_step(dst, new, pause=0.05)
             volume_id = new.id
-        if not volume.active_scan_id:
+        if not volume.active_scan_id:  # nie indiziert: nichts zu kopieren
+            with target.session() as dst:
+                dst.get(Volume, volume_id).pending_scan_id = None
             continue
-        scan_id = uuid.uuid4().hex
         copied = 0
         stmt = (select(FileEntry.path, FileEntry.parent, FileEntry.name, FileEntry.extension,
                        FileEntry.size, FileEntry.mtime)
@@ -235,6 +240,7 @@ def _copy_volumes(src: Session, target: Database, disk: Disk, disk_id: int, prog
         with target.session() as dst:  # erst jetzt ist der Index der Partition aktiv
             new = dst.get(Volume, volume_id)
             new.active_scan_id = scan_id
+            new.pending_scan_id = None
             new.index_status = "done"
             new.file_count = copied
             new.file_bytes = dst.scalar(select(func.coalesce(func.sum(FileEntry.size), 0))

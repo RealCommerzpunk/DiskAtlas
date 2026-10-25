@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from functools import cache
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from diskatlas.db.models import Client, User
@@ -127,5 +128,10 @@ def find_client_by_token(
     now = now or utcnow()
     if client.last_seen is None or now - client.last_seen > LAST_SEEN_INTERVAL:
         client.last_seen = now
-        session.commit()
+        try:
+            session.commit()
+        except OperationalError:  # Datenbank gerade gesperrt: „zuletzt gesehen“ ist nicht wichtig
+            session.rollback()
+            client = session.scalar(
+                select(Client).where(Client.token_hash == security.hash_token(token)))
     return client
