@@ -9,7 +9,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.8.0 (25.10.2026) |
+| **Aktuelle Version** | 0.9.0 (25.10.2026) |
 | **Nächster Meilenstein** | M1 – 0.7/0.8 im echten Betrieb prüfen, danach M4 |
 | **Zuletzt aktualisiert** | 25.10.2026 (abends) |
 
@@ -52,7 +52,7 @@ Kein Code; wartet auf dich.
 - [x] **Einrichtung nach dem Umstieg auf Mehrbenutzer:** Client „LinuxMint“ angelegt, Agent meldet
       sich (Stand 25.10.).
 - [ ] **Altbestand importieren** (46 Platten aus der früheren lokalen Datenbank): Werkzeug ist da
-      (*Verwaltung → Altbestand importieren*, siehe [UNRAID.md](UNRAID.md)); einmal ausführen.
+      (ab 0.9.0: *Verwaltung → Altbestand importieren*, siehe [UNRAID.md](UNRAID.md)); einmal ausführen.
 - [ ] **SignPath-Antrag** für die Signatur der Windows-Datei
       ([CODE_SIGNING.md](CODE_SIGNING.md)). Der Build ist vorbereitet, es fehlen die Zugangsdaten.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
@@ -199,7 +199,8 @@ zu große Dateien abgewiesen werden.
 
 | Version | Datum | Wichtigste Inhalte |
 |---|---|---|
-| **0.8.0** | 25.10.2026 | Label „leer“ für leere Platten; **Löschprotokolle** (PDF) an Platten, Sammel-Upload mit Zuordnung per Seriennummer; „Jetzt neu scannen“; Agenten-Übersicht und gemerkte Schlüssel der Zielrechner; Kopierfortschritt; Relay setzt nach Abbruch fort; CSV/JSON-Export; Fix: hängende Indizierung, gesperrtes Umbenennen im Server-Betrieb; Roadmap und Doku in `docs/` |
+| **0.9.0** | 25.10.2026 | **Altbestand importieren** (Verwaltung bzw. `diskatlas db import`): Platten einer alten DiskAtlas-Datenbank in die laufende übernehmen |
+| 0.8.0 | 25.10.2026 | Label „leer“ für leere Platten; **Löschprotokolle** (PDF) an Platten, Sammel-Upload mit Zuordnung per Seriennummer; „Jetzt neu scannen“; Agenten-Übersicht und gemerkte Schlüssel der Zielrechner; Kopierfortschritt; Relay setzt nach Abbruch fort; CSV/JSON-Export; Fix: hängende Indizierung, gesperrtes Umbenennen im Server-Betrieb; Roadmap und Doku in `docs/` |
 | 0.7.0 | 27.09.2026 | Dateibrowser mit Ordnern und Checkboxen; **„Datei anfordern“** mit Kopierberechtigung je Freigabe (nie / nachfragen / immer), Zustimmung des Besitzers, Hinweis „Platte anschließen“; Agent kopiert nur mit Haken am Rechner, mit Pfadschutz; **Relay** zwischen Rechnern, Ende-zu-Ende verschlüsselt, seriell, mit begrenztem Platz; Benutzermenü; „Master“ heißt „Admin“; Startpasswort nur beim ersten Start; Schutz vor Fremdseiten-Anfragen |
 | 0.6.0 | 27.09.2026 | Schächte je Client (Anzahl, Assistent, „Keine Wechselschächte“); Filter und Gruppierung „zuletzt an Client“ |
 | 0.5.1 | 27.09.2026 | Dauer-Neuindex der Systemplatte behoben (Schwellen, Mindestabstand) |

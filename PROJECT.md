@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.8.0 (siehe `src/diskatlas/__init__.py`) |
+| **Aktuelle Version** | 0.9.0 (siehe `src/diskatlas/__init__.py`) |
 | **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
 | **Zuletzt aktualisiert** | 2026-10-25 |
 
@@ -65,7 +65,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Doubletten | Dateien (Name+Größe) und Ordner (identischer Inhalt) aus dem Index, ohne Prüfsummen | ✅ 0.2.0 |
 | API | REST `/api/v1`, OpenAPI unter `/docs` | ✅ 0.1.0 |
 | Verteilt | Agent → HTTP-Ingest → zentraler Server; jeder Client mit eigenem Token | ✅ 0.1.0 (Client-Tokens: 0.5.0) |
-| Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy`; `db import` / Verwaltung: Altbestand einer anderen DiskAtlas-DB einfügen (`tools/importer.py`) | ✅ 0.1.0 (Import: Unreleased) |
+| Datenbank | SQLite, PostgreSQL, Migrationen (Alembic), `db copy`; `db import` / Verwaltung: Altbestand einer anderen DiskAtlas-DB einfügen (`tools/importer.py`) | ✅ 0.1.0 (Import: 0.9.0) |
 | Betrieb | Docker/Compose, systemd-Dienst, Windows-Autostart | ✅ 0.1.0 |
 | Agent-Programm | Tray-Symbol mit Verbindungsstatus, Einstellungsfenster (config.toml), Autostart; Betriebsart „Server“ oder „nur dieser PC“ (Oberfläche + DB im Programm); fertige Datei für Windows (mit smartctl.exe) und Linux (PyInstaller, GitHub Actions) | ✅ 0.4.0 |
 | Benutzer | Benutzerkonten mit Freischaltung durch den Admin (Antrag unter `/register`), Anmeldung mit Name + Passwort, pro Benutzer beliebig viele Clients mit eigenem Token (Konto-Seite) | ✅ 0.5.0 |

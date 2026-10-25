@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-25
+
 ### Hinzugefügt
 - **Altbestand importieren:** Platten einer alten DiskAtlas-Datenbank (z. B. aus dem Betrieb „Nur
   dieser PC“) samt Partitionen, Dateiindex, SMART-Verlauf, eigenen Angaben und Labels in die
