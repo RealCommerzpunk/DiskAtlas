@@ -59,6 +59,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Systemdatenträger ausblenden | Haken im Dashboard (Standard an), blendet Platten mit Label „System“ in UI-Listen und Suchen aus | ✅ 0.2.0 |
 | Hot-Swap-Schächte | 4 grafische Einschübe als erste Zeilen der Festplattenliste, Port→Schacht per Assistent, Linux/SATA | ✅ 0.2.0 |
 | Änderungserkennung | Neuindex bei deutlich geänderter Belegung (≥ 50 MB, `change_min_bytes`) + 30 s Ruhe, höchstens alle 10 min; Systemvolumes nie | ✅ 0.2.0 (Schwellen: 0.5.1) |
+| Neu scannen | Knopf auf der Plattenseite, Auftrag an den Agenten der Platte (`rescan`) | ✅ (Unreleased) |
 | Volume umbenennen | Dateisystem-Label aus der GUI ändern (Linux udisks2/polkit, dabei bei Bedarf aus-/einhängen; Windows `Set-Volume`), nur lokal | ✅ 0.2.0 |
 | Indizierungs-Warnbanner | „nicht abziehen“ mit Zwischenstand auf jeder Seite (`/api/v1/activity`) | ✅ 0.2.0 |
 | Doubletten | Dateien (Name+Größe) und Ordner (identischer Inhalt) aus dem Index, ohne Prüfsummen | ✅ 0.2.0 |

@@ -162,8 +162,8 @@ zu große Dateien abgewiesen werden.
 
 ## M3 – Bedienung und Überblick ⏳ (0.9)
 
-- [ ] **Knopf „Jetzt neu scannen“** auf der Plattenseite. Der Agent kann den Auftrag schon
-      ausführen; es fehlen Knopf und Server-Route.
+- [x] **Knopf „Jetzt neu scannen“** auf der Plattenseite ✅ (erscheint mit 0.8). Dabei behoben:
+      Umbenennen war im Server-Betrieb seit 0.6.0 gesperrt.
 - [ ] **Agenten-Übersicht:** je Client letzter Heartbeat, Programmversion, „Kopieren erlaubt“
       ja/nein. Heute steht unter *Konto* nur „zuletzt gemeldet“.
 - [ ] **Schlüssel-Fingerabdruck** je Client anzeigen und vergleichen. Das schließt die bekannte

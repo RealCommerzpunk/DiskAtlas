@@ -34,6 +34,14 @@ def enqueue(
     return command
 
 
+def has_open(session: Session, disk_key: str, kind: str) -> bool:
+    """Gibt es für die Platte schon einen offenen Auftrag dieser Art?"""
+    return session.scalar(
+        select(Command.id).where(Command.disk_key == disk_key, Command.kind == kind,
+                                 Command.status.in_(("pending", "running"))).limit(1)
+    ) is not None
+
+
 def claim_pending(
     session: Session, host: str, now: datetime | None = None, user_id: int | None = None
 ) -> list[dict]:

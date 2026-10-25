@@ -90,6 +90,13 @@ def get(
     return HostSnapshot(state.host, state.updated_at, present, list(data.get("ports", [])))
 
 
+def for_disk(session: Session, disk) -> HostSnapshot | None:
+    """Zustand des Agenten, an dem die Platte zuletzt hing (Client-Betrieb: je Client)."""
+    if disk.last_client_id is not None:
+        return get(session, f"{CLIENT_KEY}{disk.last_client_id}", disk.owner_user_id)
+    return get(session, disk.last_host, disk.owner_user_id)
+
+
 def known_hosts(session: Session, user_id: int | None = None) -> list[HostSnapshot]:
     """Bekannte Rechner; mit `user_id` nur die, die dieser Benutzer gemeldet hat."""
     query = session.query(HostState.host).order_by(HostState.host)

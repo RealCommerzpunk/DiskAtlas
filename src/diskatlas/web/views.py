@@ -430,13 +430,33 @@ def disk_delete(
 
 
 def _relabel_block_reason(session: Session, disk: Disk) -> str:
-    """Leer, wenn das Umbenennen möglich ist; sonst der Grund (für die Oberfläche)."""
+    """Leer, wenn ein Auftrag an den Agenten (Umbenennen, Neu scannen) möglich ist; sonst der
+    Grund (für die Oberfläche)."""
     if not disk.is_connected:
         return "Die Festplatte ist nicht angeschlossen."
-    snapshot = hosts.get(session, disk.last_host, disk.owner_user_id)
+    snapshot = hosts.for_disk(session, disk)
     if snapshot is None or not snapshot.is_online:
         return f"Der Agent von „{disk.last_host or '?'}“ meldet sich gerade nicht."
     return ""
+
+
+@router.post("/disks/{disk_id}/rescan")
+def disk_rescan(
+    disk_id: int,
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
+    """Der Agent, an dem die Platte hängt, liest sie neu ein (SMART, Belegung, Dateiindex)."""
+    disk = disk_or_404(session, viewer, disk_id, write=True)
+    base = f"/disks/{disk.id}"
+    if reason := _relabel_block_reason(session, disk):
+        return _redirect(f"{base}?{urlencode({'err': reason})}#volumes")
+    if commands.has_open(session, disk.disk_key, "rescan"):
+        return _redirect(f"{base}?{urlencode({'msg': 'Neu-Scan ist bereits beauftragt.'})}#volumes")
+    commands.enqueue(session, disk.last_host, "rescan", {"disk_key": disk.disk_key},
+                     disk_key=disk.disk_key, user_id=disk.owner_user_id)
+    text = f"Neu-Scan an „{disk.last_host}“ gesendet – das Ergebnis erscheint hier."
+    return _redirect(f"{base}?{urlencode({'msg': text})}#volumes")
 
 
 @router.post("/volumes/{volume_id}/label")
