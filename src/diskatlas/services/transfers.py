@@ -27,12 +27,18 @@ class TransferError(LookupError):
 
 
 def register_capabilities(
-    session: Session, client: Client, transfer: bool, pubkey: str | None
+    session: Session, client: Client, transfer: bool, pubkey: str | None,
+    version: str | None = None, platform: str | None = None,
 ) -> None:
-    """Heartbeat: darf der Agent Übertragungen ausführen, und mit welchem öffentlichen Schlüssel?"""
+    """Heartbeat: darf der Agent Übertragungen ausführen, mit welchem öffentlichen Schlüssel,
+    und welche Programmversion auf welchem System läuft dort?"""
     client.transfer_enabled = bool(transfer)
     if pubkey is not None:
         client.pubkey = pubkey[:64] or None
+    if version is not None:
+        client.agent_version = version[:20] or None
+    if platform is not None:
+        client.agent_platform = platform[:20] or None
 
 
 def _job(item: CopyItem, role: str) -> dict:
@@ -121,6 +127,9 @@ def jobs_for(session: Session, client: Client, now: datetime | None = None) -> l
         if _claim(session, item, client, now):
             job = _job(item, "send")
             job["target_pubkey"] = target.pubkey
+            # zum Merken des Schlüssels im Agenten (Schutz gegen untergeschobene Schlüssel)
+            job["target_client_id"] = target.id
+            job["target_label"] = f"{target.user.nickname} · {target.nickname}"
             jobs.append(job)
             break  # eine Datei zur Zeit
     for item in _candidates(session, CopyItem.phase == "upload",

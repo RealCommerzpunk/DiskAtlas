@@ -79,6 +79,19 @@ Nach dem Download ausführbar machen: `chmod +x diskatlas-agent-linux-x86_64`. S
 root-Rechte über eine sudo-Regel nur für `smartctl` (siehe [README](../README.de.md#smart-berechtigungen-linux), *SMART-Berechtigungen*);
 `smartmontools` muss installiert sein (`sudo apt install smartmontools`).
 
+## Kopien zwischen Rechnern (Sicherheit)
+
+Mit dem Haken *„Angeforderte Dateien kopieren erlauben“* holt der Agent Kopieraufträge ab. Laufen
+Dateien zwischen zwei Rechnern über den Server, sind sie Ende-zu-Ende verschlüsselt. Jeder Agent hat
+dafür einen eigenen Schlüssel (`relay.key` im Datenordner, nur für dich lesbar).
+
+Das Einstellungsfenster zeigt unter **Sicherheit** den **Fingerabdruck** dieses Rechners. Derselbe
+Wert steht in der Weboberfläche unter *Konto → Meine Clients*. Beim ersten Senden an einen anderen
+Rechner merkt sich der Agent dessen Schlüssel (*Bekannte Zielrechner*). Liefert der Server später
+einen anderen Schlüssel, sendet der Agent nicht und meldet das. Wurde der Agent am Ziel neu
+eingerichtet, dort den Eintrag **vergessen**. Wer ganz sicher gehen will, vergleicht die
+Fingerabdrücke einmal an beiden Rechnern.
+
 ## Wenn etwas nicht klappt
 
 Menü → **Protokolle anzeigen** öffnet den Ordner mit den Protokollen:

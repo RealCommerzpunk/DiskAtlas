@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -10,9 +11,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
+from diskatlas import __version__
 from diskatlas.db.models import Client, Disk, HostState, User
 from diskatlas.services import bays as bay_service
 from diskatlas.services import hosts, users
+from diskatlas.services.ingest import utcnow
 from diskatlas.web import auth
 from diskatlas.web.deps import get_current_user, get_session, require_master
 from diskatlas.web.views import setup_context, templates
@@ -75,7 +78,28 @@ def _account_page(
         "bay_configs": {c.id: bay_service.client_config(c) for c in user.clients},
         "max_bays": bay_service.MAX_BAYS,
         "new_token": new_token, "new_client": new_client,
+        "agents": {c.id: _agent_info(c) for c in user.clients},
+        "server_version": __version__,
     })
+
+
+ONLINE_WINDOW = timedelta(minutes=3)  # Heartbeat alle 60 s; danach gilt der Agent als offline
+PLATFORMS = {"linux": "Linux", "win32": "Windows", "darwin": "macOS"}
+
+
+def _agent_info(client) -> dict:
+    """Zustand des Agenten für die Übersicht: online, Version, System, Kopieren, Fingerabdruck."""
+    from diskatlas.agent.relaycrypto import fingerprint
+
+    online = bool(client.last_seen and utcnow() - client.last_seen < ONLINE_WINDOW)
+    return {
+        "online": online,
+        "version": client.agent_version,
+        "outdated": bool(client.agent_version and client.agent_version != __version__),
+        "platform": PLATFORMS.get(client.agent_platform or "", client.agent_platform or ""),
+        "transfer": client.transfer_enabled,
+        "fingerprint": fingerprint(client.pubkey),
+    }
 
 
 @router.get("/account", response_class=HTMLResponse)

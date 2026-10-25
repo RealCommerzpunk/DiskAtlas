@@ -429,6 +429,9 @@ class Client(Base):
     transfer_enabled: Mapped[bool] = mapped_column(default=False, server_default="0")
     # Öffentlicher X25519-Schlüssel (base64) für die Ende-zu-Ende-Verschlüsselung im Relay
     pubkey: Mapped[str | None] = mapped_column(String(64))
+    # Vom Agenten im Heartbeat gemeldet: Programmversion und Betriebssystem
+    agent_version: Mapped[str | None] = mapped_column(String(20))
+    agent_platform: Mapped[str | None] = mapped_column(String(20))
 
     user: Mapped[User] = relationship(back_populates="clients")
 

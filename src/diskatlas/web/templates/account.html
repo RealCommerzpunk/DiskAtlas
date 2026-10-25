@@ -22,13 +22,19 @@
   {% endif %}
   <div class="table-wrap">
   <table>
-    <thead><tr><th>Name</th><th>Angelegt</th><th>Zuletzt gemeldet</th><th>Wechselschächte</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Agent</th><th>Zuletzt gemeldet</th><th>Wechselschächte</th><th></th></tr></thead>
     <tbody>
     {% for c in user.clients %}
       <tr>
-        <td>{{ c.nickname }}</td>
-        <td>{{ c.created_at.strftime('%d.%m.%Y') }}</td>
-        <td>{{ c.last_seen.strftime('%d.%m.%Y %H:%M') if c.last_seen else '–' }}</td>
+        {% set a = agents[c.id] %}
+        <td>{{ c.nickname }}<div class="muted small">angelegt {{ c.created_at.strftime('%d.%m.%Y') }}</div></td>
+        <td class="small">
+          {% if a.version %}Version {{ a.version }}{% if a.outdated %} <span class="badge cmd-pending" title="Der Server hat Version {{ server_version }}; Agent bitte aktualisieren">veraltet</span>{% endif %}{% if a.platform %} · {{ a.platform }}{% endif %}{% else %}<span class="muted">noch keine Angaben</span>{% endif %}
+          <div>{% if a.transfer %}Kopieren erlaubt{% else %}<span class="muted">Kopieren aus</span>{% endif %}</div>
+          {% if a.fingerprint %}<div title="Fingerabdruck des Schlüssels für Kopien zwischen Rechnern – vergleiche ihn mit den Agent-Einstellungen dieses Rechners">🔑 <code>{{ a.fingerprint }}</code></div>{% endif %}
+        </td>
+        <td>{% if a.online %}<span class="badge online">online</span>{% elif c.last_seen %}<span class="badge offline">offline</span>{% endif %}
+          <div class="small muted">{{ c.last_seen.strftime('%d.%m.%Y %H:%M') if c.last_seen else 'noch nie' }}</div></td>
         <td>
           {% set cfg = bay_configs[c.id] %}
           <form method="post" action="/account/clients/{{ c.id }}/bays" class="inline">

@@ -12,6 +12,10 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Agenten-Übersicht** (Migration `0015`, Roadmap M3): Unter *Konto → Meine Clients* steht je
+  Client, ob der Agent online ist, welche Version auf welchem System läuft (mit Hinweis „veraltet“,
+  wenn sie nicht zum Server passt), ob Kopieren erlaubt ist und der **Fingerabdruck** seines
+  Schlüssels für Kopien zwischen Rechnern.
 - **Knopf „Jetzt neu scannen“** auf der Plattenseite (Roadmap M3): Der Agent, an dem die Platte
   hängt, liest SMART, Belegung und Dateiindex neu ein. Nur für den Besitzer (und den Admin), nur bei
   angeschlossener Platte und erreichbarem Agenten; ein zweiter Klick legt keinen doppelten Auftrag an.
@@ -40,6 +44,13 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   DiskAtlas das Label ab – nur das selbst gesetzte; von Hand gesetzte bleiben, von Hand
   abgenommene werden nicht erneut angeheftet. Ein neuer Name in der Einstellung benennt das
   bestehende Label um (und umgekehrt). Beim Serverstart werden auch Platten im Regal bewertet.
+
+### Sicherheit
+- **Gemerkte Schlüssel der Zielrechner:** Beim ersten Senden über den Relay merkt sich der Agent den
+  Schlüssel des Ziels; liefert der Server später einen anderen, sendet er nicht und meldet es am
+  Rechner. Das Einstellungsfenster zeigt unter *Sicherheit* den eigenen Fingerabdruck und die
+  bekannten Zielrechner (mit „vergessen“, z. B. nach Neuinstallation dort). Damit kann ein später
+  manipulierter Server keinen fremden Schlüssel mehr unterschieben.
 
 ### Behoben
 - **Umbenennen von Volumes war im Server-Betrieb gesperrt** („Agent meldet sich gerade nicht“), weil

@@ -6,11 +6,14 @@ import logging
 import queue
 import shutil
 import socket
+import sys
 import threading
 import time
 from collections.abc import Callable
 
+from diskatlas import __version__
 from diskatlas.agent import relaycrypto, transfer
+from diskatlas.agent.peers import PeerStore
 from diskatlas.agent.sinks import Sink
 from diskatlas.config import AgentConfig, default_data_dir
 from diskatlas.probe import list_disks
@@ -95,7 +98,9 @@ class Agent:
         self.notices: list[str] = []
         self.progress_interval = 2.0  # Sekunden zwischen Fortschrittsmeldungen einer Übertragung
         self._relay_key = None
-        self.sink.capabilities = {"transfer": bool(config.allow_transfer)}
+        self.peers = PeerStore(default_data_dir() / "relay-peers.json")
+        self.sink.capabilities = {"transfer": bool(config.allow_transfer),
+                                  "version": __version__, "platform": sys.platform[:20]}
         if config.allow_transfer and relaycrypto.AVAILABLE:
             try:
                 self._relay_key, pubkey = relaycrypto.load_or_create_key(
@@ -366,7 +371,8 @@ class Agent:
             if role == "local":
                 digest, size, name, note = transfer.copy_local(job, disks, progress, stop)
             elif role == "send":
-                sent, note = transfer.send_relay(job, disks, self.sink, progress, stop)
+                sent, note = transfer.send_relay(job, disks, self.sink, progress, stop,
+                                                 known_peers=self.peers)
                 log.info("Datei gesendet: %s (%d Bytes)", job.get("source", {}).get("path"), sent)
                 return  # „fertig“ meldet der Empfänger
             elif role == "receive" and self._relay_key is not None:
@@ -381,6 +387,8 @@ class Agent:
             log.info("Übertragung %s abgebrochen", item)
         except transfer.TransferFailed as exc:
             log.warning("Übertragung %s fehlgeschlagen: %s", item, exc)
+            if exc.notify:
+                self.notices.append(str(exc))
             self._report_transfer_failure(item, str(exc), exc.retry)
         except Exception as exc:  # ein Fehler darf die Schleife nie beenden
             log.exception("Übertragung %s fehlgeschlagen", item)
