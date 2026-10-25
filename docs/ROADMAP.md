@@ -10,8 +10,8 @@
 | | |
 |---|---|
 | **Aktuelle Version** | 0.7.0 (27.09.2026) |
-| **Nächster Meilenstein** | M1 – 0.7.0 im echten Betrieb prüfen (parallel: M2 in Arbeit) |
-| **Zuletzt aktualisiert** | 25.10.2026 |
+| **Nächster Meilenstein** | Release 0.8 (M2 und M3 umgesetzt, Fix der hängenden Indizierung); danach M1 im echten Betrieb und M4 |
+| **Zuletzt aktualisiert** | 25.10.2026 (abends) |
 
 **Zeichen:** ✅ erledigt · 🔜 als Nächstes · ⏳ geplant · 💡 Idee, noch nicht eingeplant ·
 👤 Aufgabe des Betreibers (kein Code)
@@ -25,7 +25,7 @@
 | M0 | Betreiber-Aufgaben | – | Unraid auf 0.7.0, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
 | M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
 | M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch per Seriennummer zuordnen ✅; Methode/Ergebnis auslesen (wartet auf Beispiel-PDF) | ✅ bis auf Rest |
-| M3 | Bedienung und Überblick | 0.9 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ⏳ |
+| M3 | Bedienung und Überblick | 0.8 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ✅ umgesetzt |
 | M4 | Große Bestände und Auswertung | 1.0 | Volltextsuche, Doubletten mit Prüfsumme, Verlaufsdiagramme, SMART-Warnungen, Hot-Plug per Ereignis | ⏳ |
 | – | Ideen | – | Cloud-Betrieb, fremde Platten am eigenen Rechner nutzen | 💡 |
 
@@ -162,7 +162,7 @@ zu große Dateien abgewiesen werden.
 - [ ] **Methode und Ergebnis** auslesen, „Zuletzt gelöscht am … – Ergebnis …“ auf der Plattenseite,
       **„fehlgeschlagen“** deutlich hervorgehoben, Filter „gelöscht / nicht gelöscht“ im Dashboard.
 
-## M3 – Bedienung und Überblick ⏳ (0.9)
+## M3 – Bedienung und Überblick ✅ (umgesetzt, erscheint mit 0.8)
 
 - [x] **Knopf „Jetzt neu scannen“** auf der Plattenseite ✅ (erscheint mit 0.8). Dabei behoben:
       Umbenennen war im Server-Betrieb seit 0.6.0 gesperrt.
