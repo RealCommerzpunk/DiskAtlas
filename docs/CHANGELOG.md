@@ -12,6 +12,10 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Fortschritt laufender Kopien** (Roadmap M3): Die Anfrage zeigt je Datei einen Balken mit
+  Prozent (und ob sie über den Server läuft) und lädt sich alle 5 Sekunden neu, solange etwas läuft;
+  die Übersicht *Anfragen* zeigt den Gesamtfortschritt. Der Admin sieht unter *Verwaltung* die
+  **Relay-Belegung** (belegt/Höchstplatz, Stücke, aktive Übertragungen) – nur Zahlen, keine Inhalte.
 - **Agenten-Übersicht** (Migration `0015`, Roadmap M3): Unter *Konto → Meine Clients* steht je
   Client, ob der Agent online ist, welche Version auf welchem System läuft (mit Hinweis „veraltet“,
   wenn sie nicht zum Server passt), ob Kopieren erlaubt ist und der **Fingerabdruck** seines
