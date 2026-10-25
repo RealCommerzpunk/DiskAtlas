@@ -8,7 +8,7 @@
 | | |
 |---|---|
 | **Aktuelle Version** | 0.9.1 (siehe `src/diskatlas/__init__.py`) |
-| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0; Löschprotokolle, Label „leer“, Export seit 0.8.0; Altbestand-Import seit 0.9.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
 | **Zuletzt aktualisiert** | 2026-10-26 |
 
 ---
@@ -331,6 +331,12 @@ oder englisch – aber einheitlich pro Projekt.
 
 **Release:** `[Unreleased]` im CHANGELOG pflegen →
 `python scripts/bump_version.py minor` → Commit → Tag `vX.Y.Z` → Push mit Tags.
+
+**Sitzungsende (Claude Code):** `/SessionEnde` (`.claude/commands/SessionEnde.md`) bringt Memory,
+CHANGELOG, ROADMAP, PROJECT.md und `docs/CLAUDE.md` auf den Stand und reicht sie per PR ein.
+
+**CI:** `pytest-timeout` (5 min je Test) und 30 min je Lauf; große Testdaten nie als
+`pytest.mark.parametrize`-Werte übergeben (pytest schreibt sie in jeden Fehlerbericht).
 
 ## 10. Pflegeregeln
 

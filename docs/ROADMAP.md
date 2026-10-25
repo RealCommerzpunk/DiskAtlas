@@ -22,8 +22,8 @@
 
 | # | Meilenstein | Version | Inhalt | Stand |
 |---|---|---|---|---|
-| M0 | Betreiber-Aufgaben | – | Unraid auf 0.7.0, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
-| M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
+| M0 | Betreiber-Aufgaben | – | Unraid auf 0.9.1 mit Datenpfad `/mnt/cache`, Altbestand importieren, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
+| M1 | Im echten Betrieb prüfen | 0.9.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
 | M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch per Seriennummer zuordnen ✅; Methode/Ergebnis auslesen (wartet auf Beispiel-PDF) | ✅ bis auf Rest |
 | M3 | Bedienung und Überblick | 0.8 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ✅ umgesetzt |
 | **MV** | **Vertrauen und Datenschutz** | 1.0 | Admin sieht fremde Daten nur mit Erlaubnis; an fremden Platten wird nie etwas gelöscht oder geändert; Übergabe ganzer Bestände nur mit Zustimmung; Prüfprotokoll; Sicherheitsprüfung | 🔜 als Nächstes (vor M4) |
@@ -51,8 +51,10 @@
 
 Kein Code; wartet auf dich.
 
-- [ ] **Unraid auf 0.7.0 aktualisieren.** Danach als **Admin** anmelden (früher „Master“, das
-      Passwort bleibt). Das Passwortfeld der Vorlage darf leer bleiben.
+- [x] **Unraid auf 0.7.0+ aktualisiert**, Anmeldung als Admin (Server lief am 25.10. mit 0.9.0).
+- [ ] **Unraid auf 0.9.1 aktualisieren und Datenpfad umstellen:** Container stoppen, Pfad *Daten*
+      von `/mnt/user/appdata/diskatlas` auf `/mnt/cache/appdata/diskatlas`, starten. Behebt die
+      „database is locked“-Fehler beim Indizieren der Systemplatte (Agent muss nicht neu).
 - [x] **Einrichtung nach dem Umstieg auf Mehrbenutzer:** Client „LinuxMint“ angelegt, Agent meldet
       sich (Stand 25.10.).
 - [ ] **Altbestand importieren** (46 Platten aus der früheren lokalen Datenbank): Werkzeug ist da
@@ -64,10 +66,13 @@ Kein Code; wartet auf dich.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
       damit die automatische Zuordnung an echten Dateien statt an Vermutungen gebaut wird.
 
-## M1 – 0.7.0 im echten Betrieb prüfen 🔜 (0.7.x)
+## M1 – Im echten Betrieb prüfen 🔜 (0.9.x)
 
-Ziel: Was es schon gibt, funktioniert mit echter Hardware. Gefundene Fehler werden als 0.7.x
-behoben.
+Ziel: Was es schon gibt (seit 0.7: Datei anfordern, Relay; seit 0.8/0.9: Löschprotokolle, Import),
+funktioniert mit echter Hardware. Gefundene Fehler werden als 0.9.x behoben.
+
+- [ ] **Indizierung der Systemplatte nach dem Update auf 0.9.1** läuft durch und das Banner
+      verschwindet; *Verwaltung → Server-Meldungen* bleibt ohne „database is locked“.
 
 - [ ] **Datei anfordern an einem Rechner:** Datei und Ordner von einer eigenen Platte auf eine
       andere kopieren; Namenskonflikt (`name (1).ext`); Abbrechen während des Kopierens; Platte
