@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **Aktuelle Version** | 0.7.0 (27.09.2026) |
-| **Nächster Meilenstein** | M1 – 0.7.0 im echten Betrieb prüfen |
+| **Nächster Meilenstein** | M1 – 0.7.0 im echten Betrieb prüfen (parallel: M2 in Arbeit) |
 | **Zuletzt aktualisiert** | 25.10.2026 |
 
 **Zeichen:** ✅ erledigt · 🔜 als Nächstes · ⏳ geplant · 💡 Idee, noch nicht eingeplant ·
@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | M0 | Betreiber-Aufgaben | – | Unraid auf 0.7.0, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
 | M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
-| M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten, nwipe-PDF an Platte hängen, automatisch zuordnen | ⏳ |
+| M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen, automatisch zuordnen | 🔜 in Arbeit |
 | M3 | Bedienung und Überblick | 0.9 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ⏳ |
 | M4 | Große Bestände und Auswertung | 1.0 | Volltextsuche, Doubletten mit Prüfsumme, Verlaufsdiagramme, SMART-Warnungen, Hot-Plug per Ereignis | ⏳ |
 | – | Ideen | – | Cloud-Betrieb, fremde Platten am eigenen Rechner nutzen | 💡 |
@@ -77,7 +77,7 @@ behoben.
 
 ## M2 – Leere Platten und Löschprotokolle ⏳ (0.8)
 
-### M2.1 Label für leere Platten (neuer Wunsch)
+### M2.1 Label für leere Platten ✅ (umgesetzt, erscheint mit 0.8)
 
 **Ziel:** Komplett leere Platten bekommen automatisch ein Label. Der Name ist **je Benutzer** in den
 Einstellungen festlegbar, Standard **„leer“**.
@@ -88,9 +88,14 @@ Einstellungen festlegbar, Standard **„leer“**.
   indiziert ist und zusammen **0 Dateien** enthält. Ausgeschlossene Ordner wie `lost+found` zählen
   nicht. Platten mit unlesbaren Dateisystemen (verschlüsselt, unbekannt, nicht eingehängt) gelten
   **nicht** als leer: lieber kein Label als ein falsches.
-- **Einstellung:** *Konto → Einstellungen* bekommt das Feld „Label für leere Platten“
-  (Standard „leer“; ein leeres Feld schaltet die Funktion ab). Es gilt für die eigenen Platten.
-  Herrenlose Platten bekommen kein Label.
+- **Einstellung:** Seite *Labels* → „Label für leere Platten“ (Standard „leer“; ein leeres Feld
+  schaltet die Funktion ab), die Konto-Seite zeigt den Wert mit Link dorthin. So funktioniert es
+  auch im lokalen Betrieb ohne Anmeldung. Es gilt für die eigenen Platten; herrenlose Platten
+  bekommen kein Label.
+- **Absicherung:** Ein Index mit 0 Dateien bei deutlich belegtem Speicher (mehr als 1 GiB + 0,1 %
+  der Größe) gilt als „unbekannt“, nicht als leer. An deinen echten Daten geprüft: 34 frisch
+  formatierte NTFS-Platten (128–372 MB Verwaltungsdaten) und 6 Platten ohne Partition wären
+  „leer“, 5 belegt, 1 unbekannt.
 - **Ablauf:** Bei jeder Meldung und nach jeder Indizierung prüft der Server die Platte. Fehlt dem
   Benutzer das Label, wird es angelegt und angeheftet.
 - **Nebenbefund, wird mit erledigt:** Nach dem Löschen findet die Dateisuche heute noch die

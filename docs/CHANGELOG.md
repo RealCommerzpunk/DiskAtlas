@@ -11,6 +11,22 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Label für leere Platten** (Migration `0012`, Roadmap M2.1): Komplett leere Platten bekommen
+  automatisch ein Label, Standard **„leer“**, je Benutzer einstellbar auf der Seite *Labels*
+  (leeres Feld = aus; Hinweis auf der Konto-Seite). Leer heißt: keine Partition (typisch nach
+  nwipe), Partitionen ohne Dateisystem, oder alle Dateisysteme indiziert mit zusammen 0 Dateien.
+  Unlesbare Dateisysteme (verschlüsselt, unbekannt, nicht eingehängt) zählen nicht, ebenso wenig
+  ein Index mit 0 Dateien bei deutlich belegtem Speicher. Sobald wieder Dateien drauf sind, nimmt
+  DiskAtlas das Label ab – nur das selbst gesetzte; von Hand gesetzte bleiben, von Hand
+  abgenommene werden nicht erneut angeheftet. Ein neuer Name in der Einstellung benennt das
+  bestehende Label um (und umgekehrt). Beim Serverstart werden auch Platten im Regal bewertet.
+
+### Behoben
+- **Gelöschte Platten tauchten weiter in der Dateisuche auf.** Verschwindet eine Partition (Platte
+  gelöscht oder neu partitioniert), verwirft der Server jetzt ihren Dateiindex, statt ihn nur als
+  „nicht vorhanden“ zu markieren.
+
 ### Geändert
 - **Dokumente aufgeräumt:** `CHANGELOG.md` und `CLAUDE.md` liegen jetzt in `docs/` (im Hauptordner
   bindet eine kurze `CLAUDE.md` die Hinweise ein); neue **[Roadmap](ROADMAP.md)** mit Erledigtem,

@@ -12,7 +12,7 @@ from starlette.responses import Response
 from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
-from diskatlas.services import bays, relay, users
+from diskatlas.services import bays, emptylabel, relay, users
 from diskatlas.web import accounts, api, auth, copyrequests, sharing, views
 
 
@@ -45,6 +45,7 @@ def create_app(
         auth.check_exposure(config, users.has_users(session))
         users.bootstrap_master(session, config.server.password)
         app.state.auth_enabled = users.has_users(session)
+        emptylabel.apply_everywhere(session)
     legacy = bays_path or bays.default_bays_path()
     if legacy.is_file():  # frühere lokale Schachtzuordnung einmalig übernehmen
         with db.session() as session:
