@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-26
+
 ### Behoben
 - **„database is locked“ beim Indizieren großer Platten** (Migration `0017`; gemeldet mit dem
   Container-Log vom 25.10.). Der Server löschte beim Abschluss einer Indizierung den alten Index

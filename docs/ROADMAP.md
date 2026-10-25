@@ -9,9 +9,9 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.9.0 (25.10.2026) |
+| **Aktuelle Version** | 0.9.1 (26.10.2026) |
 | **Nächster Meilenstein** | MV – Vertrauen und Datenschutz (parallel: M1 im echten Betrieb) |
-| **Zuletzt aktualisiert** | 25.10.2026 (abends) |
+| **Zuletzt aktualisiert** | 26.10.2026 |
 
 **Zeichen:** ✅ erledigt · 🔜 als Nächstes · ⏳ geplant · 💡 Idee, noch nicht eingeplant ·
 👤 Aufgabe des Betreibers (kein Code)
@@ -302,7 +302,8 @@ Rechnern der Benutzer liegen:
 
 | Version | Datum | Wichtigste Inhalte |
 |---|---|---|
-| **0.9.0** | 25.10.2026 | **Altbestand importieren** (Verwaltung bzw. `diskatlas db import`): Platten einer alten DiskAtlas-Datenbank in die laufende übernehmen |
+| **0.9.1** | 26.10.2026 | Fix „database is locked“ (Aufräumen im Hintergrund statt großer Löschungen), Indizierung als kompakte Anzeige in der Kopfleiste, Server-Meldungen in der Verwaltung, Empfehlung `/mnt/cache` für Unraid |
+| 0.9.0 | 25.10.2026 | **Altbestand importieren** (Verwaltung bzw. `diskatlas db import`): Platten einer alten DiskAtlas-Datenbank in die laufende übernehmen |
 | 0.8.0 | 25.10.2026 | Label „leer“ für leere Platten; **Löschprotokolle** (PDF) an Platten, Sammel-Upload mit Zuordnung per Seriennummer; „Jetzt neu scannen“; Agenten-Übersicht und gemerkte Schlüssel der Zielrechner; Kopierfortschritt; Relay setzt nach Abbruch fort; CSV/JSON-Export; Fix: hängende Indizierung, gesperrtes Umbenennen im Server-Betrieb; Roadmap und Doku in `docs/` |
 | 0.7.0 | 27.09.2026 | Dateibrowser mit Ordnern und Checkboxen; **„Datei anfordern“** mit Kopierberechtigung je Freigabe (nie / nachfragen / immer), Zustimmung des Besitzers, Hinweis „Platte anschließen“; Agent kopiert nur mit Haken am Rechner, mit Pfadschutz; **Relay** zwischen Rechnern, Ende-zu-Ende verschlüsselt, seriell, mit begrenztem Platz; Benutzermenü; „Master“ heißt „Admin“; Startpasswort nur beim ersten Start; Schutz vor Fremdseiten-Anfragen |
 | 0.6.0 | 27.09.2026 | Schächte je Client (Anzahl, Assistent, „Keine Wechselschächte“); Filter und Gruppierung „zuletzt an Client“ |
