@@ -175,7 +175,7 @@ zu große Dateien abgewiesen werden.
       an beiden Rechnern vergleichen.
 - [x] **Fortschritt laufender Kopien** und **Relay-Belegung** für den Admin ✅ (erscheint mit 0.8).
 - [x] **Relay: Fortsetzen statt Neustart** ✅ (erscheint mit 0.8).
-- [ ] **CSV/JSON-Export** von Platten und Dateilisten.
+- [x] **CSV/JSON-Export** von Platten und Dateilisten ✅ (erscheint mit 0.8).
 
 ## M4 – Große Bestände und Auswertung ⏳ (1.0)
 

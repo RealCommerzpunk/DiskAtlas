@@ -13,7 +13,7 @@ from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
 from diskatlas.services import attachments, bays, emptylabel, relay, users
-from diskatlas.web import accounts, api, auth, copyrequests, protocols, sharing, views
+from diskatlas.web import accounts, api, auth, copyrequests, export, protocols, sharing, views
 
 
 class _RevalidatingStaticFiles(StaticFiles):
@@ -64,4 +64,5 @@ def create_app(
     app.include_router(sharing.router)
     app.include_router(copyrequests.router)
     app.include_router(protocols.router)
+    app.include_router(export.router)
     return app

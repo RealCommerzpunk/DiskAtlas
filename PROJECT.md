@@ -76,7 +76,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Löschprotokolle | PDF (z. B. nwipe) an die Platte hängen, mehrere je Platte, Download mit Rechteprüfung (`services/attachments.py`, `web/protocols.py`); Sammel-Upload mit Zuordnung per Seriennummer im PDF-Text (`services/pdftext.py`, pypdf) | ✅ (Unreleased); Methode/Ergebnis auslesen ⏳ (Roadmap M2.3) |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
-| Export | CSV/JSON-Export von Festplatten und Dateilisten | ⏳ geplant |
+| Export | CSV/JSON-Export von Festplatten und Dateilisten (`web/export.py`, gestreamt) | ✅ (Unreleased) |
 | Benachrichtigung | Warnung bei SMART-Verschlechterung (E-Mail/Push) | 💡 Idee |
 
 ## 3. Architektur
