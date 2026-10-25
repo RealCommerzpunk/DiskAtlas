@@ -11,6 +11,11 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- Entwicklung: Befehl **`/SessionEnde`** für Claude Code (`.claude/commands/SessionEnde.md`). Er
+  bringt am Ende einer Sitzung Memory, CHANGELOG, ROADMAP, PROJECT.md und `docs/CLAUDE.md` auf den
+  aktuellen Stand und reicht die Dokumente als Pull Request ein.
+
 ## [0.9.1] - 2026-10-26
 
 ### Behoben
