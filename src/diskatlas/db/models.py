@@ -221,6 +221,8 @@ class Volume(Base):
     # einer Weile als abgebrochen, z. B. wenn der Rechner mitten drin die Verbindung verlor)
     pending_scan_id: Mapped[str | None] = mapped_column(String(36))
     index_touched_at: Mapped[datetime | None]
+    # Alte Index-Zeilen (früherer oder abgebrochener Scan) warten auf das Aufräumen im Hintergrund
+    purge_pending: Mapped[bool] = mapped_column(default=False, server_default="0")
     indexed_at: Mapped[datetime | None]
     index_errors: Mapped[int] = mapped_column(default=0)
     file_count: Mapped[int] = mapped_column(default=0)

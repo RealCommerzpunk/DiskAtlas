@@ -94,6 +94,9 @@ def test_wiping_drops_the_old_index_from_search(world):
     assert world.web["anna"].get("/api/v1/files?q=alt").json()["total"] == 1
     report(world, "anna", wiped("sn:X1"))
     assert world.web["anna"].get("/api/v1/files?q=alt").json()["total"] == 0
+    from diskatlas.services import maintenance
+
+    maintenance.run_once(world.db, pause=0)
     with world.db.session() as s:
         assert s.query(FileEntry).count() == 0
     assert labels_of(world, "sn:X1") == ["leer"]

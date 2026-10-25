@@ -29,10 +29,13 @@ def normalize_path(raw: str) -> str | None:
 
 
 def build_directories(session: Session, volume: Volume) -> None:
-    """Baut den Ordnerindex des aktiven Scans neu (Anzahl und Größe je Ordner samt Unterordnern)."""
-    session.execute(delete(Directory).where(Directory.volume_id == volume.id))
+    """Baut den Ordnerindex des aktiven Scans neu (Anzahl und Größe je Ordner samt Unterordnern).
+
+    Erst wird gelesen und gerechnet, dann kurz geschrieben: So sperrt der Aufbau die Datenbank
+    (SQLite: ein Schreiber zur Zeit) nur für das Einfügen, nicht für das Auszählen."""
     scan = volume.active_scan_id
     if not scan:
+        session.execute(delete(Directory).where(Directory.volume_id == volume.id))
         volume.dirs_scan_id = None
         return
     rows = session.execute(
@@ -48,6 +51,7 @@ def build_directories(session: Session, volume: Volume) -> None:
             entry[0] += count
             entry[1] += int(size)
             path = path.rpartition("/")[0]
+    session.execute(delete(Directory).where(Directory.volume_id == volume.id))
     batch: list[dict] = []
     for path, (count, size) in totals.items():
         parent, _, name = path.rpartition("/")

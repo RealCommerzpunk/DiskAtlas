@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import socket
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -12,7 +13,7 @@ from starlette.responses import Response
 from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
-from diskatlas.services import attachments, bays, emptylabel, relay, users
+from diskatlas.services import attachments, bays, emptylabel, maintenance, relay, users
 from diskatlas.web import (
     accounts,
     api,
@@ -41,10 +42,21 @@ def create_app(
     if db is None:
         db = Database(config.effective_database_url)
         db.upgrade()
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        # Aufräumen im Hintergrund nur im laufenden Server (nicht in jedem Test-Client)
+        worker = maintenance.Worker(db)
+        worker.start()
+        try:
+            yield
+        finally:
+            worker.stop()
+
     app = FastAPI(
         title="DiskAtlas",
         version=__version__,
         description="Inventar für Festplatten – Hardware, SMART, Belegung und Dateiindex.",
+        lifespan=lifespan,
     )
     serverlog.install()
     app.state.config = config

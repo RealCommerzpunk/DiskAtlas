@@ -22,7 +22,7 @@ from diskatlas.db.models import (
 )
 from diskatlas.probe import catalog
 from diskatlas.probe.types import DiskInfo, FileRecord, SmartInfo, VolumeInfo
-from diskatlas.services import browse, emptylabel
+from diskatlas.services import emptylabel
 
 # Diese Felder werden nur überschrieben, wenn der neue Wert bekannt ist – z. B. kennt
 # Windows kein ext4 und würde sonst Label/Dateisystem eines Linux-Volumes löschen.
@@ -146,9 +146,10 @@ def _was_reformatted(volume: Volume, info: VolumeInfo) -> bool:
 
 def _reset_index(session: Session, volume: Volume) -> None:
     """Verwirft den (nun ungültigen) Dateiindex, bis der Agent neu indiziert hat."""
-    session.execute(delete(FileEntry).where(FileEntry.volume_id == volume.id))
     session.execute(delete(Directory).where(Directory.volume_id == volume.id))
-    volume.active_scan_id = None
+    volume.active_scan_id = None  # die Dateizeilen löscht der Hintergrund
+    volume.pending_scan_id = None
+    volume.purge_pending = True
     volume.dirs_scan_id = None
     volume.file_count = 0
     volume.file_bytes = 0
@@ -290,31 +291,49 @@ def begin_index(
     session: Session, disk_key: str, volume_key: str, user_id: int | None = None,
     now: datetime | None = None,
 ) -> str:
+    """Beginnt eine Indizierung. Reste früherer Läufe räumt der Hintergrund auf (nicht hier: das
+    würde die Datenbank lange sperren und andere Agenten warten lassen)."""
     volume = get_volume(session, disk_key, volume_key, user_id)
-    purge_unfinished(session, volume)
     scan_id = uuid.uuid4().hex
+    if volume.pending_scan_id:  # abgebrochener Lauf: seine Zeilen sind jetzt Reste
+        volume.purge_pending = True
     volume.index_status = "running"
     volume.pending_scan_id = scan_id
     volume.index_touched_at = now or utcnow()
     return scan_id
 
 
-def purge_unfinished(session: Session, volume: Volume) -> int:
-    """Löscht die Zeilen abgebrochener Indizierungen (alles außer dem aktiven Index) in Stücken,
-    damit die Datenbank nicht lange gesperrt ist."""
+def purge_step(
+    session: Session, volume: Volume, batch: int = _PURGE_BATCH, max_rows: int | None = None,
+    pause: float = 0.0,
+) -> tuple[int, bool]:
+    """Löscht Zeilen, die weder zum aktiven noch zum laufenden Scan gehören, in kurzen
+    Transaktionen. Gibt (gelöscht, fertig) zurück; `pause` lässt andere Schreiber dazwischen."""
+    import time
+
     removed = 0
-    while True:
-        ids = list(session.scalars(
-            select(FileEntry.id).where(
-                FileEntry.volume_id == volume.id,
-                FileEntry.scan_id != (volume.active_scan_id or ""),
-            ).limit(_PURGE_BATCH)
-        ))
+    while max_rows is None or removed < max_rows:
+        keep = [s for s in (volume.active_scan_id, volume.pending_scan_id) if s]
+        stmt = select(FileEntry.id).where(FileEntry.volume_id == volume.id)
+        if keep:
+            stmt = stmt.where(FileEntry.scan_id.not_in(keep))
+        ids = list(session.scalars(stmt.limit(batch)))
         if not ids:
-            return removed
+            return removed, True
         session.execute(delete(FileEntry).where(FileEntry.id.in_(ids)))
         session.commit()
         removed += len(ids)
+        if pause:
+            time.sleep(pause)
+        session.refresh(volume)  # inzwischen könnte ein neuer Scan begonnen haben
+    return removed, False
+
+
+def purge_unfinished(session: Session, volume: Volume) -> int:
+    """Alle Reste sofort löschen (Werkzeuge und Tests; im Server erledigt das der Hintergrund)."""
+    removed, _ = purge_step(session, volume)
+    volume.purge_pending = False
+    return removed
 
 
 def expire_stale_indexes(session: Session, now: datetime | None = None) -> int:
@@ -328,6 +347,7 @@ def expire_stale_indexes(session: Session, now: datetime | None = None) -> int:
     for volume in stale:
         volume.index_status = "failed"
         volume.pending_scan_id = None
+        volume.purge_pending = True
     return len(stale)
 
 
@@ -357,18 +377,13 @@ def finish_index(
 ) -> Volume:
     volume = get_volume(session, disk_key, volume_key, user_id)
     volume.pending_scan_id = None
+    volume.purge_pending = True  # alter (bzw. abgebrochener) Index wird im Hintergrund gelöscht
     if not success:
-        session.execute(
-            delete(FileEntry).where(FileEntry.volume_id == volume.id, FileEntry.scan_id == scan_id)
-        )
         volume.index_status = "failed"
         return volume
-    session.execute(
-        delete(FileEntry).where(FileEntry.volume_id == volume.id, FileEntry.scan_id != scan_id)
-    )
     count, total = session.execute(
         select(func.count(FileEntry.id), func.coalesce(func.sum(FileEntry.size), 0)).where(
-            FileEntry.volume_id == volume.id
+            FileEntry.volume_id == volume.id, FileEntry.scan_id == scan_id
         )
     ).one()
     volume.active_scan_id = scan_id
@@ -377,7 +392,7 @@ def finish_index(
     volume.index_errors = errors
     volume.indexed_at = now or utcnow()
     volume.index_status = "done"
-    browse.build_directories(session, volume)
+    # Ordnerindex entsteht im Hintergrund bzw. beim ersten Aufruf (nicht in dieser Transaktion)
     emptylabel.apply(session, volume.disk)
     return volume
 
