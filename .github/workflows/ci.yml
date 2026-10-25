@@ -22,7 +22,7 @@ jobs:
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check src tests
-      - run: pytest -p no:cacheprovider --durations=15
+      - run: pytest -p no:cacheprovider --durations=15 --tb=short -rfE
 
   docker:
     runs-on: ubuntu-latest

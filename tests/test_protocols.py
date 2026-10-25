@@ -54,12 +54,13 @@ def test_several_reports_per_disk_newest_first(world):
     assert page.index("zweiter.pdf") < page.index("erster.pdf")
 
 
-@pytest.mark.parametrize(("data", "message"), [
-    (b"<html><script>alert(1)</script>", "Nur PDF"),
-    (b"", "Nur PDF"),
-    (b"%PDF-" + b"x" * attachments.MAX_BYTES, "zu groß"),
+@pytest.mark.parametrize(("kind", "message"), [
+    ("html", "Nur PDF"), ("empty", "Nur PDF"), ("too_big", "zu groß"),
 ])
-def test_only_pdfs_within_the_size_limit(world, data, message):
+def test_only_pdfs_within_the_size_limit(world, kind, message):
+    # Die Daten entstehen erst hier: als Parameter würde pytest 20 MB in jeden Bericht schreiben.
+    data = {"html": b"<html><script>alert(1)</script>", "empty": b"",
+            "too_big": b"%PDF-" + b"x" * attachments.MAX_BYTES}[kind]
     r = upload(world, "anna", data=data)
     assert "perr" in r.headers["location"]
     assert message in world.web["anna"].get(r.headers["location"]).text
