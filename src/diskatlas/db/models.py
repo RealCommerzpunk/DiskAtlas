@@ -62,6 +62,11 @@ class Disk(Base):
     # Lagerort der abgesteckten Platte, z. B. „Karton 3, Regal B“
     location: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
+    # Label, das die Automatik für leere Platten angeheftet hat (nur dieses nimmt sie wieder ab)
+    empty_label_id: Mapped[int | None] = mapped_column(
+        ForeignKey("labels.id", ondelete="SET NULL", use_alter=True,
+                   name="fk_disks_empty_label_id")
+    )
 
     # Letzter bekannter SMART-Zustand
     health: Mapped[str] = mapped_column(String(20), default="unknown")
@@ -361,6 +366,8 @@ class User(Base):
     is_master: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | active
     note: Mapped[str | None] = mapped_column(Text)  # Nachricht beim Antrag an den Admin
+    # Name des Labels, das komplett leere Platten automatisch bekommen ("" = aus)
+    empty_label: Mapped[str] = mapped_column(String(100), default="leer", server_default="leer")
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
     clients: Mapped[list[Client]] = relationship(

@@ -5,6 +5,11 @@
 {% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
 {% if info %}<p class="notice ok" role="status">{{ info }}</p>{% endif %}
 
+<section class="card" id="settings">
+  <h2>Einstellungen</h2>
+  <p>Label für komplett leere Platten: <strong>{{ user.empty_label or 'aus' }}</strong> · <a href="/labels#empty-label">ändern</a></p>
+</section>
+
 <section class="card" id="clients">
   <h2>Meine Clients</h2>
   <p class="muted">Ein Client ist ein Agent-Programm auf einem deiner Rechner. Jeder bekommt ein eigenes Token; damit meldet er Festplatten in dein Konto. Trage das Token in der Konfiguration des Agenten unter <code>api_token</code> ein.</p>

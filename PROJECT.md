@@ -71,7 +71,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ 0.6.0 |
 | Schächte je Client | Anzahl und Port-Zuordnung je Client (Assistent), Haken „Keine Wechselschächte“, Schachtblock je Client im Dashboard | ✅ 0.6.0 |
 | Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Admin), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ 0.5.0 |
-| Leere Platten | Automatisches Label für komplett leere Platten, Name je Benutzer einstellbar (Standard „leer“) | ⏳ geplant (Roadmap M2.1) |
+| Leere Platten | Automatisches Label für komplett leere Platten, Name je Benutzer einstellbar (Standard „leer“, Seite *Labels*), `services/emptylabel.py` | ✅ (Unreleased) |
 | Löschprotokolle | nwipe-PDF hochladen und an die Platte hängen, später automatisch per Seriennummer zuordnen | ⏳ geplant (Roadmap M2.2/M2.3) |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
@@ -164,13 +164,13 @@ scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeu
 
 | Tabelle | Inhalt | Schlüssel |
 |---|---|---|
-| `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben, `owner_user_id` (NULL = herrenlos), `last_client_id` (Client, der sie zuletzt meldete) | `disk_key` (eindeutig) |
+| `disks` | Hardware-Stammdaten, letzter SMART-Stand, Verbindungsstatus, eigene Angaben, `owner_user_id` (NULL = herrenlos), `last_client_id` (Client, der sie zuletzt meldete), `empty_label_id` (Label, das die Automatik für leere Platten gesetzt hat) | `disk_key` (eindeutig) |
 | `host_states` | Heartbeat je Agenten-Rechner: belegte SATA-Ports (Grundlage der Schachtansicht) | `host` |
 | `settings` | Einstellungen des Servers (z. B. Schachtzuordnung) | `key` |
 | `disk_shares` | Lesefreigabe einer Platte für einen Benutzer, `copy_mode` (`never`/`ask`/`always`) = Kopierberechtigung | (`disk_id`, `viewer_user_id`) |
 | `disk_transfer_requests` | Übernahmeantrag (von/an Benutzer, Client, Status `pending`/`approved`/`rejected`) | `id` |
 | `clients` (Schächte) | `has_bays`, `bay_count` (1–24), `bay_ports` (JSON: SATA-Port je Schacht), `bay_reverse`; Standard keine Wechselschächte | – |
-| `users` | Benutzerkonten: Name (ohne Beachtung der Groß-/Kleinschreibung eindeutig), PBKDF2-Passwort-Hash, `is_master`, `status` (`pending` = Antrag, `active`) | `nickname` |
+| `users` | Benutzerkonten: Name (ohne Beachtung der Groß-/Kleinschreibung eindeutig), PBKDF2-Passwort-Hash, `is_master`, `status` (`pending` = Antrag, `active`), `empty_label` (Name des Labels für leere Platten, "" = aus) | `nickname` |
 | `clients` | Agent-Installation eines Benutzers, Token nur als SHA-256-Hash, `last_seen` | (`user_id`, `nickname`), `token_hash` |
 | `commands` | Aufträge Server → Agent (`rename_label`, `rescan`) mit Status und Ergebnis | `id` |
 | `volumes` | Partition/Dateisystem je Festplatte, Belegung, Indexstatus | (`disk_id`, `volume_key`) |
@@ -229,6 +229,8 @@ vollständigen Stand. Bei Abbruch/Fehler wird der neue Stand verworfen.
 | 2026-09-26 | **SQLite-Migrationen laufen ohne Fremdschlüsselschutz** | Tabellen-Neuaufbau (DROP/RENAME) löscht sonst per CASCADE abhängige Daten; Regressionstest in `test_config_db.py`. **Jede künftige Migration mit Test an einer Datenbank-Kopie prüfen.** |
 | 2026-09-27 | **Schächte sind Eigenschaft des Clients, Standard: keine** | Schächte sind Hardware eines bestimmten Rechners; ein Benutzer hat mehrere Rechner und nur manche mit Wechselrahmen. Der Portzustand (`host_states`) liegt unter dem Schlüssel `client:<id>` statt unter dem frei wählbaren Rechnernamen (kein Schema-Umbau nötig, keine Namenskollisionen). Alte Zuordnungen übernimmt der passende Client beim ersten Heartbeat mit Ports (Löschen des alten Settings entscheidet atomar). Im lokalen Betrieb ohne Clients bleibt eine einzige Zuordnung in `settings`. |
 | 2026-09-27 | **„Client, der die Platte zuletzt sah“ als einziger Client-Filter** | Gilt für Platten und ihre Dateien; ein zweites Konzept „Client, der indiziert hat“ bringt kaum Nutzen. Bestehende Platten haben den Client erst nach dem nächsten Scan. |
+| 2026-10-25 | **„Leer“ nur bei Gewissheit; die Automatik nimmt nur ihr eigenes Label ab** | Ein falsches „leer“ kann zum Überschreiben einer vollen Platte führen. Deshalb zählen nicht eingehängte/verschlüsselte Dateisysteme und ein Index mit 0 Dateien bei deutlich belegtem Speicher (> 1 GiB + 0,1 %) als „unbekannt“. `disks.empty_label_id` merkt, welches Label die Automatik gesetzt hat; von Hand gesetzte oder abgenommene Labels respektiert sie. Einstellung je Benutzer auf der Labels-Seite (funktioniert auch ohne Anmeldung, dann in `settings`). |
+| 2026-10-25 | **Verschwundene Partitionen verwerfen ihren Index** | Nach nwipe oder Neupartitionierung fand die Suche sonst Dateien, die es nicht mehr gibt. Bisher wurde nur bei neuer Dateisystem-UUID verworfen; jetzt auch, wenn die Partition bei angeschlossener Platte fehlt. |
 | 2026-09-26 | **PBKDF2 aus der Standardbibliothek statt bcrypt/argon2** | Das Projekt hält die Abhängigkeiten bewusst klein (PyInstaller-Größe). 600 000 Runden SHA-256 mit Salt je Passwort (Wert steht im Hash, kann später erhöht werden). Client-Tokens sind zufällig und lang, dort genügt SHA-256. |
 | 2026-09-26 | **Sitzung pro Benutzer, Passwort-Hash in der Cookie-Signatur** | Passwortwechsel meldet alle Sitzungen dieses Benutzers ab, ohne Sitzungstabelle. Namen werden ohne Beachtung der Groß-/Kleinschreibung verglichen („Anna“ vs. „anna“ wären verwechselbar). |
 | 2026-09-26 | **Barcode-Erkennung im Browser mit lokal ausgelieferter ZXing-Bibliothek; Kamera nur über HTTPS (Tailscale)** | iOS-Safari hat kein `BarcodeDetector`; ZXing deckt Code128/39/DataMatrix/QR ab und läuft offline. `getUserMedia` verlangt einen sicheren Kontext, daher HTTPS über `tailscale serve`. Nur der erkannte Text geht an den Server. |

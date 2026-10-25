@@ -22,6 +22,7 @@ from diskatlas.services import (
     commands,
     copies,
     duplicates,
+    emptylabel,
     fslabel,
     hosts,
     ownership,
@@ -666,12 +667,31 @@ def duplicate_page(
 def labels(
     request: Request,
     error: str = "",
+    info: str = "",
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
 ):
-    return templates.TemplateResponse(
-        request, "labels.html", {"labels": queries.list_labels(session, viewer), "error": error}
-    )
+    return templates.TemplateResponse(request, "labels.html", {
+        "labels": queries.list_labels(session, viewer), "error": error, "info": info,
+        "empty_label": emptylabel.setting(session, viewer.user_id),
+    })
+
+
+@router.post("/labels/empty-setting")
+def empty_label_setting(
+    name: str = Form(""),
+    session: Session = Depends(get_session),
+    viewer: Viewer = Depends(get_viewer),
+):
+    """Name des Labels für komplett leere Platten (leer = Automatik aus)."""
+    try:
+        emptylabel.change(session, viewer.user_id, name)
+    except emptylabel.SettingError as exc:
+        session.rollback()
+        return _redirect("/labels?" + urlencode({"error": str(exc)}))
+    text = f"Leere Platten bekommen das Label „{name.strip()}“." if name.strip() \
+        else "Automatisches Label für leere Platten ist aus."
+    return _redirect("/labels?" + urlencode({"info": text}))
 
 
 @router.post("/labels")
@@ -705,7 +725,9 @@ def label_update(
     new_name = name.strip() or label.name
     if label_service.name_taken(session, label.owner_user_id, new_name, label.id):
         return _redirect("/labels?" + urlencode({"error": "Name bereits vergeben"}))
+    old_name = label.name
     label.name = new_name
+    emptylabel.label_renamed(session, label, old_name)
     label.category = category.strip() or None
     label.color = color
     try:

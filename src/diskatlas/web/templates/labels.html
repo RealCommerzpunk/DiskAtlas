@@ -4,7 +4,17 @@
 {% block content %}
 <h1>Labels &amp; Kategorien</h1>
 <p class="muted">Labels lassen sich Festplatten anheften. Die optionale Kategorie (z. B. „Standort“, „Inhalt“, „Status“) fasst Labels zusammen und dient im Dashboard als Gruppierung.</p>
-{% if error %}<p class="notice">{{ error }}</p>{% endif %}
+{% if error %}<p class="notice" role="alert">{{ error }}</p>{% endif %}
+{% if info %}<p class="notice ok" role="status">{{ info }}</p>{% endif %}
+
+<section class="card" id="empty-label">
+  <h2>Label für leere Platten</h2>
+  <p class="muted">Komplett leere Platten (z. B. nach nwipe: keine Partition, kein Dateisystem oder 0 Dateien) bekommen dieses Label automatisch; sobald wieder Dateien drauf sind, nimmt DiskAtlas es ab. Von Hand gesetzte Labels bleiben unberührt. Platten mit unlesbarem Dateisystem (z. B. verschlüsselt) zählen nicht als leer. Feld leeren = aus.</p>
+  <form method="post" action="/labels/empty-setting" class="inline">
+    <input name="name" value="{{ empty_label }}" maxlength="100" placeholder="(aus)" aria-label="Label für leere Platten">
+    <button type="submit">Speichern</button>
+  </form>
+</section>
 
 <section class="card">
   <h2>Neues Label</h2>

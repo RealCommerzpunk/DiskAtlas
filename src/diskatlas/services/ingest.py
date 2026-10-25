@@ -11,10 +11,18 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.orm import Session, selectinload
 
-from diskatlas.db.models import Client, Disk, DiskTransferRequest, FileEntry, SmartSnapshot, Volume
+from diskatlas.db.models import (
+    Client,
+    Directory,
+    Disk,
+    DiskTransferRequest,
+    FileEntry,
+    SmartSnapshot,
+    Volume,
+)
 from diskatlas.probe import catalog
 from diskatlas.probe.types import DiskInfo, FileRecord, SmartInfo, VolumeInfo
-from diskatlas.services import browse
+from diskatlas.services import browse, emptylabel
 
 # Diese Felder werden nur überschrieben, wenn der neue Wert bekannt ist – z. B. kennt
 # Windows kein ext4 und würde sonst Label/Dateisystem eines Linux-Volumes löschen.
@@ -122,9 +130,12 @@ def upsert_disk(
         _update_volume(volume, vol_info, now)
     for key, volume in existing.items():
         if key not in reported:
+            if volume.present:  # Partition verschwunden (gelöscht, neu partitioniert)
+                _reset_index(session, volume)
             volume.present = False
             volume.mountpoint = None
     session.flush()
+    emptylabel.apply(session, disk)
     return disk
 
 
@@ -136,7 +147,9 @@ def _was_reformatted(volume: Volume, info: VolumeInfo) -> bool:
 def _reset_index(session: Session, volume: Volume) -> None:
     """Verwirft den (nun ungültigen) Dateiindex, bis der Agent neu indiziert hat."""
     session.execute(delete(FileEntry).where(FileEntry.volume_id == volume.id))
+    session.execute(delete(Directory).where(Directory.volume_id == volume.id))
     volume.active_scan_id = None
+    volume.dirs_scan_id = None
     volume.file_count = 0
     volume.file_bytes = 0
     volume.indexed_at = None
@@ -319,6 +332,7 @@ def finish_index(
     volume.indexed_at = now or utcnow()
     volume.index_status = "done"
     browse.build_directories(session, volume)
+    emptylabel.apply(session, volume.disk)
     return volume
 
 
