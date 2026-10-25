@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from diskatlas import __version__
 from diskatlas.db.models import Client, Disk, HostState, User
 from diskatlas.services import bays as bay_service
-from diskatlas.services import hosts, users
+from diskatlas.services import hosts, relay, users
 from diskatlas.services.ingest import utcnow
 from diskatlas.web import auth
 from diskatlas.web.deps import get_current_user, get_session, require_master
@@ -251,6 +251,7 @@ def admin_users(
         "active": [u for u in everyone if u.status == "active"],
         "unowned": unowned,
         "msg": msg,
+        "relay": relay.overview(session),
     })
 
 

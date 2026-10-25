@@ -131,6 +131,19 @@ def active_uploads(session: Session) -> int:
     ) or 0)
 
 
+def overview(session: Session) -> dict:
+    """Belegung des Relays für den Admin (nur Zahlen, keine Dateinamen oder Inhalte)."""
+    store = STORE
+    return {
+        "used": used_bytes(session),
+        "max": store.max_bytes if store else 0,
+        "chunks": len(store.names()) if store else 0,
+        "uploads": active_uploads(session),
+        "slots": SLOTS,
+        "path": str(store.path) if store else "",
+    }
+
+
 def recover(session: Session) -> None:
     """Beim Start: Dateien ohne Datensatz löschen, Datensätze ohne Datei wieder einreihen."""
     store = _store()

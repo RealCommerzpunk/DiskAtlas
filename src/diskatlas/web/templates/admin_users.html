@@ -45,6 +45,12 @@
 {% endif %}
 
 <section class="card">
+  <h2>Relay (Kopien zwischen Rechnern)</h2>
+  <p>{{ relay.used | filesize }} von {{ relay.max | filesize }} belegt · {{ relay.chunks }} Stück(e) · {{ relay.uploads }} von {{ relay.slots }} Übertragung(en) aktiv</p>
+  <p class="muted small">Die Stücke liegen Ende-zu-Ende verschlüsselt unter Zufallsnamen in <code>{{ relay.path }}</code> und werden gelöscht, sobald der Empfänger sie abgeholt hat. Höchstplatz: <code>DISKATLAS_RELAY_MAX_BYTES</code>.</p>
+</section>
+
+<section class="card">
   <h2>Benutzer</h2>
   <div class="table-wrap">
   <table>

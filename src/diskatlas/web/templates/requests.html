@@ -53,7 +53,9 @@
         <td><a href="/requests/{{ r.id }}">{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</a></td>
         <td>{{ r.target_disk.display_name }} / {{ r.target_path or '(Wurzel)' }}</td>
         <td class="num">{{ r.items | length }}</td>
-        <td>{% for state, n in c.items() %}{{ n }} {{ STATE_TEXT[state] }}{{ ', ' if not loop.last }}{% endfor %}</td>
+        <td>{% for state, n in c.items() %}{{ n }} {{ STATE_TEXT[state] }}{{ ', ' if not loop.last }}{% endfor %}
+          {% set total = r.items | sum(attribute='size') %}{% set done = r.items | selectattr('state', 'equalto', 'done') | sum(attribute='size') %}{% set moving = r.items | selectattr('state', 'equalto', 'running') | sum(attribute='bytes_done') %}
+          {% if total and (moving or (done and done < total)) %}<div class="bar" title="{{ (done + moving) | filesize }} von {{ total | filesize }}"><span style="width: {{ '%.0f' | format(100 * (done + moving) / total) }}%"></span></div>{% endif %}</td>
       </tr>
     {% else %}
       <tr><td colspan="4" class="muted">Noch nichts angefordert.</td></tr>

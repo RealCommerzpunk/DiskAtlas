@@ -171,8 +171,7 @@ zu große Dateien abgewiesen werden.
       (Einstellungsfenster → *Sicherheit*: eigener Fingerabdruck, bekannte Ziele, „vergessen“).
       Rest-Lücke: Beim allerersten Senden muss man dem Server vertrauen oder die Fingerabdrücke
       an beiden Rechnern vergleichen.
-- [ ] **Fortschritt laufender Kopien** auf der Anfragen-Seite (der Wert wird schon gemeldet) und
-      **Relay-Belegung** für den Admin.
+- [x] **Fortschritt laufender Kopien** und **Relay-Belegung** für den Admin ✅ (erscheint mit 0.8).
 - [ ] **Relay: Fortsetzen statt Neustart.** Bricht eine Übertragung ab, beginnt sie heute beim
       nächsten Versuch von vorn.
 - [ ] **CSV/JSON-Export** von Platten und Dateilisten.

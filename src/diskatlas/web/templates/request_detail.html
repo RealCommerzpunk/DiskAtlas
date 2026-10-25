@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Anfrage{% endblock %}
+{% block head %}{% if counts.get('running') or counts.get('queued') %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
 {% block content %}
 <h1>Anfrage vom {{ req.created_at.strftime('%d.%m.%Y %H:%M') }}</h1>
 <p>Ziel: <strong>{{ req.target_disk.display_name }}</strong> / {{ req.target_path or '(Wurzel)' }} · Client {{ req.target_client.nickname }}</p>
@@ -14,7 +15,9 @@
     <tr>
       <td>{{ it.source_path }}</td>
       <td class="num">{{ it.size | filesize }}</td>
-      <td>{{ STATE_TEXT[it.state] }}</td>
+      <td>{{ STATE_TEXT[it.state] }}{% if it.state == 'running' and it.size %}
+        <div class="bar" title="{{ it.bytes_done | filesize }} von {{ it.size | filesize }}"><span style="width: {{ '%.0f' | format(100 * [it.bytes_done, it.size] | min / it.size) }}%"></span></div>
+        <span class="muted small">{{ '%.0f' | format(100 * [it.bytes_done, it.size] | min / it.size) }} %{% if it.phase == 'upload' %} · über den Server{% endif %}</span>{% endif %}</td>
       <td class="muted small">{{ it.wait_reason or it.message or '' }}{% if it.result_name and it.result_name != it.name %} · gespeichert als {{ it.result_name }}{% endif %}</td>
     </tr>
   {% endfor %}
