@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block head %}{% if import_job.state == 'running' %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
 {% block title %}Verwaltung{% endblock %}
 {% block content %}
 <h1>Benutzerverwaltung</h1>
@@ -43,6 +44,26 @@
   </form>
 </section>
 {% endif %}
+
+<section class="card" id="import">
+  <h2>Altbestand importieren</h2>
+  <p class="muted">Übernimmt die Platten einer alten DiskAtlas-Datenbank (z. B. aus dem Betrieb „Nur dieser PC“: <code>~/.local/share/diskatlas/diskatlas.db</code> bzw. <code>%LOCALAPPDATA%\diskatlas\diskatlas.db</code>) mit Partitionen, Dateiindex, SMART-Verlauf, Notizen und Labels und gibt sie dem gewählten Benutzer. Platten, die DiskAtlas schon kennt, werden übersprungen. Die hochgeladene Datei wird nach dem Import gelöscht. Vorher die Datenbank des Servers sichern.</p>
+  {% if import_job.state != 'idle' %}
+  <p class="notice {{ 'ok' if import_job.state == 'done' else ('health-reasons failed' if import_job.state == 'failed' else '') }}" role="status">
+    {% if import_job.state == 'running' %}⏳ Import läuft: {% elif import_job.state == 'done' %}Fertig: {% else %}Fehlgeschlagen: {% endif %}{{ import_job.message }}
+  </p>
+  {% endif %}
+  {% if import_job.state != 'running' %}
+  <form method="post" action="/admin/import" enctype="multipart/form-data" class="inline" data-confirm="Platten aus dieser Datei übernehmen? (Vorher die Datenbank des Servers sichern.)">
+    <input type="file" name="file" accept=".db,.sqlite,application/vnd.sqlite3,application/octet-stream" required aria-label="Alte Datenbank">
+    <select name="owner" aria-label="Neuer Besitzer" required>
+      {% for u in active %}<option value="{{ u.nickname }}" {{ 'selected' if u.is_master }}>{{ u.nickname }}</option>{% endfor %}
+    </select>
+    <button type="submit">Importieren</button>
+  </form>
+  <p class="muted small">Alternativ auf dem Server: Datei in den Datenordner legen und <code>docker exec DiskAtlas diskatlas db import /data/alt.db --user Admin</code> ausführen.</p>
+  {% endif %}
+</section>
 
 <section class="card">
   <h2>Relay (Kopien zwischen Rechnern)</h2>

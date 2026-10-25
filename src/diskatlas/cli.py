@@ -100,6 +100,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from", dest="source", metavar="URL",
                    help="Quelle (Standard: konfigurierte DB)")
     p.set_defaults(func=cmd_db_copy)
+    p = db_sub.add_parser(
+        "import", help="Platten einer alten DiskAtlas-Datenbank in die aktuelle übernehmen"
+    )
+    p.add_argument("source", metavar="DATEI", help="alte Datenbank, z. B. /data/alt.db")
+    p.add_argument("--user", default="", metavar="NAME",
+                   help="Benutzer, dem die Platten gehören sollen (z. B. Admin)")
+    p.set_defaults(func=cmd_db_import)
     return parser
 
 
@@ -256,6 +263,22 @@ def cmd_db_upgrade(config: Config, args) -> int:
 
     Database(config.effective_database_url).upgrade()
     log.info("Schema aktuell: %s", redact_url(config.effective_database_url))
+    return 0
+
+
+def cmd_db_import(config: Config, args) -> int:
+    from diskatlas.db import Database
+    from diskatlas.tools.importer import ImportError_, import_database
+
+    target = Database(config.effective_database_url)
+    target.upgrade()
+    try:
+        report = import_database(target, args.source, args.user, lambda msg: log.info("%s", msg))
+    except ImportError_ as exc:
+        log.error("%s", exc)
+        return 1
+    for name in report.skipped:
+        log.info("Übersprungen (schon vorhanden): %s", name)
     return 0
 
 

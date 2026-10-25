@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import shutil
 import time
+import uuid
 from datetime import timedelta
+from pathlib import Path
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
@@ -16,6 +19,7 @@ from diskatlas.db.models import Client, Disk, HostState, User
 from diskatlas.services import bays as bay_service
 from diskatlas.services import hosts, relay, users
 from diskatlas.services.ingest import utcnow
+from diskatlas.tools import importer
 from diskatlas.web import auth
 from diskatlas.web.deps import get_current_user, get_session, require_master
 from diskatlas.web.views import setup_context, templates
@@ -252,7 +256,44 @@ def admin_users(
         "unowned": unowned,
         "msg": msg,
         "relay": relay.overview(session),
+        "import_job": importer.JOB,
     })
+
+
+@router.post("/admin/import")
+def admin_import(
+    request: Request,
+    file: UploadFile = File(...),
+    owner: str = Form(...),
+    user: User = Depends(require_master),
+):
+    """Alte DiskAtlas-Datenbank hochladen; der Import läuft im Hintergrund."""
+    folder = importer_dir(request)
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"import-{uuid.uuid4().hex}.db"
+    with open(path, "wb") as out:
+        shutil.copyfileobj(file.file, out, 1024 * 1024)
+    try:
+        importer.check_file(path)
+    except importer.ImportError_ as exc:
+        path.unlink(missing_ok=True)
+        return RedirectResponse("/admin/users?" + urlencode({"msg": str(exc)}) + "#import",
+                                status_code=303)
+    if not importer.start_background(request.app.state.db, path, owner, user.nickname):
+        path.unlink(missing_ok=True)
+        return RedirectResponse("/admin/users?" + urlencode(
+            {"msg": "Es läuft schon ein Import."}) + "#import", status_code=303)
+    return RedirectResponse("/admin/users#import", status_code=303)
+
+
+def importer_dir(request: Request) -> Path:
+    """Zwischenablage für hochgeladene Datenbanken: neben der benutzten Datenbank."""
+    url = request.app.state.db.url
+    if url.startswith("sqlite:///") and ":memory:" not in url:
+        return Path(url.removeprefix("sqlite:///")).parent / "import"
+    from diskatlas.config import default_data_dir
+
+    return default_data_dir() / "import"
 
 
 def _pending_user(session: Session, user_id: int) -> User:
