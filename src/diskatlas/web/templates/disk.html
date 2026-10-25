@@ -222,6 +222,37 @@
   </div>
 </section>
 
+<section class="card" id="protocols">
+  <h2>Löschprotokolle</h2>
+  {% if protocol_ok %}<p class="notice ok" role="status">{{ protocol_ok }}</p>{% endif %}
+  {% if protocol_err %}<p class="notice health-reasons failed" role="alert">{{ protocol_err }}</p>{% endif %}
+  {% if protocols %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Datei</th><th>Hochgeladen</th><th class="num">Größe</th>{% if auth_on %}<th>Von</th>{% endif %}<th></th></tr></thead>
+    <tbody>
+    {% for p in protocols %}
+      <tr>
+        <td><a href="/attachments/{{ p.id }}" download>{{ p.filename }}</a></td>
+        <td>{{ p.created_at | dt }}</td>
+        <td class="num">{{ p.size | filesize }}</td>
+        {% if auth_on %}<td>{{ p.uploaded_by.nickname if p.uploaded_by else '–' }}</td>{% endif %}
+        <td>{% if can_write %}<form method="post" action="/attachments/{{ p.id }}/delete" data-confirm="Löschprotokoll „{{ p.filename }}“ entfernen?"><button class="link danger">Entfernen</button></form>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="muted">Noch kein Protokoll angehängt.</p>{% endif %}
+  {% if can_write %}
+  <form method="post" action="/disks/{{ disk.id }}/attachments" enctype="multipart/form-data" class="inline">
+    <input type="file" name="file" accept="application/pdf,.pdf" required aria-label="PDF-Protokoll">
+    <button type="submit">Hochladen</button>
+  </form>
+  <p class="muted small">Z. B. das PDF-Löschzertifikat von nwipe/ShredOS. Nur PDF, höchstens {{ protocol_max_mb }} MB. Wer die Platte sehen darf (auch per Freigabe), kann es herunterladen; bei einer Übernahme bleibt es an der Platte.</p>
+  {% endif %}
+</section>
+
 {% if extensions %}
 <section class="card">
   <h2>Inhalt nach Dateityp</h2>

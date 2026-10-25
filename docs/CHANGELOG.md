@@ -12,6 +12,14 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Löschprotokolle an Platten** (Migration `0013`, Roadmap M2.2): Auf der Plattenseite lassen sich
+  PDF-Protokolle (z. B. das Löschzertifikat von nwipe/ShredOS) hochladen, mehrere je Platte, neueste
+  zuerst. Nur echte PDFs (Dateianfang `%PDF-`) bis 20 MB; gespeichert unter Zufallsnamen im Ordner
+  `attachments/` neben der Datenbank (Docker: `/data/attachments`, sonst `DISKATLAS_ATTACHMENTS_DIR`);
+  ausgeliefert nur als Download mit sicheren Kopfzeilen. Hochladen und Entfernen darf der Besitzer
+  (und der Admin), herunterladen jeder, der die Platte sehen darf. Bei einer Übernahme bleiben die
+  Protokolle an der Platte; wird die Platte gelöscht, fallen sie mit weg. Verwaiste Dateien räumt
+  der Server beim Start auf.
 - **Label für leere Platten** (Migration `0012`, Roadmap M2.1): Komplett leere Platten bekommen
   automatisch ein Label, Standard **„leer“**, je Benutzer einstellbar auf der Seite *Labels*
   (leeres Feld = aus; Hinweis auf der Konto-Seite). Leer heißt: keine Partition (typisch nach
@@ -23,6 +31,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   bestehende Label um (und umgekehrt). Beim Serverstart werden auch Platten im Regal bewertet.
 
 ### Behoben
+- **Ablage-Ordner nur neben der benutzten Datenbank.** Relay- und Anhang-Ordner richten sich jetzt
+  nach der tatsächlich geöffneten Datenbank statt nach der Konfiguration; sonst hätte ein Server mit
+  anderer Datenbank (z. B. in Tests) beim Aufräumen Dateien im Standard-Datenordner angefasst.
 - **Gelöschte Platten tauchten weiter in der Dateisuche auf.** Verschwindet eine Partition (Platte
   gelöscht oder neu partitioniert), verwirft der Server jetzt ihren Dateiindex, statt ihn nur als
   „nicht vorhanden“ zu markieren.

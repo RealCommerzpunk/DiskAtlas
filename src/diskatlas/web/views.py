@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from diskatlas import __version__
 from diskatlas.db.models import Disk, FileEntry, Label, User, Volume
 from diskatlas.services import (
+    attachments,
     authz,
     browse,
     commands,
@@ -299,6 +300,8 @@ def disk_detail(
     msg: str = "",
     err: str = "",
     share_err: str = "",
+    pmsg: str = "",
+    perr: str = "",
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
 ):
@@ -323,6 +326,9 @@ def disk_detail(
                 queries.health_reasons(session, disk_id) if disk.health != "ok" else []
             ),
             "extensions": queries.extension_summary(session, disk_id),
+            "protocols": attachments.for_disk(session, disk_id),
+            "protocol_ok": pmsg, "protocol_err": perr,
+            "protocol_max_mb": attachments.MAX_BYTES // 1024**2,
             "available_labels": [
                 lab for lab, _ in queries.list_labels(session, viewer)
                 if lab.id not in assigned and authz.label_fits_disk(lab, disk)
@@ -417,7 +423,9 @@ def disk_remove_label(
 def disk_delete(
     disk_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
 ):
-    session.delete(disk_or_404(session, viewer, disk_id, write=True))
+    disk = disk_or_404(session, viewer, disk_id, write=True)
+    attachments.remove_for_disk(session, disk)
+    session.delete(disk)
     return _redirect("/")
 
 

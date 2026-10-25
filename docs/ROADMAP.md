@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | M0 | Betreiber-Aufgaben | – | Unraid auf 0.7.0, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
 | M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
-| M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen, automatisch zuordnen | 🔜 in Arbeit |
+| M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch zuordnen (wartet auf Beispiel-PDF) | 🔜 in Arbeit |
 | M3 | Bedienung und Überblick | 0.9 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ⏳ |
 | M4 | Große Bestände und Auswertung | 1.0 | Volltextsuche, Doubletten mit Prüfsumme, Verlaufsdiagramme, SMART-Warnungen, Hot-Plug per Ereignis | ⏳ |
 | – | Ideen | – | Cloud-Betrieb, fremde Platten am eigenen Rechner nutzen | 💡 |
@@ -113,7 +113,7 @@ bekommt; das Label in den Einstellungen umbenannt und abgeschaltet werden kann.
 - Ändert man den Namen in den Einstellungen, wird das bestehende Label **umbenannt**.
 - Eine Platte mit Partition, aber **ohne Dateisystem** zählt als leer.
 
-### M2.2 Löschprotokoll (PDF) an die Platte hängen (neuer Wunsch)
+### M2.2 Löschprotokoll (PDF) an die Platte hängen ✅ (umgesetzt, erscheint mit 0.8)
 
 **Ziel:** Das PDF-Protokoll von nwipe (ab nwipe 0.35 bzw. in ShredOS als Löschzertifikat je Platte)
 hochladen und dem Datenträger zuordnen, mit Verlauf: mehrere Protokolle je Platte.
