@@ -406,6 +406,16 @@ def _file_base_query(fq: FileQuery) -> Select:
     return stmt
 
 
+def iter_files(session: Session, fq: FileQuery, batch: int = 2000):
+    """Alle Treffer (bis `fq.limit`) stückweise, für den Export."""
+    column = FILE_SORTS.get(fq.sort, FileEntry.path)
+    order = column.desc() if fq.descending else column.asc()
+    stmt = (_file_base_query(fq).order_by(order, FileEntry.id).limit(fq.limit)
+            .execution_options(yield_per=batch))
+    for row in session.execute(stmt):
+        yield tuple(row)
+
+
 def search_files(session: Session, fq: FileQuery) -> tuple[list[tuple], int]:
     stmt = _file_base_query(fq)
     total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0

@@ -277,7 +277,7 @@
     {% endfor %}
     </tbody>
   </table>
-  <p><a href="/files?disk={{ disk.id }}&amp;sort=size&amp;desc=true&amp;min_mb=0">Alle Dateien dieser Festplatte anzeigen →</a></p>
+  <p><a href="/files?disk={{ disk.id }}&amp;sort=size&amp;desc=true&amp;min_mb=0">Alle Dateien dieser Festplatte anzeigen →</a> · Dateiliste exportieren: <a href="/export/files.csv?disk={{ disk.id }}" download>CSV</a> · <a href="/export/files.json?disk={{ disk.id }}" download>JSON</a></p>
 </section>
 {% endif %}
 

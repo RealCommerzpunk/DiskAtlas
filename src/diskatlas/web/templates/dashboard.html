@@ -133,6 +133,7 @@
   <label class="check" title="Blendet Festplatten mit dem Label „System“ überall aus{{ ' (' ~ hidden_system_count ~ ' ausgeblendet)' if hide_system and hidden_system_count }}"><input type="checkbox" name="hide" value="1" {{ 'checked' if hide_system }}> Systemplatten ausblenden{% if hide_system and hidden_system_count %} ({{ hidden_system_count }}){% endif %}</label>
   <noscript><button type="submit">OK</button></noscript>
 </form>
+<span class="small export-links">Export: <a href="/export/disks.csv?{{ request.url.query }}" download>CSV</a> · <a href="/export/disks.json?{{ request.url.query }}" download>JSON</a></span>
 {% if bays_link %}<a class="small bays-link" href="{{ bays_link }}" title="Schächte einrichten">⚙ Schächte</a>{% endif %}
 </div>
 

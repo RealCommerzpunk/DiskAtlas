@@ -96,7 +96,7 @@
 {% endif %}
 
 {% elif has_query %}
-<p class="muted">{{ total | number }} Treffer{% if pages > 1 %} · Seite {{ page }} von {{ pages }}{% endif %}</p>
+<p class="muted">{{ total | number }} Treffer{% if pages > 1 %} · Seite {{ page }} von {{ pages }}{% endif %}{% if total %} · alle exportieren: <a href="/export/files.csv?{{ request.url.query }}" download>CSV</a> · <a href="/export/files.json?{{ request.url.query }}" download>JSON</a>{% endif %}</p>
 {% if rows %}
 <form method="post" action="/requests/preview" class="selection" data-selection>
 {{ request_bar() }}

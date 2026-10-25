@@ -12,6 +12,11 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Export als CSV und JSON** (Roadmap M3): die Plattenliste mit den aktuellen Dashboard-Filtern
+  (Link in der Filterleiste), Suchtreffer (Dateisuche) und die Dateiliste einer Platte
+  (Plattenseite). CSV mit Semikolon und BOM, öffnet sich direkt in Excel/LibreOffice; Zellen, die
+  wie Formeln beginnen, werden entschärft. Dateilisten werden gestreamt (bis 2 Mio. Zeilen); es
+  gelten die Sichtrechte und „Systemplatten ausblenden“.
 - **Relay: Fortsetzen statt Neustart** (Roadmap M3): Bricht eine Übertragung zwischen zwei
   Rechnern ab (Netz, Neustart, abgelaufene Lease), geht es beim nächsten Versuch beim letzten
   bestätigten Stück weiter: Der Server behält den Relay-Stand, der Sender seinen Einmal-Schlüssel
