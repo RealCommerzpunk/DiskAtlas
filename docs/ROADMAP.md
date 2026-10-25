@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **Aktuelle Version** | 0.9.0 (25.10.2026) |
-| **Nächster Meilenstein** | M1 – 0.7/0.8 im echten Betrieb prüfen, danach M4 |
+| **Nächster Meilenstein** | M1 – im echten Betrieb prüfen; danach MV (Vertrauen und Datenschutz, neu) vor M4 – Reihenfolge bitte bestätigen |
 | **Zuletzt aktualisiert** | 25.10.2026 (abends) |
 
 **Zeichen:** ✅ erledigt · 🔜 als Nächstes · ⏳ geplant · 💡 Idee, noch nicht eingeplant ·
@@ -26,6 +26,7 @@
 | M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
 | M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch per Seriennummer zuordnen ✅; Methode/Ergebnis auslesen (wartet auf Beispiel-PDF) | ✅ bis auf Rest |
 | M3 | Bedienung und Überblick | 0.8 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ✅ umgesetzt |
+| **MV** | **Vertrauen und Datenschutz** (neu) | 1.0 | Admin sieht fremde Daten nur mit Erlaubnis; an fremden Platten wird nie etwas gelöscht oder geändert; Übergabe ganzer Bestände nur mit Zustimmung; Prüfprotokoll; Sicherheitsprüfung | ⏳ Vorschlag: vor M4 |
 | M4 | Große Bestände und Auswertung | 1.0 | Volltextsuche, Doubletten mit Prüfsumme, Verlaufsdiagramme, SMART-Warnungen, Hot-Plug per Ereignis | ⏳ |
 | – | Ideen | – | Cloud-Betrieb, fremde Platten am eigenen Rechner nutzen | 💡 |
 
@@ -38,7 +39,10 @@
 2. **M2 danach**, weil es deine neuen Wünsche sind und beide zusammengehören: Nach einem nwipe-Lauf
    ist die Platte leer. Das Label für leere Platten kommt zuerst (klein, für sich nützlich), dann die
    Protokolle, zuletzt deren automatische Zuordnung.
-3. **M3 und M4** sind Komfort und Wachstum. Sie werden erst dringend, wenn mehr Rechner, Benutzer
+3. **MV vor M4 (Vorschlag, bitte bestätigen):** Sobald andere Personen DiskAtlas und den Relay
+   nutzen, ist Vertrauen wichtiger als neue Auswertungen. MV ändert die Rechte des Admins
+   grundlegend; das sollte vor weiteren Funktionen stehen, die auf diesen Rechten aufbauen.
+4. **M3 und M4** sind Komfort und Wachstum. Sie werden erst dringend, wenn mehr Rechner, Benutzer
    oder Dateien dazukommen.
 
 ---
@@ -52,7 +56,9 @@ Kein Code; wartet auf dich.
 - [x] **Einrichtung nach dem Umstieg auf Mehrbenutzer:** Client „LinuxMint“ angelegt, Agent meldet
       sich (Stand 25.10.).
 - [ ] **Altbestand importieren** (46 Platten aus der früheren lokalen Datenbank): Werkzeug ist da
-      (ab 0.9.0: *Verwaltung → Altbestand importieren*, siehe [UNRAID.md](UNRAID.md)); einmal ausführen.
+      (ab 0.9.0: *Verwaltung → Altbestand importieren*, siehe [UNRAID.md](UNRAID.md)); einmal ausführen
+      – in dein eigenes Konto. (Mit MV.3 importiert der Admin später nur noch mit Zustimmung des
+      Empfängers.)
 - [ ] **SignPath-Antrag** für die Signatur der Windows-Datei
       ([CODE_SIGNING.md](CODE_SIGNING.md)). Der Build ist vorbereitet, es fehlen die Zugangsdaten.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
@@ -177,6 +183,97 @@ zu große Dateien abgewiesen werden.
 - [x] **Fortschritt laufender Kopien** und **Relay-Belegung** für den Admin ✅ (in 0.8.0).
 - [x] **Relay: Fortsetzen statt Neustart** ✅ (in 0.8.0).
 - [x] **CSV/JSON-Export** von Platten und Dateilisten ✅ (in 0.8.0).
+
+## MV – Vertrauen und Datenschutz ⏳ (neu, 25.10.2026; Vorschlag: vor M4)
+
+**Ziel (Wunsch des Betreibers):** Wer DiskAtlas mitbenutzt (auch für Relay und Dateiaustausch),
+muss sich darauf verlassen können, dass seine Daten privat bleiben und an seinen Platten nichts
+kaputtgehen kann. Die Schutzmechanismen müssen klar im Code stehen, mit Tests belegt sein und
+einer unabhängigen Code-Prüfung standhalten.
+
+**Heutiger Stand (ehrlich):** Der Admin ist bisher „unbeschränkt“ (`Viewer.unrestricted` in
+`services/authz.py`): Er sieht und ändert alle Platten, Dateien, Labels und Freigaben aller
+Benutzer. Clients und Aufträge anderer sieht er nicht. Dateien auf Platten löscht DiskAtlas nirgends;
+der Agent schreibt nur neue Dateien in Zielordner eigener Platten (nie überschreiben) und ändert
+Bezeichnungen nur im Auftrag des Besitzers.
+
+### MV.1 Der Admin ist Verwalter, nicht Mitleser
+
+- [ ] Die Admin-Rolle umfasst nur noch die **Benutzerverwaltung**: Anträge freischalten oder
+      ablehnen, Konten sperren, Server-Zustand (Relay-Belegung, Versionen), herrenlose Platten.
+      Er sieht **keine** Platten, Dateien, Labels, Clients, Freigaben, Anfragen oder Protokolle
+      anderer Benutzer und ändert oder verschiebt nichts davon.
+- [ ] **Freiwillige Vollmacht je Benutzer:** Unter *Konto* kann ein Benutzer ausdrücklich
+      einstellen „Der Admin darf meine Daten sehen und verwalten“. Standard aus, jederzeit
+      widerrufbar, der Admin sieht nur Bestände mit Vollmacht. Der Betreiber selbst, der zugleich
+      Admin ist, behält seine eigenen Daten natürlich.
+- [ ] **Umsetzung „sicher durch Bauart“:** Die Sonderrechte stecken heute an einer Stelle
+      (`Viewer.unrestricted`). Sie werden ersetzt durch eine zentrale Prüfung „wem gehört das, und
+      gibt es eine Freigabe oder Vollmacht?“, die jede Abfrage und jede Änderung durchläuft
+      (Grundsatz: verweigern, wenn nichts ausdrücklich erlaubt). Der bestehende Leck-Test über
+      alle Seiten und API-Routen wird auf den Admin ausgeweitet: Er muss bei fremden Daten
+      dasselbe sehen wie ein Fremder (404).
+
+### MV.2 Nie etwas an fremden Platten löschen oder ändern
+
+- [ ] **Schreib-Erlaubnisliste im Agenten** statt verteilter Einzelprüfungen. Der Agent kennt
+      genau drei schreibende Vorgänge:
+  - eine **neue** Datei im Zielordner einer eigenen Kopie anlegen (nie überschreiben);
+  - eigene Teildateien `.diskatlas-*.part` löschen;
+  - die Bezeichnung eines Volumes ändern, nur im Auftrag des Besitzers.
+
+  Alles andere (Löschen, Umbenennen oder Ändern bestehender Dateien, Rechte, Zeitstempel fremder
+  Dateien) gibt es im Code schlicht nicht, und ein Test sichert ab, dass keine weitere schreibende
+  Dateisystem-Funktion hinzukommt.
+- [ ] **Doppelte Prüfung:** Der Server gibt Aufträge nur an Clients des Besitzers. Der Agent
+      prüft selbst gegen seinen eigenen Stand, dass die Zielplatte seinem Benutzer gehört und kein
+      Systemvolume ist; ein gefälschter Auftrag vom Server läuft damit ins Leere.
+- [ ] **Datenbank-Seite:** Auch Namen, Notizen, Labels, Lagerorte und Löschprotokolle fremder Platten
+      ändert niemand außer dem Besitzer (mit MV.1 auch nicht mehr der Admin). Freigaben bleiben
+      lesend.
+
+### MV.3 Ganze Bestände übergeben – nur mit Zustimmung
+
+- [ ] **Übergabe von Benutzer zu Benutzer:** Ein Besitzer gibt einzelne oder alle Platten (samt
+      Dateiindex, Labels, Notizen, Protokollen) an einen anderen Benutzer ab. Der Empfänger stellt ein,
+      ob er Übergaben **nie**, **nach Rückfrage** oder **immer** annimmt (wie die
+      Kopierberechtigung). Ohne Annahme passiert nichts.
+- [ ] **Zuordnung von Client zu Client:** Ein Benutzer ordnet Platten einem seiner anderen Clients
+      zu (z. B. nach einem Rechnerwechsel), inklusive Schachtzuordnung.
+- [ ] **Import von Altbeständen** (wie am 25.10. mit deinen 46 Platten): nur noch in das eigene
+      Konto oder mit Zustimmung des Empfängers, nicht mehr vom Admin in fremde Konten.
+
+### MV.4 Nachvollziehbarkeit und Prüfung
+
+- [ ] **Prüfprotokoll** für jeden Benutzer: wer wann auf seine Daten zugegriffen oder etwas geändert
+      hat (Freigaben, Vollmacht, Übergaben, Admin-Handlungen). Einträge kann niemand löschen, auch
+      nicht der Admin.
+- [ ] **Bedrohungsmodell** in `docs/SECURITY.md`: wer was sehen und tun kann, welche Sperren das
+      sichern, und was sie **nicht** leisten (siehe unten).
+- [ ] **Sicherheitsprüfung** des Codes vor dem Release (automatisierte Prüfung plus gezielte
+      Durchsicht aller Stellen, die Rechte prüfen oder Dateien schreiben).
+
+### Was Verschlüsselung leisten kann – und was nicht
+
+Die Sperren aus MV.1–MV.3 schützen gegen alles, was über die Weboberfläche, die API und die Agenten
+läuft, also auch gegen einen neugierigen Admin. Wer dagegen **den Server selbst betreibt** (Zugriff
+auf den Container oder die Datei `diskatlas.db`), kann eine Datenbank grundsätzlich lesen. Echte
+Abschirmung auch davor ginge nur mit Verschlüsselung, deren Schlüssel ausschließlich auf den
+Rechnern der Benutzer liegen:
+
+- **Heute schon so:** Dateien im Relay sind Ende-zu-Ende verschlüsselt (der Server sieht weder
+  Inhalt noch Dateinamen).
+- **Möglich als Ausbaustufe (MV.5, 💡):** Dateinamen und Pfade im Index verschlüsselt speichern, mit
+  Schlüsseln nur in den Agenten. Preis dafür: Die Suche müsste in den Agenten bzw. im Browser mit
+  dem Schlüssel des Benutzers laufen, und die Weboberfläche dürfte nicht mehr vom selben Server
+  kommen, dem man misstraut. Das ist ein großer Umbau, deshalb zuerst MV.1–MV.4.
+
+❓ **Fragen an dich, bevor MV startet:**
+- Reihenfolge: MV vor M4? *(Mein Vorschlag: ja.)*
+- Soll der Admin **herrenlose** Platten weiterhin sehen und zuordnen dürfen? *(Vorschlag: ja, sie
+  gehören niemandem; Zuordnung nur an Benutzer, die Übergaben annehmen.)*
+- Soll der Admin Benutzerkonten **löschen** dürfen, und was passiert dann mit deren Platten?
+  *(Vorschlag: Sperren ja; Löschen nur, wenn der Benutzer zustimmt oder nichts mehr besitzt.)*
 
 ## M4 – Große Bestände und Auswertung ⏳ (1.0)
 
