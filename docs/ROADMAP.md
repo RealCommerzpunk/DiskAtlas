@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | **Aktuelle Version** | 0.9.0 (25.10.2026) |
-| **Nächster Meilenstein** | M1 – im echten Betrieb prüfen; danach MV (Vertrauen und Datenschutz, neu) vor M4 – Reihenfolge bitte bestätigen |
+| **Nächster Meilenstein** | MV – Vertrauen und Datenschutz (parallel: M1 im echten Betrieb) |
 | **Zuletzt aktualisiert** | 25.10.2026 (abends) |
 
 **Zeichen:** ✅ erledigt · 🔜 als Nächstes · ⏳ geplant · 💡 Idee, noch nicht eingeplant ·
@@ -26,7 +26,7 @@
 | M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
 | M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch per Seriennummer zuordnen ✅; Methode/Ergebnis auslesen (wartet auf Beispiel-PDF) | ✅ bis auf Rest |
 | M3 | Bedienung und Überblick | 0.8 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ✅ umgesetzt |
-| **MV** | **Vertrauen und Datenschutz** (neu) | 1.0 | Admin sieht fremde Daten nur mit Erlaubnis; an fremden Platten wird nie etwas gelöscht oder geändert; Übergabe ganzer Bestände nur mit Zustimmung; Prüfprotokoll; Sicherheitsprüfung | ⏳ Vorschlag: vor M4 |
+| **MV** | **Vertrauen und Datenschutz** | 1.0 | Admin sieht fremde Daten nur mit Erlaubnis; an fremden Platten wird nie etwas gelöscht oder geändert; Übergabe ganzer Bestände nur mit Zustimmung; Prüfprotokoll; Sicherheitsprüfung | 🔜 als Nächstes (vor M4) |
 | M4 | Große Bestände und Auswertung | 1.0 | Volltextsuche, Doubletten mit Prüfsumme, Verlaufsdiagramme, SMART-Warnungen, Hot-Plug per Ereignis | ⏳ |
 | – | Ideen | – | Cloud-Betrieb, fremde Platten am eigenen Rechner nutzen | 💡 |
 
@@ -39,7 +39,7 @@
 2. **M2 danach**, weil es deine neuen Wünsche sind und beide zusammengehören: Nach einem nwipe-Lauf
    ist die Platte leer. Das Label für leere Platten kommt zuerst (klein, für sich nützlich), dann die
    Protokolle, zuletzt deren automatische Zuordnung.
-3. **MV vor M4 (Vorschlag, bitte bestätigen):** Sobald andere Personen DiskAtlas und den Relay
+3. **MV vor M4 (entschieden):** Sobald andere Personen DiskAtlas und den Relay
    nutzen, ist Vertrauen wichtiger als neue Auswertungen. MV ändert die Rechte des Admins
    grundlegend; das sollte vor weiteren Funktionen stehen, die auf diesen Rechten aufbauen.
 4. **M3 und M4** sind Komfort und Wachstum. Sie werden erst dringend, wenn mehr Rechner, Benutzer
@@ -82,6 +82,13 @@ behoben.
       Formulare nicht blockieren (Kopfzeile `X-Forwarded-Host`).
 - [x] **Hängende Indizierung der Systemplatte** (gemeldet am 25.10.) ✅ behoben, in 0.8.0:
       abgebrochene Läufe werden erkannt, der Agent versucht es nach 10 min erneut.
+- [ ] **Server antwortet beim Indizieren der Systemplatte mit Fehler 500** (gemeldet 25.10., 0.9.0):
+      Der Agent versucht es jetzt alle 10/20/40 min erneut, der Server lehnt Heartbeat und
+      Datei-Stücke aber zeitweise ab und setzt die Verbindung zurück. Ursache steht im
+      Container-Log (ab 0.9.1 auch unter *Verwaltung → Server-Meldungen*). Verdacht: SQLite auf
+      `/mnt/user` (Unraid-FUSE) – dann Datenordner auf `/mnt/cache/appdata/diskatlas` legen.
+- [x] **Indizierungs-Banner verdeckte das Benutzermenü** ✅ (0.9.1): jetzt kompakte Anzeige in der
+      Kopfleiste (pulsierender Punkt, Plattenname, Dateizahl, Tooltip „nicht abziehen“).
 - [ ] **Hinweis „Bitte Platte anschließen“:** kommt die Tray-Meldung an, und nur einmal am Tag?
 
 ## M2 – Leere Platten und Löschprotokolle ⏳ (0.8)
@@ -184,7 +191,7 @@ zu große Dateien abgewiesen werden.
 - [x] **Relay: Fortsetzen statt Neustart** ✅ (in 0.8.0).
 - [x] **CSV/JSON-Export** von Platten und Dateilisten ✅ (in 0.8.0).
 
-## MV – Vertrauen und Datenschutz ⏳ (neu, 25.10.2026; Vorschlag: vor M4)
+## MV – Vertrauen und Datenschutz 🔜 (neu, 25.10.2026; vor M4)
 
 **Ziel (Wunsch des Betreibers):** Wer DiskAtlas mitbenutzt (auch für Relay und Dateiaustausch),
 muss sich darauf verlassen können, dass seine Daten privat bleiben und an seinen Platten nichts
@@ -268,12 +275,12 @@ Rechnern der Benutzer liegen:
   dem Schlüssel des Benutzers laufen, und die Weboberfläche dürfte nicht mehr vom selben Server
   kommen, dem man misstraut. Das ist ein großer Umbau, deshalb zuerst MV.1–MV.4.
 
-❓ **Fragen an dich, bevor MV startet:**
-- Reihenfolge: MV vor M4? *(Mein Vorschlag: ja.)*
-- Soll der Admin **herrenlose** Platten weiterhin sehen und zuordnen dürfen? *(Vorschlag: ja, sie
-  gehören niemandem; Zuordnung nur an Benutzer, die Übergaben annehmen.)*
-- Soll der Admin Benutzerkonten **löschen** dürfen, und was passiert dann mit deren Platten?
-  *(Vorschlag: Sperren ja; Löschen nur, wenn der Benutzer zustimmt oder nichts mehr besitzt.)*
+**Entschieden (25.10.2026):**
+- MV kommt **vor M4**.
+- Der Admin sieht **herrenlose** Platten weiterhin und ordnet sie zu – aber nur an Benutzer, die
+  Übergaben annehmen.
+- Der Admin darf Konten **sperren**; **löschen** nur, wenn der Benutzer zustimmt oder nichts mehr
+  besitzt.
 
 ## M4 – Große Bestände und Auswertung ⏳ (1.0)
 

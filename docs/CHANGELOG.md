@@ -11,6 +11,17 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- **Laufende Indizierung als kompakte Anzeige in der Kopfleiste** statt als breites Banner, das
+  oben klebte und das aufgeklappte Benutzermenü verdeckte: pulsierender Punkt, Plattenname und
+  Dateizahl (auf schmalen Bildschirmen nur Punkt und Zahl), Klick führt zur Platte, der Tooltip
+  nennt alle laufenden Indizierungen und den Hinweis „bitte nicht abziehen“. Sie wird gleich beim
+  Seitenaufbau mitgeliefert (kein Flackern) und alle 3 Sekunden aktualisiert.
+
+### Hinzugefügt
+- **Server-Meldungen** unter *Verwaltung*: die letzten 50 Warnungen und Fehler des Servers seit dem
+  Start mit Uhrzeit und Ursache – zur Fehlersuche ohne `docker logs`.
+
 ## [0.9.0] - 2026-10-25
 
 ### Hinzugefügt
