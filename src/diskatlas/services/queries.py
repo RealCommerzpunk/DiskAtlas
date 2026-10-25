@@ -22,6 +22,7 @@ from diskatlas.db.models import (
 )
 from diskatlas.probe.smart import health_reasons as smart_health_reasons
 from diskatlas.services.authz import Viewer
+from diskatlas.services.ingest import INDEX_STALE, utcnow
 
 HEALTH_LABELS = {"ok": "Gut", "warning": "Warnung", "failed": "Kritisch", "unknown": "Unbekannt"}
 
@@ -439,13 +440,16 @@ def running_indexes(session: Session, visible: Select | None = None) -> list[Run
         stmt = stmt.where(Disk.id.in_(visible))
     rows = session.execute(stmt).all()
     result = []
+    stale_before = utcnow() - INDEX_STALE
     for volume, disk in rows:
+        if volume.index_touched_at is None or volume.index_touched_at < stale_before:
+            continue  # ohne Fortschritt: gilt als abgebrochen, nicht als „läuft“
         so_far = session.scalar(
             select(func.count(FileEntry.id)).where(
                 FileEntry.volume_id == volume.id,
-                FileEntry.scan_id != (volume.active_scan_id or ""),
+                FileEntry.scan_id == (volume.pending_scan_id or ""),
             )
-        )
+        ) if volume.pending_scan_id else 0
         result.append(
             RunningIndex(
                 disk_id=disk.id, disk_name=disk.display_name, volume_label=volume.label,

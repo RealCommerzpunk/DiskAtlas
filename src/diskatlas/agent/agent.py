@@ -28,6 +28,8 @@ log = logging.getLogger(__name__)
 
 BATCH_SIZE = 5000
 HEARTBEAT_SECONDS = 60.0
+RETRY_FIRST = 600.0  # gescheiterter Scan: erster neuer Versuch nach 10 min, dann doppelt so lang
+RETRY_MAX = 4 * 3600.0
 
 Prober = Callable[[], list[DiskInfo]]
 SmartReader = Callable[[str], SmartInfo]
@@ -127,7 +129,8 @@ class Agent:
 
     def scan_disk(
         self, disk: DiskInfo, index_files: bool | None = None, read_smart: bool = True
-    ) -> None:
+    ) -> bool:
+        """Scannt die Platte; False, wenn eine Indizierung scheiterte (dann später erneut)."""
         if index_files is None:
             index_files = self.config.index_files
         log.info("Scanne %s (%s, %s)", disk.device, disk.model or "?", disk.key)
@@ -139,9 +142,10 @@ class Agent:
             log.warning(
                 "%s gehört einem anderen Benutzer des Servers. Übernahme beantragt – der "
                 "bisherige Besitzer muss zustimmen (Weboberfläche: Übernahmen).", disk.key)
-            return
+            return True
         if not index_files:
-            return
+            return True
+        ok = True
         for volume in disk.volumes:
             if not volume.mountpoint:
                 continue
@@ -149,10 +153,11 @@ class Agent:
                 log.info("Überspringe Systemvolume %s", volume.mountpoint)
                 continue
             if self.stop_event.is_set():
-                return
-            self.index_volume(disk, volume)
+                return ok
+            ok = self.index_volume(disk, volume) and ok
+        return ok
 
-    def index_volume(self, disk: DiskInfo, volume: VolumeInfo) -> None:
+    def index_volume(self, disk: DiskInfo, volume: VolumeInfo) -> bool:
         errors = 0
 
         def on_error(path: str, exc: OSError) -> None:
@@ -188,7 +193,7 @@ class Agent:
                 self.sink.finish_index(disk.key, volume.key, scan_id, errors, success=False)
             except Exception:
                 log.exception("Konnte fehlgeschlagene Indizierung nicht abschließen")
-            return
+            return False
         log.info(
             "%s: %d Dateien in %.1f s indiziert (%d Fehler)",
             volume.mountpoint,
@@ -196,6 +201,7 @@ class Agent:
             time.monotonic() - started,
             errors,
         )
+        return True
 
     # ------------------------------------------------------------------ Überwachung
     def watch(self) -> None:
@@ -204,6 +210,8 @@ class Agent:
         pending: set[tuple[str, str]] = set()
         scanning: set[str] = set()  # Datenträger, die der Worker gerade bearbeitet
         current: dict[str, DiskInfo] = {}
+        failures: dict[str, int] = {}  # gescheiterte vollständige Scans je Platte
+        retry_at: dict[str, float] = {}
         lock = threading.Lock()
 
         def enqueue(key: str, kind: str) -> None:
@@ -227,14 +235,26 @@ class Agent:
                     with lock:
                         scanning.discard(key)
                     continue  # inzwischen wieder abgesteckt
+                ok = True
                 try:
                     if kind == "mount":
                         self._mount_volumes(disk)
                         continue
-                    self.scan_disk(disk, index_files=None if kind == "full" else False)
+                    ok = self.scan_disk(disk, index_files=None if kind == "full" else False)
                 except Exception:
                     log.exception("Scan von %s fehlgeschlagen", key)
+                    ok = False
                 finally:
+                    if kind == "full":
+                        with lock:
+                            if ok:
+                                failures.pop(key, None)
+                                retry_at.pop(key, None)
+                            else:  # z. B. Server kurz weg: nicht erst nach 24 h erneut versuchen
+                                failures[key] = failures.get(key, 0) + 1
+                                delay = min(RETRY_FIRST * 2 ** (failures[key] - 1), RETRY_MAX)
+                                retry_at[key] = time.monotonic() + delay
+                                log.info("Neuer Versuch für %s in %.0f min", key, delay / 60)
                     with lock:
                         scanning.discard(key)
 
@@ -298,7 +318,14 @@ class Agent:
                     mount_tried[disk.key] = now
                     enqueue(disk.key, "mount")
                 sig = disk.signature()
-                if signatures.get(disk.key) != sig or now - last_full.get(disk.key, 0) >= rescan:
+                with lock:
+                    due = retry_at.get(disk.key)
+                    if due is not None and now >= due:
+                        retry_at.pop(disk.key)
+                if due is not None and now >= due:
+                    last_full[disk.key] = last_smart[disk.key] = now
+                    enqueue(disk.key, "full")
+                elif signatures.get(disk.key) != sig or now - last_full.get(disk.key, 0) >= rescan:
                     signatures[disk.key] = sig
                     last_full[disk.key] = last_smart[disk.key] = now
                     enqueue(disk.key, "full")

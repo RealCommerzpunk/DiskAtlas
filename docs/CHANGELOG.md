@@ -64,6 +64,14 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   manipulierter Server keinen fremden Schlüssel mehr unterschieben.
 
 ### Behoben
+- **Indizierung „lief“ wochenlang und blockierte** (Banner „bitte nicht abziehen“, Umbenennen
+  gesperrt; Migration `0016`). Verlor der Agent mitten in der Indizierung die Verbindung (z. B.
+  Ruhezustand), erfuhr der Server nie vom Abbruch, und der Agent versuchte es erst nach 24 Stunden
+  erneut. Jetzt gilt eine Indizierung ohne Fortschritt seit 30 Minuten als abgebrochen (auch alte,
+  schon hängende), der Agent versucht einen gescheiterten Scan nach 10 Minuten erneut (danach mit
+  wachsendem Abstand bis 4 Stunden), Reste abgebrochener Läufe werden beim nächsten Start in Stücken
+  gelöscht, und das Banner zählt nur den laufenden Durchlauf (statt aller Reste: daher 1,11 Mio.
+  statt 846.000 Dateien) – das entlastet auch die Datenbank.
 - **Umbenennen von Volumes war im Server-Betrieb gesperrt** („Agent meldet sich gerade nicht“), weil
   die Plattenseite den Agenten-Zustand seit 0.6.0 unter dem Rechnernamen statt je Client suchte.
 - **CI hing unter Windows**, weil pytest einen Testparameter mit 20 MB im Fehlerbericht ausgab. Die
