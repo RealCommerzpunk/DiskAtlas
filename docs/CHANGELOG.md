@@ -11,6 +11,12 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- **Dokumente aufgeräumt:** `CHANGELOG.md` und `CLAUDE.md` liegen jetzt in `docs/` (im Hauptordner
+  bindet eine kurze `CLAUDE.md` die Hinweise ein); neue **[Roadmap](ROADMAP.md)** mit Erledigtem,
+  Offenem und Reihenfolge, sie ersetzt die Liste in PROJECT.md §8. Die Release-Skripte lesen den
+  CHANGELOG am neuen Ort.
+
 ## [0.7.0] - 2026-09-27
 
 ### Sicherheit
@@ -230,13 +236,13 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   Einstellungsfenster verlinkt, der Quellcode wird bei jedem Release mitveröffentlicht
   (`packaging/fetch_smartctl.py` lädt und prüft beides per SHA-256).
 - Einstellungsfenster weist unter Windows darauf hin, wenn SMART mangels Administratorrechten
-  nicht lesbar ist; neue Anleitung [docs/AGENT.md](docs/AGENT.md) (Betriebsarten, geplante Aufgabe
+  nicht lesbar ist; neue Anleitung [docs/AGENT.md](AGENT.md) (Betriebsarten, geplante Aufgabe
   mit Adminrechten, SmartScreen, Protokolle).
 - Tray-Menü *Protokolle anzeigen*; das Einstellungsfenster schreibt eigene Protokolle
   (`agent-settings.log`), und das Tray meldet per Benachrichtigung, wenn es sich nicht öffnen lässt.
 - **MIT-Lizenz** (`LICENSE`); Windows-Datei mit Metadaten (Produkt, Version, Copyright).
 - Signatur der Windows-Datei über **SignPath** vorbereitet: Schritt im Build (nur Versions-Tags,
-  aktiv sobald die Zugangsdaten hinterlegt sind), Richtlinie [docs/CODE_SIGNING.md](docs/CODE_SIGNING.md),
+  aktiv sobald die Zugangsdaten hinterlegt sind), Richtlinie [docs/CODE_SIGNING.md](CODE_SIGNING.md),
   Artefakt-Konfiguration `packaging/signpath/`. Anleitung zum Entfernen in docs/AGENT.md.
 - Build: GitHub-Release bekommt den CHANGELOG-Abschnitt der Version als Text
   (`scripts/release_notes.py`).
@@ -258,7 +264,7 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 - **Tray-Symbol einfarbig wie die Systemsymbole** (Linux im Cinnamon-Grauton und sichtbar so groß
   wie die 16-px-Systemsymbole, Windows weiß bzw. dunkel) mit Statuspunkt unten rechts; unter Windows passend zur Taskleiste hell/dunkel (auch
   beim Umschalten) und in exakt der Systemgröße (DPI-bewusst, keine Unschärfe durch Skalieren).
-  Symbol von Streamline (CC BY 4.0), Nachweis in [THIRD_PARTY.md](THIRD_PARTY.md).
+  Symbol von Streamline (CC BY 4.0), Nachweis in [THIRD_PARTY.md](../THIRD_PARTY.md).
   Neue Option `[agent] tray_icon_color` (`auto`/`light`/`dark`), im Einstellungsfenster unter
   *Erweitert*. Autostart-Eintrag unter Linux zeigt jetzt das Programmsymbol.
 - Linux-Programmdatei nutzt GTK, AppIndicator und WebKit des Systems statt eigener Kopien:

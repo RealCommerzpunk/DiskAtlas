@@ -17,8 +17,8 @@ has long been put back in the cupboard.
 
 > The user interface and the detailed guides are currently in German.
 
-Architecture, decisions and roadmap: **[PROJECT.md](PROJECT.md)** (German) ·
-Changes: **[CHANGELOG.md](CHANGELOG.md)** (German)
+Architecture and decisions: **[PROJECT.md](PROJECT.md)** (German) · Roadmap: **[docs/ROADMAP.md](docs/ROADMAP.md)** (German) ·
+Changes: **[CHANGELOG.md](docs/CHANGELOG.md)** (German)
 
 ---
 

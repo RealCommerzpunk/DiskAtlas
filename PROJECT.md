@@ -3,13 +3,13 @@
 > **Lebendes Dokument.** Diese Datei beschreibt Ziel, Architektur, Entscheidungen und Stand des
 > Projekts. Sie wird bei **jeder** fachlichen oder architektonischen Änderung mitgepflegt
 > (siehe [Pflegeregeln](#10-pflegeregeln)). Änderungen im Detail stehen im
-> [CHANGELOG](CHANGELOG.md).
+> [CHANGELOG](docs/CHANGELOG.md).
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.6.0 (siehe `src/diskatlas/__init__.py`) |
-| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0 |
-| **Zuletzt aktualisiert** | 2026-09-26 |
+| **Aktuelle Version** | 0.7.0 (siehe `src/diskatlas/__init__.py`) |
+| **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **Zuletzt aktualisiert** | 2026-10-25 |
 
 ---
 
@@ -50,8 +50,8 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Eigene Angaben | Anzeigename, Notizen | ✅ 0.1.0 |
 | Dashboard | Kennzahlen, Suche, Filter, Gruppierung, Sortierung, Detailseite | ✅ 0.1.0 |
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
-| Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser) | ✅ |
-| Datei anfordern | Kopierberechtigung je Freigabe (nie/nachfragen/immer), Anfragen mit Zustandsmaschine und Zustimmung des Besitzers; Ausführung durch den Agenten (`agent/transfer.py`, `agent/safepath.py`, nur mit `allow_transfer`): lokal und über den verschlüsselten, seriellen Relay (`services/relay.py`, `agent/relaycrypto.py`); Schalter `copy_enabled` | 🚧 |
+| Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser) | ✅ 0.7.0 |
+| Datei anfordern | Kopierberechtigung je Freigabe (nie/nachfragen/immer), Anfragen mit Zustandsmaschine und Zustimmung des Besitzers; Ausführung durch den Agenten (`agent/transfer.py`, `agent/safepath.py`, nur mit `allow_transfer`): lokal und über den verschlüsselten, seriellen Relay (`services/relay.py`, `agent/relaycrypto.py`); Schalter `copy_enabled` | ✅ 0.7.0 (im echten Betrieb noch zu prüfen, Roadmap M1) |
 | iPhone-Web-App | Scanner für Seriennummer-Barcodes (ZXing lokal), zeigt Schacht/Lagerort, Lagerort pflegbar | ✅ 0.3.0 |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |
@@ -71,6 +71,8 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ 0.6.0 |
 | Schächte je Client | Anzahl und Port-Zuordnung je Client (Assistent), Haken „Keine Wechselschächte“, Schachtblock je Client im Dashboard | ✅ 0.6.0 |
 | Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Admin), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ 0.5.0 |
+| Leere Platten | Automatisches Label für komplett leere Platten, Name je Benutzer einstellbar (Standard „leer“) | ⏳ geplant (Roadmap M2.1) |
+| Löschprotokolle | nwipe-PDF hochladen und an die Platte hängen, später automatisch per Seriennummer zuordnen | ⏳ geplant (Roadmap M2.2/M2.3) |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
 | Export | CSV/JSON-Export von Festplatten und Dateilisten | ⏳ geplant |
@@ -153,6 +155,8 @@ src/diskatlas/
 tests/                pytest; Fixtures mit echten lsblk/smartctl/PowerShell-Ausgaben
 deploy/               systemd-Dienst, Windows-Autostart
 packaging/            Icons, PyInstaller-Bauanleitung des Agent-Programms, smartctl-Download (fetch_smartctl.py)
+docs/                 Anleitungen (Agent, Unraid, Signatur), ROADMAP.md, CHANGELOG.md, CLAUDE.md
+                      (Hinweise für KI-Assistenten; CLAUDE.md im Hauptordner bindet sie ein)
 scripts/              Versionierung, sudoers-Helfer für smartctl, Symbole erzeugen (build_icons.py)
 ```
 
@@ -276,23 +280,8 @@ einem Fehler, damit Tippfehler auffallen.
 
 ## 8. Roadmap
 
-**0.2 – Komfort & Robustheit**
-- [ ] Windows-Test auf echter Hardware, ggf. Parser-Korrekturen
-- [ ] CSV/JSON-Export (Festplatten, Dateilisten)
-- [ ] Button „Jetzt neu scannen“ im Dashboard (Agent-Befehlskanal)
-- [ ] Anzeige des Agenten-Status (letzter Heartbeat je Rechner)
-
-**0.3 – Zentraler Server**
-- [x] Login für Dashboard/API (Benutzer + Passwort, Session) – Phase 1 der Mehrbenutzer-Umstellung
-- [ ] Veröffentlichtes Docker-Image (GitHub Container Registry) + Unraid-Template
-- [ ] Volltextsuche (FTS5 / PostgreSQL) für Indizes mit vielen Millionen Dateien
-
-**Später**
-- [ ] Doubletten: optionaler Inhaltshash (Agent liest nur Kandidaten mit gleicher Größe) für sichere Treffer
-- [ ] Diagramme: Belegung und Temperatur über Zeit, SMART-Trends
-- [ ] Duplikatsuche (Name + Größe, optional Hash)
-- [ ] Benachrichtigungen bei SMART-Verschlechterung
-- [ ] Ereignisgesteuertes Hot-Plug (udev / WMI) zusätzlich zum Polling
+Was erledigt ist, was offen ist und in welcher Reihenfolge: **[docs/ROADMAP.md](docs/ROADMAP.md)**.
+(Bis Oktober 2026 stand hier eine Liste; ihre offenen Punkte sind dort einsortiert.)
 
 ## 9. Entwicklung
 
@@ -335,11 +324,12 @@ oder englisch – aber einheitlich pro Projekt.
 
 ## 10. Pflegeregeln
 
-1. **Jede Änderung** am Verhalten wird im [CHANGELOG](CHANGELOG.md) unter `[Unreleased]`
+1. **Jede Änderung** am Verhalten wird im [CHANGELOG](docs/CHANGELOG.md) unter `[Unreleased]`
    eingetragen – im selben Commit.
 2. **Diese Datei** wird aktualisiert, wenn sich Funktionsumfang (§2), Architektur (§3),
-   Datenmodell (§4), Entscheidungen (§5), Plattformhinweise (§6), Konfiguration (§7) oder
-   Roadmap (§8) ändern. Neue Entscheidungen werden in §5 mit Datum **angehängt**, alte nicht
+   Datenmodell (§4), Entscheidungen (§5), Plattformhinweise (§6) oder Konfiguration (§7)
+   ändern. Erledigte und neue Roadmap-Punkte werden in [docs/ROADMAP.md](docs/ROADMAP.md)
+   gepflegt. Neue Entscheidungen werden in §5 mit Datum **angehängt**, alte nicht
    gelöscht, sondern ggf. als „ersetzt durch …“ markiert.
 3. Kopfzeile (Version, Status, Datum) bei jedem Release aktualisieren.
 4. Versionsnummer ausschließlich über `scripts/bump_version.py` ändern (Semantic Versioning:
