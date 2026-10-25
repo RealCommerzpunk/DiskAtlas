@@ -49,9 +49,10 @@ Kein Code; wartet auf dich.
 
 - [ ] **Unraid auf 0.7.0 aktualisieren.** Danach als **Admin** anmelden (früher „Master“, das
       Passwort bleibt). Das Passwortfeld der Vorlage darf leer bleiben.
-- [ ] **Einrichtung nach dem Umstieg auf Mehrbenutzer** (seit 0.5.0), falls noch nicht geschehen:
-      je Rechner unter *Konto* einen Client anlegen und dessen Token im Agenten eintragen; unter
-      *Verwaltung → Herrenlose Platten* den Altbestand (46 Platten) deinem Benutzer übergeben.
+- [x] **Einrichtung nach dem Umstieg auf Mehrbenutzer:** Client „LinuxMint“ angelegt, Agent meldet
+      sich (Stand 25.10.).
+- [ ] **Altbestand importieren** (46 Platten aus der früheren lokalen Datenbank): Werkzeug ist da
+      (*Verwaltung → Altbestand importieren*, siehe [UNRAID.md](UNRAID.md)); einmal ausführen.
 - [ ] **SignPath-Antrag** für die Signatur der Windows-Datei
       ([CODE_SIGNING.md](CODE_SIGNING.md)). Der Build ist vorbereitet, es fehlen die Zugangsdaten.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),

@@ -121,52 +121,37 @@ des Servers; lokal läuft dann nur der Agent. Die Anmeldung wird einmal abgefrag
 Nach dem ersten Start des Agenten in der Weboberfläche auf **⚙ Schächte** klicken und für jeden
 Schacht die Platte ziehen und wieder einstecken. Die Zuordnung liegt auf dem Server.
 
-## Lokale Daten übernehmen
+## Lokale Daten übernehmen (Altbestand importieren)
 
-Wer DiskAtlas vorher nur lokal betrieben hat, kann den bisherigen Datenbestand (Platten, Dateien,
-SMART-Verlauf, Labels) in den Container übernehmen. Der Container-Bestand wird dabei **ersetzt**;
-was die Agenten dort schon gemeldet haben, melden sie beim nächsten Scan erneut. Nur im
-Container von Hand Eingetragenes (Lagerorte, Notizen) ginge verloren.
+Wer DiskAtlas vorher nur lokal betrieben hat („Nur dieser PC“), übernimmt den bisherigen Bestand
+(Platten, Partitionen, Dateiindex, SMART-Verlauf, Namen, Lagerorte, Notizen, Labels) in den
+Container, **ohne** dort etwas zu ersetzen. Platten, die der Container schon kennt, werden
+übersprungen; ihr neuerer Stand bleibt. Die Platten gehören danach dem gewählten Benutzer.
 
-**1. Auf dem PC eine Exportdatei erzeugen.** Die lokale Datenbank liegt unter
-`~/.local/share/diskatlas/diskatlas.db` (Windows: `%LOCALAPPDATA%\diskatlas\diskatlas.db`).
-Nicht einfach die Datei kopieren: Daneben kann eine `diskatlas.db-wal` liegen, in der noch nicht
-übernommene Änderungen stehen. Stattdessen (lokale DiskAtlas-Programme vorher beenden):
+**Die alte Datenbank** liegt unter `~/.local/share/diskatlas/diskatlas.db` (Windows:
+`%LOCALAPPDATA%\diskatlas\diskatlas.db`). Vorher das lokale Agent-Programm beenden. Liegt daneben
+eine `diskatlas.db-wal`, gehört sie dazu; der Import liest den Stand mit dem SQLite-Backup
+konsistent aus. Am einfachsten: erst eine einzelne Datei erzeugen, z. B. mit
+`sqlite3 ~/.local/share/diskatlas/diskatlas.db ".backup ~/diskatlas-alt.db"`.
 
-```bash
-diskatlas db copy --to "sqlite:///$HOME/diskatlas-export.db"
-```
+**Weg 1 – im Browser:** als Admin *Verwaltung → Altbestand importieren*, Datei wählen, Besitzer
+wählen, *Importieren*. Der Import läuft im Hintergrund (bei 580 000 Dateien rund eine halbe
+Minute), die Seite zeigt den Fortschritt. Die hochgeladene Datei wird danach gelöscht. Hinter
+einem Reverse-Proxy kann eine Upload-Grenze greifen (Datei oft > 100 MB) – dann Weg 2 oder direkt
+über die IP des Servers.
 
-Das ergibt eine einzelne, verdichtete Datei im aktuellen Datenbankstand. Wer nur das
-Agent-Programm hat (ohne Befehl `diskatlas`): Programm beenden und `diskatlas.db` **zusammen mit**
-`diskatlas.db-wal` (falls vorhanden) übertragen; in Schritt 3 dann beide Dateien kopieren. Eine frühere
-Schachtzuordnung (`bays.json`) wird dabei nicht übernommen; die Schächte danach in der
-Oberfläche neu zuordnen (Abschnitt 5).
-
-**2. Container stoppen** (Unraid → *Docker* → DiskAtlas → *Stop*) und im Unraid-Terminal den
-bisherigen Bestand beiseitelegen:
+**Weg 2 – auf dem Server:** Datei nach `/mnt/user/appdata/diskatlas/` kopieren (SMB-Freigabe
+`appdata` oder `scp`) und im Unraid-Terminal:
 
 ```bash
-cd /mnt/user/appdata/diskatlas
-mkdir -p vorher && mv diskatlas.db diskatlas.db-wal diskatlas.db-shm vorher/ 2>/dev/null; ls vorher
+docker exec DiskAtlas diskatlas db import /data/diskatlas-alt.db --user Admin
+rm /mnt/user/appdata/diskatlas/diskatlas-alt.db
 ```
 
-**3. Datei übertragen**, per SSH vom PC aus (Unraid: *Settings → Management Access → Use SSH*):
-
-```bash
-scp ~/diskatlas-export.db root@<unraid-ip>:/mnt/user/appdata/diskatlas/diskatlas.db
-```
-
-(Alternativ über die SMB-Freigabe `appdata`, falls sie freigegeben ist.)
-
-**4. Rechte setzen und starten.** Der Container läuft als Benutzer `nobody` (99:100):
-
-```bash
-chown 99:100 /mnt/user/appdata/diskatlas/diskatlas.db && chmod 664 /mnt/user/appdata/diskatlas/diskatlas.db
-```
-
-Dann den Container starten. Er bringt die Datenbank bei Bedarf selbst auf den neuesten Stand.
-Passt alles, kann der Ordner `vorher` gelöscht werden.
+**Vorher sichern:** `/mnt/user/appdata/diskatlas/diskatlas.db` kopieren (oder *Appdata Backup*).
+Bricht der Import ab, einfach erneut starten: Fertige Platten werden übersprungen, die
+unterbrochene wird vervollständigt. Eine alte Schachtzuordnung (`bays.json`) wird nicht
+übernommen; Schächte stellt jeder Client unter *Konto* ein.
 
 ## Benutzer, Platten und Freigaben
 

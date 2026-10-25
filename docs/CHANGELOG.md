@@ -11,6 +11,21 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Altbestand importieren:** Platten einer alten DiskAtlas-Datenbank (z. B. aus dem Betrieb „Nur
+  dieser PC“) samt Partitionen, Dateiindex, SMART-Verlauf, eigenen Angaben und Labels in die
+  laufende Datenbank übernehmen und einem Benutzer geben – im Browser unter *Verwaltung →
+  Altbestand importieren* (läuft im Hintergrund mit Fortschritt) oder auf dem Server mit
+  `diskatlas db import DATEI --user NAME`. Schon bekannte Platten werden übersprungen, die Quelle
+  bleibt unverändert (Kopie per SQLite-Backup, alte Schemastände werden auf der Kopie
+  aktualisiert). Geschrieben wird in kleinen Transaktionen, eine Platte wird erst am Ende aktiv;
+  ein abgebrochener Import setzt beim erneuten Start fort. An echten Daten geprüft: 45 Platten mit
+  580 654 Dateien in rund 30 Sekunden.
+
+### Geändert
+- Anleitung „Lokale Daten übernehmen“ (`docs/UNRAID.md`): Import statt Ersetzen der Datenbank (das
+  würde seit den Benutzerkonten Benutzer und Clients löschen).
+
 ## [0.8.0] - 2026-10-25
 
 ### Hinzugefügt
