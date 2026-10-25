@@ -9,6 +9,7 @@ import webbrowser
 from dataclasses import asdict
 from pathlib import Path
 
+from diskatlas.config import default_data_dir
 from diskatlas.probe.smart import bundled_smartctl
 from diskatlas.runtime import window_icon
 from diskatlas.tray import autostart, settings
@@ -100,6 +101,15 @@ SMART mit sudo lesen (Linux)</label>
 <p><small id="path"></small></p><p><small id="notice"></small></p>
 <p><small>Symbol: „hard-disk-remix“ von Streamline, CC BY 4.0 (verändert)</small></p></div>
 
+<div class="card" id="security"><h2>Sicherheit (Kopien zwischen Rechnern)</h2>
+<div>Fingerabdruck dieses Rechners: <code id="own_fp">–</code></div>
+<small>Vergleiche ihn mit dem Wert unter <em>Konto → Meine Clients</em> in der Weboberfläche und
+in der Liste „Bekannte Zielrechner“ der anderen Rechner.</small>
+<label>Bekannte Zielrechner</label>
+<small>Beim ersten Senden merkt sich dieser Agent den Schlüssel des Ziels. Ändert er sich später,
+sendet er nicht mehr. Wurde der Agent dort neu eingerichtet: hier vergessen.</small>
+<div id="peers"></div></div>
+
 <script>
 const TEXT = ["server_url","api_token","host_name","smartctl_path","tray_icon_color"];
 const NUM = ["poll_interval","smart_interval_minutes","rescan_interval_hours"];
@@ -121,6 +131,14 @@ if(s.host)f.push("Rechner: "+s.host);
 if(s.state!=="stopped"){f.push("Letzte erfolgreiche Antwort: "+s.last_ok_ago);
 f.push("Angeschlossene Datenträger: "+s.disks);}
 $("facts").textContent=f.join("  ·  ");}
+function renderKeys(k){
+$("own_fp").textContent=k.own||"(noch keiner – entsteht, sobald Kopieren erlaubt ist)";
+const box=$("peers");box.textContent="";if(!k.peers.length){box.textContent="Noch keine.";return;}
+k.peers.forEach(p=>{const row=document.createElement("div");row.className="meta";
+row.textContent=p.label+" – "+p.fingerprint+(p.since?" (seit "+p.since+")":"")+" ";
+const b=document.createElement("a");b.textContent="vergessen";
+b.onclick=async()=>{renderKeys(await pywebview.api.forget_peer(p.id));};
+row.appendChild(b);box.appendChild(row);});}
 async function busy(id,fn){const b=$(id);b.disabled=true;try{await fn();}finally{b.disabled=false;}}
 window.addEventListener("pywebviewready",async()=>{
 const s=await pywebview.api.get_state();fill(s.values);render(s.status);
@@ -142,6 +160,7 @@ const r=await pywebview.api.check_connection($("server_url").value,$("api_token"
 say(r.message,r.ok);});
 $("save").onclick=()=>busy("save",async()=>{const r=await pywebview.api.save(collect());
 say(r.message,r.ok);});
+renderKeys(await pywebview.api.get_keys());
 $("dash").onclick=()=>pywebview.api.open_dashboard(
 local()?(current.mode==="local"?current.server_url:""):$("server_url").value);
 });
@@ -203,6 +222,21 @@ class SettingsApi:
     def open_dashboard(self, server_url: str) -> None:
         if server_url.startswith(("http://", "https://")):
             webbrowser.open(server_url)
+
+    def get_keys(self) -> dict:
+        """Eigener Fingerabdruck und gemerkte Schlüssel der Zielrechner."""
+        from diskatlas.agent import relaycrypto
+        from diskatlas.agent.peers import PeerStore
+
+        data_dir = default_data_dir()
+        return {"own": relaycrypto.fingerprint(relaycrypto.read_public(data_dir / "relay.key")),
+                "peers": PeerStore(data_dir / "relay-peers.json").listing()}
+
+    def forget_peer(self, peer_id: str) -> dict:
+        from diskatlas.agent.peers import PeerStore
+
+        PeerStore(default_data_dir() / "relay-peers.json").forget(peer_id)
+        return self.get_keys()
 
     def show_licenses(self) -> None:
         exe = bundled_smartctl()

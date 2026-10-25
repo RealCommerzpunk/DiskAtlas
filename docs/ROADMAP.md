@@ -164,10 +164,13 @@ zu große Dateien abgewiesen werden.
 
 - [x] **Knopf „Jetzt neu scannen“** auf der Plattenseite ✅ (erscheint mit 0.8). Dabei behoben:
       Umbenennen war im Server-Betrieb seit 0.6.0 gesperrt.
-- [ ] **Agenten-Übersicht:** je Client letzter Heartbeat, Programmversion, „Kopieren erlaubt“
-      ja/nein. Heute steht unter *Konto* nur „zuletzt gemeldet“.
-- [ ] **Schlüssel-Fingerabdruck** je Client anzeigen und vergleichen. Das schließt die bekannte
-      Lücke des Relays: Ein manipulierter Server könnte einen falschen Schlüssel unterschieben.
+- [x] **Agenten-Übersicht** ✅ (erscheint mit 0.8): je Client online/offline, Version (mit
+      „veraltet“), System, „Kopieren erlaubt“, Fingerabdruck.
+- [x] **Schlüssel-Fingerabdruck** ✅ (erscheint mit 0.8): Der sendende Agent merkt sich den
+      Schlüssel jedes Zielrechners beim ersten Senden und verweigert später einen anderen
+      (Einstellungsfenster → *Sicherheit*: eigener Fingerabdruck, bekannte Ziele, „vergessen“).
+      Rest-Lücke: Beim allerersten Senden muss man dem Server vertrauen oder die Fingerabdrücke
+      an beiden Rechnern vergleichen.
 - [ ] **Fortschritt laufender Kopien** auf der Anfragen-Seite (der Wert wird schon gemeldet) und
       **Relay-Belegung** für den Admin.
 - [ ] **Relay: Fortsetzen statt Neustart.** Bricht eine Übertragung ab, beginnt sie heute beim

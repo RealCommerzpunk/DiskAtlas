@@ -28,9 +28,10 @@ FREE_MARGIN = 64 * 1024 * 1024  # so viel bleibt mindestens frei
 class TransferFailed(Exception):
     """Die Übertragung ist gescheitert; `retry` = ein neuer Versuch kann sich lohnen."""
 
-    def __init__(self, message: str, retry: bool = False):
+    def __init__(self, message: str, retry: bool = False, notify: bool = False):
         super().__init__(message)
         self.retry = retry
+        self.notify = notify  # auch als Meldung am Rechner zeigen (Sicherheitsrelevantes)
 
 
 class TransferAborted(Exception):
@@ -132,6 +133,7 @@ def _gone(exc: RelayGone) -> TransferAborted:
 def send_relay(
     job: dict, disks: list[DiskInfo], sink: Sink, progress: Callable[[int], bool],
     stop: Callable[[], bool] = lambda: False, sleep: Callable[[float], object] = time.sleep,
+    known_peers=None,
 ) -> tuple[int, str]:
     """Liest die Quelle, verschlüsselt sie stückweise und schickt sie über den Server.
 
@@ -139,6 +141,14 @@ def send_relay(
     abgeholt hat. Gibt (Größe, Hinweis) zurück; „fertig“ meldet der Empfänger."""
     if not relaycrypto.AVAILABLE:
         raise TransferFailed("Verschlüsselung nicht verfügbar (Paket „cryptography“ fehlt).")
+    if known_peers is not None and job.get("target_client_id") is not None:
+        verdict = known_peers.check(job["target_client_id"], job.get("target_pubkey", ""),
+                                    job.get("target_label", ""))
+        if verdict == "changed":
+            raise TransferFailed(
+                f"Der Schlüssel des Zielrechners „{job.get('target_label', '?')}“ hat sich "
+                "geändert. Nicht gesendet. Wurde der Agent dort neu eingerichtet, den alten "
+                "Schlüssel in den Agent-Einstellungen (Sicherheit) vergessen.", notify=True)
     _, src_vol = find_volume(disks, job["source"]["disk_key"], job["source"]["volume_key"])
     try:
         handle, info = safepath.open_source(src_vol.mountpoint, job["source"]["path"])

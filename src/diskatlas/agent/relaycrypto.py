@@ -36,6 +36,21 @@ INFO = b"diskatlas-relay-v1"
 TRAILER = struct.Struct(">32sQ")  # SHA-256 + Größe
 
 
+def fingerprint(pubkey_b64: str | None) -> str:
+    """Kurzer, gut vergleichbarer Fingerabdruck eines öffentlichen Schlüssels (SHA-256, 16 Byte,
+    in Vierergruppen), z. B. „3f2a 9c41 …“. Leer bei fehlendem oder ungültigem Schlüssel."""
+    import hashlib
+
+    try:
+        raw = base64.b64decode(pubkey_b64 or "", validate=True)
+    except ValueError:
+        return ""
+    if len(raw) != 32:
+        return ""
+    digest = hashlib.sha256(raw).hexdigest()[:32]
+    return " ".join(digest[i:i + 4] for i in range(0, 32, 4))
+
+
 class CryptoError(Exception):
     """Entschlüsselung/Prüfung fehlgeschlagen (Daten verfälscht oder falscher Schlüssel)."""
 
@@ -65,6 +80,18 @@ def load_or_create_key(path: Path) -> tuple[object, str]:
         with contextlib.suppress(OSError):
             os.chmod(path, 0o600)
     return private, _b64(_raw_public(private.public_key()))
+
+
+def read_public(path: Path) -> str | None:
+    """Öffentlicher Schlüssel aus der Schlüsseldatei, ohne eine neue anzulegen (None: keine)."""
+    if not AVAILABLE:
+        return None
+    try:
+        private = X25519PrivateKey.from_private_bytes(
+            base64.b64decode(path.read_text().strip()))
+    except (OSError, ValueError):
+        return None
+    return _b64(_raw_public(private.public_key()))
 
 
 def _file_key(shared: bytes, item_id: str) -> bytes:

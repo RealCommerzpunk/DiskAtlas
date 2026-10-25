@@ -439,7 +439,8 @@ def ingest_connected(
     ingest.mark_connected(session, body.host, body.disk_keys, user_id=_owner(client),
                           client_id=client.id if client else None)
     if client is not None:
-        transfers.register_capabilities(session, client, body.transfer, body.pubkey)
+        transfers.register_capabilities(session, client, body.transfer, body.pubkey,
+                                        body.version, body.platform)
     copies.sweep(session)  # wartende Kopieraufträge: eine Platte ist jetzt (nicht mehr) da
     hosts.record(session, hosts.state_key(client, body.host), body.ports_info,
                  user_id=_owner(client))
