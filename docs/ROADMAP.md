@@ -172,8 +172,7 @@ zu große Dateien abgewiesen werden.
       Rest-Lücke: Beim allerersten Senden muss man dem Server vertrauen oder die Fingerabdrücke
       an beiden Rechnern vergleichen.
 - [x] **Fortschritt laufender Kopien** und **Relay-Belegung** für den Admin ✅ (erscheint mit 0.8).
-- [ ] **Relay: Fortsetzen statt Neustart.** Bricht eine Übertragung ab, beginnt sie heute beim
-      nächsten Versuch von vorn.
+- [x] **Relay: Fortsetzen statt Neustart** ✅ (erscheint mit 0.8).
 - [ ] **CSV/JSON-Export** von Platten und Dateilisten.
 
 ## M4 – Große Bestände und Auswertung ⏳ (1.0)

@@ -14,6 +14,7 @@ from collections.abc import Callable
 from diskatlas import __version__
 from diskatlas.agent import relaycrypto, transfer
 from diskatlas.agent.peers import PeerStore
+from diskatlas.agent.resume import ResumeStore
 from diskatlas.agent.sinks import Sink
 from diskatlas.config import AgentConfig, default_data_dir
 from diskatlas.probe import list_disks
@@ -99,6 +100,7 @@ class Agent:
         self.progress_interval = 2.0  # Sekunden zwischen Fortschrittsmeldungen einer Übertragung
         self._relay_key = None
         self.peers = PeerStore(default_data_dir() / "relay-peers.json")
+        self.resume = ResumeStore(default_data_dir() / "relay-resume")
         self.sink.capabilities = {"transfer": bool(config.allow_transfer),
                                   "version": __version__, "platform": sys.platform[:20]}
         if config.allow_transfer and relaycrypto.AVAILABLE:
@@ -343,6 +345,11 @@ class Agent:
     def _transfer_loop(self) -> None:
         """Holt „Datei anfordern“-Aufträge ab und führt sie nacheinander aus."""
         log.info("Dateikopien für angeforderte Dateien sind erlaubt.")
+        try:
+            if removed := self.resume.cleanup():
+                log.info("%d Reste abgebrochener Übertragungen aufgeräumt", removed)
+        except OSError:
+            log.debug("Aufräumen der Übertragungsreste fehlgeschlagen", exc_info=True)
         while not self.stop_event.is_set():
             try:
                 jobs = self.sink.fetch_transfers()
@@ -372,12 +379,12 @@ class Agent:
                 digest, size, name, note = transfer.copy_local(job, disks, progress, stop)
             elif role == "send":
                 sent, note = transfer.send_relay(job, disks, self.sink, progress, stop,
-                                                 known_peers=self.peers)
+                                                 known_peers=self.peers, resume=self.resume)
                 log.info("Datei gesendet: %s (%d Bytes)", job.get("source", {}).get("path"), sent)
                 return  # „fertig“ meldet der Empfänger
             elif role == "receive" and self._relay_key is not None:
                 digest, size, name, note = transfer.receive_relay(
-                    job, disks, self.sink, self._relay_key, progress, stop
+                    job, disks, self.sink, self._relay_key, progress, stop, resume=self.resume
                 )
             else:
                 raise transfer.TransferFailed("Diese Übertragungsart wird nicht unterstützt.")
@@ -389,14 +396,16 @@ class Agent:
             log.warning("Übertragung %s fehlgeschlagen: %s", item, exc)
             if exc.notify:
                 self.notices.append(str(exc))
-            self._report_transfer_failure(item, str(exc), exc.retry)
+            self._report_transfer_failure(item, str(exc), exc.retry, exc.restart)
         except Exception as exc:  # ein Fehler darf die Schleife nie beenden
             log.exception("Übertragung %s fehlgeschlagen", item)
             self._report_transfer_failure(item, f"Unerwarteter Fehler: {exc}", True)
 
-    def _report_transfer_failure(self, item: str, message: str, retry: bool) -> None:
+    def _report_transfer_failure(
+        self, item: str, message: str, retry: bool, restart: bool = False
+    ) -> None:
         try:
-            self.sink.transfer_fail(item, message, retry)
+            self.sink.transfer_fail(item, message, retry, restart)
         except Exception:
             log.exception("Fehlschlag von %s nicht gemeldet", item)
 

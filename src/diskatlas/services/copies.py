@@ -277,8 +277,9 @@ def set_state(item: CopyItem, state: str, now: datetime, reason: str | None = No
     item.state = state
     item.wait_reason = reason
     item.updated_at = now
-    if state != "running":  # nichts darf im Relay zurückbleiben, wenn die Übertragung nicht läuft
+    if state in FINAL_STATES:  # danach darf nichts im Relay zurückbleiben
         relay.reset(item)
+    # Sonst (z. B. erneut eingereiht nach Abbruch) bleibt der Relay-Stand für das Fortsetzen.
     if state in FINAL_STATES:
         item.lease_until = None
 
