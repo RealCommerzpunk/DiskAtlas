@@ -247,6 +247,7 @@ def mark_connected(
     und darf fremde Platten nicht „abstecken“).
     """
     now = now or utcnow()
+    expire_stale_indexes(session, now)
     keys = list(disk_keys)
     gone = update(Disk).where(
         Disk.last_host == host, Disk.is_connected.is_(True), Disk.disk_key.not_in(keys)
@@ -281,12 +282,53 @@ def get_volume(
     return volume
 
 
+INDEX_STALE = timedelta(minutes=30)  # ohne Fortschritt so lange: Indizierung gilt als abgebrochen
+_PURGE_BATCH = 50_000
+
+
 def begin_index(
-    session: Session, disk_key: str, volume_key: str, user_id: int | None = None
+    session: Session, disk_key: str, volume_key: str, user_id: int | None = None,
+    now: datetime | None = None,
 ) -> str:
     volume = get_volume(session, disk_key, volume_key, user_id)
+    purge_unfinished(session, volume)
+    scan_id = uuid.uuid4().hex
     volume.index_status = "running"
-    return uuid.uuid4().hex
+    volume.pending_scan_id = scan_id
+    volume.index_touched_at = now or utcnow()
+    return scan_id
+
+
+def purge_unfinished(session: Session, volume: Volume) -> int:
+    """Löscht die Zeilen abgebrochener Indizierungen (alles außer dem aktiven Index) in Stücken,
+    damit die Datenbank nicht lange gesperrt ist."""
+    removed = 0
+    while True:
+        ids = list(session.scalars(
+            select(FileEntry.id).where(
+                FileEntry.volume_id == volume.id,
+                FileEntry.scan_id != (volume.active_scan_id or ""),
+            ).limit(_PURGE_BATCH)
+        ))
+        if not ids:
+            return removed
+        session.execute(delete(FileEntry).where(FileEntry.id.in_(ids)))
+        session.commit()
+        removed += len(ids)
+
+
+def expire_stale_indexes(session: Session, now: datetime | None = None) -> int:
+    """Indizierungen ohne Fortschritt seit `INDEX_STALE` gelten als abgebrochen (z. B. Verbindung
+    mitten drin verloren). Ihre Reste räumt die nächste Indizierung auf."""
+    now = now or utcnow()
+    stale = list(session.scalars(select(Volume).where(
+        Volume.index_status == "running",
+        (Volume.index_touched_at.is_(None)) | (Volume.index_touched_at < now - INDEX_STALE),
+    )))
+    for volume in stale:
+        volume.index_status = "failed"
+        volume.pending_scan_id = None
+    return len(stale)
 
 
 def add_files(
@@ -297,6 +339,9 @@ def add_files(
     rows = [_file_row(volume.id, scan_id, rec) for rec in records]
     if rows:
         session.execute(insert(FileEntry), rows)
+    volume.index_touched_at = utcnow()
+    if volume.index_status != "running":  # war schon als abgebrochen markiert: läuft doch weiter
+        volume.index_status, volume.pending_scan_id = "running", scan_id
     return len(rows)
 
 
@@ -311,6 +356,7 @@ def finish_index(
     user_id: int | None = None,
 ) -> Volume:
     volume = get_volume(session, disk_key, volume_key, user_id)
+    volume.pending_scan_id = None
     if not success:
         session.execute(
             delete(FileEntry).where(FileEntry.volume_id == volume.id, FileEntry.scan_id == scan_id)

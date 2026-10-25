@@ -217,6 +217,10 @@ class Volume(Base):
     active_scan_id: Mapped[str | None] = mapped_column(String(36))
     dirs_scan_id: Mapped[str | None] = mapped_column(String(36))  # Scan, zu dem `directories` passt
     index_status: Mapped[str] = mapped_column(String(20), default="never")
+    # Laufende Indizierung: ihr Scan und der letzte Fortschritt (ohne Fortschritt gilt sie nach
+    # einer Weile als abgebrochen, z. B. wenn der Rechner mitten drin die Verbindung verlor)
+    pending_scan_id: Mapped[str | None] = mapped_column(String(36))
+    index_touched_at: Mapped[datetime | None]
     indexed_at: Mapped[datetime | None]
     index_errors: Mapped[int] = mapped_column(default=0)
     file_count: Mapped[int] = mapped_column(default=0)

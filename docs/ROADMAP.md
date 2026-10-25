@@ -73,6 +73,8 @@ behoben.
       (Laufwerksbuchstaben, Junctions).
 - [ ] **Hinter dem Reverse-Proxy (SWAG):** Die neue Prüfung gegen Fremdseiten-Anfragen darf
       Formulare nicht blockieren (Kopfzeile `X-Forwarded-Host`).
+- [x] **Hängende Indizierung der Systemplatte** (gemeldet am 25.10.) ✅ behoben, erscheint mit 0.8:
+      abgebrochene Läufe werden erkannt, der Agent versucht es nach 10 min erneut.
 - [ ] **Hinweis „Bitte Platte anschließen“:** kommt die Tray-Meldung an, und nur einmal am Tag?
 
 ## M2 – Leere Platten und Löschprotokolle ⏳ (0.8)
