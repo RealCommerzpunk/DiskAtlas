@@ -87,10 +87,11 @@ def configure(store: RelayStore | None) -> None:
     STORE = store
 
 
-def default_dir(config) -> Path:
+def default_dir(config, database_url: str | None = None) -> Path:
+    """Ordner neben der tatsächlich benutzten SQLite-Datenbank (nie ein fremder Datenordner)."""
     if config.server.relay_dir:
         return Path(config.server.relay_dir)
-    url = config.effective_database_url
+    url = database_url or config.effective_database_url
     if url.startswith("sqlite:///") and ":memory:" not in url:
         return Path(url.removeprefix("sqlite:///")).parent / "relay"
     from diskatlas.config import default_data_dir

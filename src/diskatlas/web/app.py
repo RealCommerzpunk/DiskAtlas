@@ -12,8 +12,8 @@ from starlette.responses import Response
 from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
-from diskatlas.services import bays, emptylabel, relay, users
-from diskatlas.web import accounts, api, auth, copyrequests, sharing, views
+from diskatlas.services import attachments, bays, emptylabel, relay, users
+from diskatlas.web import accounts, api, auth, copyrequests, protocols, sharing, views
 
 
 class _RevalidatingStaticFiles(StaticFiles):
@@ -38,9 +38,13 @@ def create_app(
     )
     app.state.config = config
     app.state.db = db
-    relay.configure(relay.RelayStore(relay.default_dir(config), config.server.relay_max_bytes))
+    relay.configure(relay.RelayStore(relay.default_dir(config, db.url),
+                                     config.server.relay_max_bytes))
     with db.session() as session:
         relay.recover(session)
+    attachments.configure(attachments.Store(attachments.default_dir(config, db.url)))
+    with db.session() as session:
+        attachments.purge_orphans(session)
     with db.session() as session:
         auth.check_exposure(config, users.has_users(session))
         users.bootstrap_master(session, config.server.password)
@@ -59,4 +63,5 @@ def create_app(
     app.include_router(accounts.router)
     app.include_router(sharing.router)
     app.include_router(copyrequests.router)
+    app.include_router(protocols.router)
     return app

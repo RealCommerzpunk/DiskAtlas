@@ -12,6 +12,7 @@ from diskatlas import __version__
 from diskatlas.db.models import Client, Disk, Label, User
 from diskatlas.probe.types import FileRecord
 from diskatlas.services import (
+    attachments,
     authz,
     commands,
     copies,
@@ -121,7 +122,9 @@ def patch_disk(
 def delete_disk(
     disk_id: int, session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)
 ):
-    session.delete(disk_or_404(session, viewer, disk_id, write=True))
+    disk = disk_or_404(session, viewer, disk_id, write=True)
+    attachments.remove_for_disk(session, disk)
+    session.delete(disk)
     return Response(status_code=204)
 
 

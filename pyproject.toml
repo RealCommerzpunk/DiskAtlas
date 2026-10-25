@@ -47,7 +47,7 @@ tray = [
 ]
 # Ende-zu-Ende-Verschlüsselung für „Datei anfordern“ zwischen Rechnern (nur im Agenten nötig)
 transfer = ["cryptography>=42"]
-dev = ["pytest>=8", "ruff>=0.5", "cryptography>=42"]
+dev = ["pytest>=8", "pytest-timeout>=2.3", "ruff>=0.5", "cryptography>=42"]
 build = ["pyinstaller>=6.10", "pyinstaller-hooks-contrib>=2024.9"]
 
 [project.scripts]
@@ -66,6 +66,8 @@ packages = ["src/diskatlas"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# Ein hängender Test bricht nach 5 Minuten mit Stack-Trace ab, statt die CI stundenlang zu blockieren.
+timeout = 300
 
 [tool.ruff]
 line-length = 100

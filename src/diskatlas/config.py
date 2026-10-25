@@ -91,6 +91,8 @@ class ServerConfig:
     # Server. `relay_max_bytes` ist der Höchstplatz, `relay_dir` leer = neben der Datenbank.
     relay_max_bytes: int = 20 * 1024**3
     relay_dir: str = ""
+    # Ablage für Anhänge an Platten (Löschprotokolle); leer = Ordner `attachments` neben der DB
+    attachments_dir: str = ""
 
 
 @dataclass
@@ -117,6 +119,7 @@ ENV_MAP: dict[str, list[tuple[str | None, str]]] = {
     "DISKATLAS_COPY_ENABLED": [("server", "copy_enabled")],
     "DISKATLAS_RELAY_MAX_BYTES": [("server", "relay_max_bytes")],
     "DISKATLAS_RELAY_DIR": [("server", "relay_dir")],
+    "DISKATLAS_ATTACHMENTS_DIR": [("server", "attachments_dir")],
     "DISKATLAS_HOST": [("server", "host")],
     "DISKATLAS_PORT": [("server", "port")],
     "DISKATLAS_HOST_NAME": [("agent", "host_name")],

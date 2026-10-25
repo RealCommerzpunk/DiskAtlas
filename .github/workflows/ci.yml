@@ -13,6 +13,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         python: ["3.11", "3.12", "3.13"]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,7 +22,7 @@ jobs:
           cache: pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check src tests
-      - run: pytest
+      - run: pytest -p no:cacheprovider --durations=15 --tb=short -rfE
 
   docker:
     runs-on: ubuntu-latest

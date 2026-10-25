@@ -233,7 +233,9 @@ Release ersetzen (bzw. aus dem Quellcode: `git pull` und `pip install -e .`). **
 
 ## Sicherung
 
-Alles Wichtige liegt in `/mnt/user/appdata/diskatlas/diskatlas.db` (SQLite). Diese Datei in die
+Alles Wichtige liegt in `/mnt/user/appdata/diskatlas/`: die Datenbank `diskatlas.db` (SQLite) und
+der Ordner `attachments/` mit den hochgeladenen Löschprotokollen (`relay/` enthält nur kurzzeitig
+verschlüsselte Stücke und muss nicht gesichert werden). Den ganzen Ordner in die
 Unraid-Sicherung aufnehmen (z. B. mit dem Plugin *Appdata Backup*, das den Container dafür kurz
 stoppt). Bei laufendem Container gehören `diskatlas.db-wal` und `diskatlas.db-shm` dazu; einzeln
 kopiert fehlen sonst die jüngsten Änderungen.
