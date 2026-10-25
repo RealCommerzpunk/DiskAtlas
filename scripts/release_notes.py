@@ -9,7 +9,7 @@ import re
 import sys
 from pathlib import Path
 
-CHANGELOG = Path(__file__).resolve().parent.parent / "CHANGELOG.md"
+CHANGELOG = Path(__file__).resolve().parent.parent / "docs" / "CHANGELOG.md"
 REPO = "https://github.com/RealCommerzpunk/DiskAtlas"
 
 FOOTER = """

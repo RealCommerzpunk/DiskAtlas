@@ -15,8 +15,8 @@ die Übersicht vollständig, auch wenn eine Platte längst wieder im Schrank lie
 - 📱 **iPhone-Web-App**: Barcode der Seriennummer scannen und sehen, wo die Platte liegt
 - 🐧🪟 **Linux Mint und Windows**; Server optional im **Docker-Container** (Unraid) oder in der Cloud
 
-Details zu Architektur, Entscheidungen und Roadmap: **[PROJECT.md](PROJECT.md)** ·
-Änderungen: **[CHANGELOG.md](CHANGELOG.md)**
+Details zu Architektur und Entscheidungen: **[PROJECT.md](PROJECT.md)** · Roadmap: **[docs/ROADMAP.md](docs/ROADMAP.md)** ·
+Änderungen: **[CHANGELOG.md](docs/CHANGELOG.md)**
 
 ---
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INIT = ROOT / "src" / "diskatlas" / "__init__.py"
-CHANGELOG = ROOT / "CHANGELOG.md"
+CHANGELOG = ROOT / "docs" / "CHANGELOG.md"
 VERSION_RE = re.compile(r'^__version__ = "(\d+)\.(\d+)\.(\d+)"$', re.M)
 UNRELEASED = "## [Unreleased]"
 
@@ -48,7 +48,7 @@ def main() -> int:
 
     changelog = CHANGELOG.read_text(encoding="utf-8")
     if UNRELEASED not in changelog:
-        raise SystemExit("CHANGELOG.md enthält keinen Abschnitt '## [Unreleased]'")
+        raise SystemExit("docs/CHANGELOG.md enthält keinen Abschnitt '## [Unreleased]'")
     head, rest = changelog.split(UNRELEASED, 1)
     body, sep, tail = rest.partition("\n## [")
     if not body.strip():
