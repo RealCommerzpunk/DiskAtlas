@@ -11,7 +11,7 @@ die Übersicht vollständig, auch wenn eine Platte längst wieder im Schrank lie
 - 🩺 **SMART**: Gesundheit, Temperatur, Betriebsstunden, defekte Sektoren, Verlauf
 - 🗂️ **Dateiindex**: „Auf welcher Platte liegt diese Datei?“, auch offline durchsuchbar
 - 🏷️ **Labels & Kategorien**: z. B. `Standort: Keller`, `Inhalt: Filme`, plus Notizen; komplett leere Platten bekommen automatisch das Label „leer“ (einstellbar)
-- 🧾 **Löschprotokolle**: PDF-Zertifikat von nwipe/ShredOS an die Platte hängen
+- 🧾 **Löschprotokolle**: PDF-Zertifikate von nwipe/ShredOS an die Platte hängen, gesammelt hochladen und automatisch per Seriennummer zuordnen
 - 📊 **Dashboard**: Kennzahlen, Suche, Filter, Gruppierung, Sortierung (Browser)
 - 📱 **iPhone-Web-App**: Barcode der Seriennummer scannen und sehen, wo die Platte liegt
 - 🐧🪟 **Linux Mint und Windows**; Server optional im **Docker-Container** (Unraid) oder in der Cloud

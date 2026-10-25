@@ -229,11 +229,12 @@
   {% if protocols %}
   <div class="table-wrap">
   <table>
-    <thead><tr><th>Datei</th><th>Hochgeladen</th><th class="num">Größe</th>{% if auth_on %}<th>Von</th>{% endif %}<th></th></tr></thead>
+    <thead><tr><th>Datei</th><th>Erstellt (PDF)</th><th>Hochgeladen</th><th class="num">Größe</th>{% if auth_on %}<th>Von</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for p in protocols %}
       <tr>
-        <td><a href="/attachments/{{ p.id }}" download>{{ p.filename }}</a></td>
+        <td><a href="/attachments/{{ p.id }}" download>{{ p.filename }}</a>{% if p.detected_serial %} <span class="badge online" title="Die Seriennummer {{ p.detected_serial }} steht im PDF">✓ Seriennummer</span>{% endif %}</td>
+        <td>{{ p.document_date | dt if p.document_date else '–' }}</td>
         <td>{{ p.created_at | dt }}</td>
         <td class="num">{{ p.size | filesize }}</td>
         {% if auth_on %}<td>{{ p.uploaded_by.nickname if p.uploaded_by else '–' }}</td>{% endif %}
@@ -249,7 +250,7 @@
     <input type="file" name="file" accept="application/pdf,.pdf" required aria-label="PDF-Protokoll">
     <button type="submit">Hochladen</button>
   </form>
-  <p class="muted small">Z. B. das PDF-Löschzertifikat von nwipe/ShredOS. Nur PDF, höchstens {{ protocol_max_mb }} MB. Wer die Platte sehen darf (auch per Freigabe), kann es herunterladen; bei einer Übernahme bleibt es an der Platte.</p>
+  <p class="muted small">Z. B. das PDF-Löschzertifikat von nwipe/ShredOS. Nur PDF, höchstens {{ protocol_max_mb }} MB. Wer die Platte sehen darf (auch per Freigabe), kann es herunterladen; bei einer Übernahme bleibt es an der Platte. Viele auf einmal: <a href="/protocols">Löschprotokolle</a> (Zuordnung per Seriennummer).</p>
   {% endif %}
 </section>
 

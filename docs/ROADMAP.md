@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | M0 | Betreiber-Aufgaben | – | Unraid auf 0.7.0, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
 | M1 | 0.7.0 im echten Betrieb prüfen | 0.7.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
-| M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch zuordnen (wartet auf Beispiel-PDF) | 🔜 in Arbeit |
+| M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch per Seriennummer zuordnen ✅; Methode/Ergebnis auslesen (wartet auf Beispiel-PDF) | ✅ bis auf Rest |
 | M3 | Bedienung und Überblick | 0.9 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ⏳ |
 | M4 | Große Bestände und Auswertung | 1.0 | Volltextsuche, Doubletten mit Prüfsumme, Verlaufsdiagramme, SMART-Warnungen, Hot-Plug per Ereignis | ⏳ |
 | – | Ideen | – | Cloud-Betrieb, fremde Platten am eigenen Rechner nutzen | 💡 |
@@ -54,7 +54,7 @@ Kein Code; wartet auf dich.
       *Verwaltung → Herrenlose Platten* den Altbestand (46 Platten) deinem Benutzer übergeben.
 - [ ] **SignPath-Antrag** für die Signatur der Windows-Datei
       ([CODE_SIGNING.md](CODE_SIGNING.md)). Der Build ist vorbereitet, es fehlen die Zugangsdaten.
-- [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für M2.3,
+- [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
       damit die automatische Zuordnung an echten Dateien statt an Vermutungen gebaut wird.
 
 ## M1 – 0.7.0 im echten Betrieb prüfen 🔜 (0.7.x)
@@ -139,21 +139,26 @@ zu große Dateien abgewiesen werden.
   zum Besitzer); Notizen und Labels entfallen weiter wie bisher.
 - Benutzer mit **Lesefreigabe** sehen und laden die Protokolle, ändern sie aber nicht.
 
-### M2.3 Protokolle automatisch zuordnen
+### M2.3 Protokolle automatisch zuordnen ✅ (Grundstufe umgesetzt, erscheint mit 0.8)
 
 **Ziel:** Weniger Klickarbeit, wenn mit ShredOS viele Platten auf einmal gelöscht wurden.
 
-**Vorschlag:**
-- **Sammel-Upload** auf einer eigenen Seite: mehrere PDFs auf einmal (auch vom iPhone). Der
-  Server liest **Seriennummer, Modell, Methode, Ergebnis und Zeitpunkt** aus dem PDF und ordnet es
-  der passenden **eigenen** Platte zu. Was sich nicht zuordnen lässt, wählst du von Hand.
-- Die Plattenseite zeigt dann „**Zuletzt gelöscht** am …, Methode …, Ergebnis …“.
-  **„Fehlgeschlagen“** ist deutlich hervorgehoben. Optional ein Filter „gelöscht / nicht gelöscht“
-  im Dashboard.
-- Technik: Text aus dem PDF lesen (z. B. `pypdf`, reine Python-Bibliothek). Kein Programm aus dem
-  PDF wird ausgeführt.
+**Umgesetzt, ohne Beispiel-PDF:**
+- Neue Seite **Löschprotokolle** (Hauptmenü): bis zu 50 PDFs auf einmal, auch vom iPhone. Der
+  Server liest den Text (pypdf, nur die ersten Seiten) und sucht darin die **Seriennummer einer
+  Platte, die du ändern darfst**. Verglichen wird ohne Leer- und Sonderzeichen; bei
+  ineinander enthaltenen Seriennummern gewinnt die längere. Genau ein Treffer: Das Protokoll hängt
+  an der Platte. Kein oder mehrere Treffer: Es bleibt **offen** und wird dort per Auswahlliste
+  zugeordnet oder verworfen. Offene Protokolle sieht nur, wer sie hochgeladen hat.
+- Das **Erstellungsdatum** kommt aus den PDF-Metadaten, die Plattenseite zeigt es und markiert
+  Protokolle mit „✓ Seriennummer“. Beim Einzel-Upload gibt es einen Hinweis, wenn die
+  Seriennummer der Platte nicht im PDF steht.
+- Bewusst ohne Annahmen über den Aufbau des nwipe-PDFs: Es wird nur nach den eigenen
+  Seriennummern gesucht.
 
-**Voraussetzung:** ein echtes nwipe-PDF (M0); Felder und Aufbau sind erst daran verlässlich.
+**Offen (braucht ein echtes nwipe-PDF, M0):**
+- [ ] **Methode und Ergebnis** auslesen, „Zuletzt gelöscht am … – Ergebnis …“ auf der Plattenseite,
+      **„fehlgeschlagen“** deutlich hervorgehoben, Filter „gelöscht / nicht gelöscht“ im Dashboard.
 
 ## M3 – Bedienung und Überblick ⏳ (0.9)
 

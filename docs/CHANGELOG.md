@@ -12,6 +12,14 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Löschprotokolle automatisch zuordnen** (Migration `0014`, Roadmap M2.3): Neue Seite
+  *Löschprotokolle* im Hauptmenü für bis zu 50 PDFs auf einmal. DiskAtlas liest den Text der PDFs
+  (neue Abhängigkeit `pypdf`, nur die ersten Seiten) und hängt jedes an die Platte, deren
+  Seriennummer darin steht (nur Platten, die der Benutzer ändern darf; Vergleich ohne Leer- und
+  Sonderzeichen). Ohne eindeutigen Treffer bleibt es offen und wird von Hand zugeordnet oder
+  verworfen; offene Protokolle sieht nur, wer sie hochgeladen hat. Das Erstellungsdatum aus den
+  PDF-Metadaten wird angezeigt; Protokolle mit gefundener Seriennummer tragen „✓ Seriennummer“, beim
+  Einzel-Upload warnt ein Hinweis, wenn die Seriennummer im PDF fehlt.
 - **Löschprotokolle an Platten** (Migration `0013`, Roadmap M2.2): Auf der Plattenseite lassen sich
   PDF-Protokolle (z. B. das Löschzertifikat von nwipe/ShredOS) hochladen, mehrere je Platte, neueste
   zuerst. Nur echte PDFs (Dateianfang `%PDF-`) bis 20 MB; gespeichert unter Zufallsnamen im Ordner
@@ -31,6 +39,9 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
   bestehende Label um (und umgekehrt). Beim Serverstart werden auch Platten im Regal bewertet.
 
 ### Behoben
+- **CI hing unter Windows**, weil pytest einen Testparameter mit 20 MB im Fehlerbericht ausgab. Die
+  Testdaten entstehen jetzt im Test; außerdem bricht `pytest-timeout` hängende Tests nach 5 Minuten
+  ab und jeder CI-Lauf hat ein Zeitlimit von 30 Minuten.
 - **Ablage-Ordner nur neben der benutzten Datenbank.** Relay- und Anhang-Ordner richten sich jetzt
   nach der tatsächlich geöffneten Datenbank statt nach der Konfiguration; sonst hätte ein Server mit
   anderer Datenbank (z. B. in Tests) beim Aufräumen Dateien im Standard-Datenordner angefasst.

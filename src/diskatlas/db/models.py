@@ -284,7 +284,10 @@ class DiskAttachment(Base):
     __tablename__ = "disk_attachments"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)  # uuid4().hex
-    disk_id: Mapped[int] = mapped_column(ForeignKey("disks.id", ondelete="CASCADE"), index=True)
+    # NULL = noch keiner Platte zugeordnet (Sammel-Upload ohne erkannte Seriennummer)
+    disk_id: Mapped[int | None] = mapped_column(
+        ForeignKey("disks.id", ondelete="CASCADE"), index=True
+    )
     kind: Mapped[str] = mapped_column(String(20), default="wipe_report")
     filename: Mapped[str] = mapped_column(String(255))  # Anzeigename (bereinigt)
     size: Mapped[int] = mapped_column(BigInteger)
@@ -293,8 +296,12 @@ class DiskAttachment(Base):
         ForeignKey("users.id", ondelete="SET NULL")
     )
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    # Aus dem PDF gelesen: Seriennummer, über die es zugeordnet wurde, und Erstellungsdatum
+    detected_serial: Mapped[str | None] = mapped_column(String(200))
+    document_date: Mapped[datetime | None]
 
     uploaded_by: Mapped[User | None] = relationship()
+    disk: Mapped[Disk | None] = relationship()
 
 
 class SmartSnapshot(Base):
