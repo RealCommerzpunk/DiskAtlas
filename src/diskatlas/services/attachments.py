@@ -12,12 +12,14 @@ import os
 import re
 import unicodedata
 import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from diskatlas.db.models import Disk, DiskAttachment
+from diskatlas.services import pdftext
 from diskatlas.services.ingest import utcnow
 
 MAX_BYTES = 20 * 1024 * 1024
@@ -92,18 +94,27 @@ def clean_filename(raw: str) -> str:
     return name if name.lower().endswith(".pdf") else f"{name}.pdf"
 
 
-def add(
-    session: Session, disk: Disk, filename: str, data: bytes, user_id: int | None,
-) -> DiskAttachment:
+def check(data: bytes) -> None:
     if len(data) > MAX_BYTES:
         raise AttachmentError(f"Die Datei ist zu groß (höchstens {MAX_BYTES // 1024**2} MB).")
     if not data.startswith(PDF_MAGIC):
         raise AttachmentError("Nur PDF-Dateien können angehängt werden.")
+
+
+def add(
+    session: Session, disk: Disk | None, filename: str, data: bytes, user_id: int | None,
+    text: str | None = None, document_date=None,
+) -> DiskAttachment:
+    """Legt den Anhang an; `disk` None = noch nicht zugeordnet (Sammel-Upload)."""
+    check(data)
+    if text is None:
+        text, document_date = pdftext.read(data)
     attachment = DiskAttachment(
-        id=uuid.uuid4().hex, disk_id=disk.id, kind="wipe_report",
+        id=uuid.uuid4().hex, disk_id=disk.id if disk else None, kind="wipe_report",
         filename=clean_filename(filename), size=len(data),
         sha256=hashlib.sha256(data).hexdigest(), uploaded_by_user_id=user_id,
-        created_at=utcnow(),
+        created_at=utcnow(), document_date=document_date,
+        detected_serial=disk.serial if disk and pdftext.mentions(text, disk.serial) else None,
     )
     _store().write(attachment.id, data)
     session.add(attachment)
@@ -113,6 +124,58 @@ def add(
         _store().delete(attachment.id)
         raise
     return attachment
+
+
+def matching_disks(text: str, disks: list[Disk]) -> list[Disk]:
+    """Platten, deren Seriennummer im PDF-Text vorkommt. Ist eine Seriennummer Teil einer
+    längeren, die ebenfalls vorkommt, zählt nur die längere."""
+    found = [d for d in disks if pdftext.mentions(text, d.serial)]
+    keys = {d.id: pdftext.normalize(d.serial) for d in found}
+    return [d for d in found
+            if not any(o.id != d.id and keys[d.id] in keys[o.id] and keys[d.id] != keys[o.id]
+                       for o in found)]
+
+
+@dataclass
+class BulkResult:
+    assigned: list[DiskAttachment] = field(default_factory=list)
+    unassigned: list[DiskAttachment] = field(default_factory=list)
+    rejected: list[tuple[str, str]] = field(default_factory=list)  # (Dateiname, Grund)
+
+
+def add_many(
+    session: Session, files: list[tuple[str, bytes]], disks: list[Disk], user_id: int | None,
+) -> BulkResult:
+    """Sammel-Upload: jedes PDF der Platte zuordnen, deren Seriennummer darin steht.
+
+    `disks` sind die Platten, die der Benutzer ändern darf. Wird keine oder mehr als eine
+    gefunden, bleibt das Protokoll offen und wird von Hand zugeordnet."""
+    result = BulkResult()
+    for name, data in files:
+        try:
+            check(data)
+        except AttachmentError as exc:
+            result.rejected.append((clean_filename(name), str(exc)))
+            continue
+        text, created = pdftext.read(data)
+        found = matching_disks(text, disks)
+        disk = found[0] if len(found) == 1 else None
+        attachment = add(session, disk, name, data, user_id, text, created)
+        (result.assigned if disk else result.unassigned).append(attachment)
+    return result
+
+
+def unassigned(session: Session, user_id: int | None) -> list[DiskAttachment]:
+    """Offene Protokolle des Benutzers (ohne Anmeldung: alle offenen)."""
+    stmt = select(DiskAttachment).where(DiskAttachment.disk_id.is_(None))
+    stmt = stmt.where(DiskAttachment.uploaded_by_user_id.is_(None) if user_id is None
+                      else DiskAttachment.uploaded_by_user_id == user_id)
+    return list(session.scalars(stmt.order_by(DiskAttachment.created_at.desc())))
+
+
+def assign(attachment: DiskAttachment, disk: Disk) -> None:
+    attachment.disk_id = disk.id
+    attachment.disk = disk
 
 
 def for_disk(session: Session, disk_id: int) -> list[DiskAttachment]:

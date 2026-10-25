@@ -11,7 +11,7 @@ has long been put back in the cupboard.
 - 🩺 **SMART**: health, temperature, power-on hours, bad sectors, history
 - 🗂️ **File index**: "Which drive holds this file?" – searchable even while the drive is offline
 - 🏷️ **Labels & categories**: e.g. `Location: Basement`, `Content: Movies`, plus notes; completely empty drives are labelled “leer” (empty) automatically (configurable)
-- 🧾 **Wipe reports**: attach the PDF certificate from nwipe/ShredOS to the drive
+- 🧾 **Wipe reports**: attach PDF certificates from nwipe/ShredOS to the drive, or upload many at once and let DiskAtlas match them by serial number
 - 📊 **Dashboard**: key figures, search, filters, grouping, sorting (in the browser)
 - 📱 **iPhone web app**: scan a drive's serial-number barcode to see where it is
 - 🐧🪟 **Linux and Windows**; optional central server as a **Docker container** (e.g. Unraid)

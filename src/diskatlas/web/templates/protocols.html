@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Löschprotokolle{% endblock %}
+{% block content %}
+<h1>Löschprotokolle</h1>
+<p class="muted">Mehrere PDF-Protokolle auf einmal hochladen, z. B. die Löschzertifikate von nwipe/ShredOS. DiskAtlas sucht in jedem PDF nach der Seriennummer einer deiner Platten und hängt es dort an. Was sich nicht eindeutig zuordnen lässt, bleibt unten offen.</p>
+{% if msg %}<p class="notice ok" role="status">{{ msg }}</p>{% endif %}
+{% if err %}<p class="notice health-reasons failed" role="alert">{{ err }}</p>{% endif %}
+
+<section class="card">
+  <h2>Hochladen</h2>
+  <form method="post" action="/protocols" enctype="multipart/form-data" class="inline">
+    <input type="file" name="files" accept="application/pdf,.pdf" multiple required aria-label="PDF-Protokolle">
+    <button type="submit">Hochladen und zuordnen</button>
+  </form>
+  <p class="muted small">Nur PDF, je Datei höchstens {{ max_mb }} MB, bis zu {{ max_files }} Dateien auf einmal. Einzelne Protokolle gehen auch direkt auf der Seite der Platte.</p>
+</section>
+
+<section class="card">
+  <h2>Offen{% if open %} ({{ open | length }}){% endif %}</h2>
+  {% if open %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Datei</th><th>Erstellt (PDF)</th><th>Hochgeladen</th><th>Platte</th><th></th></tr></thead>
+    <tbody>
+    {% for a in open %}
+      <tr>
+        <td><a href="/attachments/{{ a.id }}" download>{{ a.filename }}</a> <span class="muted small">{{ a.size | filesize }}</span></td>
+        <td>{{ a.document_date | dt if a.document_date else '–' }}</td>
+        <td>{{ a.created_at | dt }}</td>
+        <td>
+          <form method="post" action="/attachments/{{ a.id }}/assign" class="inline">
+            <select name="disk_id" required aria-label="Platte für {{ a.filename }}">
+              <option value="">Platte wählen …</option>
+              {% for d in disks %}<option value="{{ d.id }}">{{ d.display_name }}{% if d.serial %} · {{ d.serial }}{% endif %}</option>{% endfor %}
+            </select>
+            <button type="submit">Zuordnen</button>
+          </form>
+        </td>
+        <td><form method="post" action="/attachments/{{ a.id }}/delete" data-confirm="„{{ a.filename }}“ verwerfen?"><button class="link danger">Verwerfen</button></form></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">Keine offenen Protokolle.</p>{% endif %}
+</section>
+{% endblock %}
