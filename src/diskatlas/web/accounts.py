@@ -20,7 +20,7 @@ from diskatlas.services import bays as bay_service
 from diskatlas.services import hosts, relay, users
 from diskatlas.services.ingest import utcnow
 from diskatlas.tools import importer
-from diskatlas.web import auth
+from diskatlas.web import auth, serverlog
 from diskatlas.web.deps import get_current_user, get_session, require_master
 from diskatlas.web.views import setup_context, templates
 
@@ -257,6 +257,7 @@ def admin_users(
         "msg": msg,
         "relay": relay.overview(session),
         "import_job": importer.JOB,
+        "server_log": serverlog.HANDLER.recent(),
     })
 
 

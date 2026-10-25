@@ -13,7 +13,17 @@ from diskatlas import __version__
 from diskatlas.config import Config
 from diskatlas.db import Database
 from diskatlas.services import attachments, bays, emptylabel, relay, users
-from diskatlas.web import accounts, api, auth, copyrequests, export, protocols, sharing, views
+from diskatlas.web import (
+    accounts,
+    api,
+    auth,
+    copyrequests,
+    export,
+    protocols,
+    serverlog,
+    sharing,
+    views,
+)
 
 
 class _RevalidatingStaticFiles(StaticFiles):
@@ -36,6 +46,7 @@ def create_app(
         version=__version__,
         description="Inventar für Festplatten – Hardware, SMART, Belegung und Dateiindex.",
     )
+    serverlog.install()
     app.state.config = config
     app.state.db = db
     relay.configure(relay.RelayStore(relay.default_dir(config, db.url),

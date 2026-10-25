@@ -70,6 +70,19 @@ def _pending_approval_count(request: Request) -> int:
 
 
 templates.env.globals["pending_approval_count"] = _pending_approval_count
+
+
+def _running_indexes(request: Request) -> list:
+    """Laufende Indizierungen für die Anzeige in der Kopfleiste (sichtbare Platten)."""
+    if request.app.state.auth_enabled and getattr(request.state, "identity", None) is None:
+        return []
+    who = getattr(request.state, "identity", None)
+    viewer = Viewer(who.user_id, who.is_master) if who else authz.OPEN
+    with request.app.state.db.session() as session:
+        return queries.running_indexes(session, authz.visible_ids(viewer))
+
+
+templates.env.globals["running_indexes"] = _running_indexes
 templates.env.globals["copy_enabled"] = (
     lambda request: request.app.state.config.server.copy_enabled and request.app.state.auth_enabled
 )

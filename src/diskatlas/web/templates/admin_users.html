@@ -45,6 +45,22 @@
 </section>
 {% endif %}
 
+<section class="card" id="server-log">
+  <h2>Server-Meldungen{% if server_log %} ({{ server_log | length }}){% endif %}</h2>
+  <p class="muted small">Die letzten Warnungen und Fehler seit dem Start des Servers. Das vollständige Protokoll: <code>docker logs DiskAtlas</code>.</p>
+  {% if server_log %}
+  <details>
+    <summary>Anzeigen (neueste zuerst)</summary>
+    <ul class="server-log">
+    {% for e in server_log %}
+      <li><span class="badge {{ 'cmd-failed' if e.level in ('ERROR', 'CRITICAL') else 'cmd-pending' }}">{{ e.level }}</span> <span class="muted small">{{ e.at.strftime('%d.%m. %H:%M:%S') }} · {{ e.logger }}</span>
+        <div>{{ e.message }}</div>{% if e.detail %}<pre class="small">{{ e.detail }}</pre>{% endif %}</li>
+    {% endfor %}
+    </ul>
+  </details>
+  {% else %}<p class="muted">Keine Fehler seit dem Start.</p>{% endif %}
+</section>
+
 <section class="card" id="import">
   <h2>Altbestand importieren</h2>
   <p class="muted">Übernimmt die Platten einer alten DiskAtlas-Datenbank (z. B. aus dem Betrieb „Nur dieser PC“: <code>~/.local/share/diskatlas/diskatlas.db</code> bzw. <code>%LOCALAPPDATA%\diskatlas\diskatlas.db</code>) mit Partitionen, Dateiindex, SMART-Verlauf, Notizen und Labels und gibt sie dem gewählten Benutzer. Platten, die DiskAtlas schon kennt, werden übersprungen. Die hochgeladene Datei wird nach dem Import gelöscht. Vorher die Datenbank des Servers sichern.</p>

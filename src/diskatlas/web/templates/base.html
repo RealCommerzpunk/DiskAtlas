@@ -32,6 +32,8 @@
       <a href="/protocols" class="{{ 'active' if path.startswith('/protocols') }}">Löschprotokolle</a>
       <a href="/docs">API</a>
     </nav>
+    {% set running = running_indexes(request) %}{% set first = running[0] if running else none %}
+    <a id="activity" class="activity-pill" role="status" aria-live="polite" {% if first %}href="/disks/{{ first.disk_id }}" title="{% for r in running %}Indizierung läuft: {{ r.disk_name }} – {{ r.files_so_far | number }} Dateien bisher&#10;{% endfor %}Bitte nicht abziehen."{% else %}hidden{% endif %}>{% if first %}<span class="pulse" aria-hidden="true"></span><span class="pill-text">Indiziert: {{ first.disk_name }}</span><span class="pill-count">{{ ('+' ~ (running | length - 1)) if running | length > 1 else (first.files_so_far | number) }}</span>{% endif %}</a>
     {% set who = identity(request) %}
     {% if who %}
     {% set open_transfers = pending_transfer_count(request) %}
@@ -52,7 +54,6 @@
     </details>
     {% endif %}
   </header>
-  <div id="activity" class="activity" role="status" aria-live="polite" hidden></div>
   <main>
     {% block content %}{% endblock %}
   </main>

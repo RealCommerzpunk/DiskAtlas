@@ -56,7 +56,7 @@ h3 { font-size: 1rem; margin: 1.2rem 0 .5rem; }
   display: flex; align-items: center; gap: 2rem;
   padding: .7rem 1.5rem;
   background: var(--surface); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 30;
 }
 .brand { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: var(--text); }
 .brand:hover { text-decoration: none; }
@@ -178,9 +178,17 @@ details summary { cursor: pointer; color: var(--accent); margin: .4rem 0; }
 .btn:hover { background: var(--surface-2); text-decoration: none; }
 .btn.active { background: var(--surface-2); color: var(--text); font-weight: 600; }
 
-.activity { position: sticky; top: 0; z-index: 20; background: var(--warn); color: #1d1600; padding: .6rem 1.5rem; font-weight: 600; box-shadow: var(--shadow); }
-.activity[hidden] { display: none; }
-.activity .small { font-weight: 400; }
+/* Laufende Indizierung: kompakte Anzeige in der Kopfleiste (verdeckt nichts) */
+.activity-pill { display: inline-flex; align-items: center; gap: .45rem; max-width: 15rem; flex: none; margin-left: auto; padding: .25rem .7rem; border-radius: 999px; font-size: .85rem; color: var(--text); background: color-mix(in srgb, var(--warn) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); white-space: nowrap; }
+.activity-pill[hidden] { display: none; }
+.activity-pill:hover { text-decoration: none; background: color-mix(in srgb, var(--warn) 26%, var(--surface)); }
+.activity-pill .pill-text { overflow: hidden; text-overflow: ellipsis; }
+.activity-pill .pill-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.activity-pill:not([hidden]) + .usermenu { margin-left: .6rem; }
+.pulse { flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--warn); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 60%, transparent); } 50% { box-shadow: 0 0 0 .3rem transparent; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+@media (max-width: 75rem) { .activity-pill .pill-text { display: none; } }
 
 .health-reasons { margin: .8rem 0; }
 .health-reasons.failed { border-left-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
@@ -280,7 +288,7 @@ nav { flex: 1; }
 .who { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
 .who small { color: var(--muted); font-size: .72rem; }
 .caret { color: var(--muted); font-size: .8rem; }
-.usermenu-panel { position: absolute; right: 0; top: calc(100% + .4rem); min-width: 12rem; display: flex; flex-direction: column; padding: .3rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 20; }
+.usermenu-panel { position: absolute; right: 0; top: calc(100% + .4rem); min-width: 12rem; display: flex; flex-direction: column; padding: .3rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 40; }
 .usermenu-panel a, .usermenu-panel .menu-logout { display: flex; justify-content: space-between; align-items: center; padding: .5rem .7rem; border-radius: 8px; color: var(--text); background: none; border: none; font: inherit; font-weight: normal; text-align: left; width: 100%; cursor: pointer; }
 .usermenu-panel a:hover, .usermenu-panel .menu-logout:hover { background: var(--surface-2); text-decoration: none; }
 .usermenu-panel a.active { font-weight: 600; }
@@ -313,3 +321,4 @@ table.files th.pick, table.files td.pick { width: 2rem; text-align: center; }
 table.browser td.filename a { color: var(--text); font-weight: 500; }
 .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin: .3rem 0; }
 .export-links { color: var(--muted); }
+.server-log { list-style: none; padding: 0; } .server-log li { margin: .6rem 0; } .server-log pre { white-space: pre-wrap; overflow-x: auto; background: var(--surface-2); padding: .5rem; border-radius: 6px; }

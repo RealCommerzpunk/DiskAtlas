@@ -131,3 +131,34 @@ def test_agent_retries_a_failed_index_soon(db, tmp_path, monkeypatch):
     assert calls["n"] >= 2
     with db.session() as s:
         assert _volume(s).file_count == 1
+
+
+def test_running_index_shows_as_compact_pill_in_the_top_bar(client, db):
+    with db.session() as s:
+        ingest.upsert_disk(s, "pc", make_disk(KEY))
+        scan = ingest.begin_index(s, KEY, VOL)
+        ingest.add_files(s, KEY, VOL, scan, _files(1234))
+    html = client.get("/").text
+    assert 'class="activity-pill"' in html and "Indiziert:" in html and "1.234" in html
+    assert "nicht abziehen" in html, "Hinweis bleibt im Tooltip"
+    assert 'class="activity"' not in html, "kein breites Banner mehr über dem Inhalt"
+    with db.session() as s:
+        ingest.finish_index(s, KEY, VOL, scan)
+    html = client.get("/").text
+    assert "Indiziert:" not in html, "versteckt, wenn nichts läuft"
+
+
+def test_admin_sees_recent_server_errors(db, tmp_path):
+    import logging
+
+    from test_authz import World
+
+    world = World(db, tmp_path)
+    try:
+        raise RuntimeError("database is locked")
+    except RuntimeError:
+        logging.getLogger("diskatlas.test").exception("Fehler beim Speichern")
+    page = world.web["master"].get("/admin/users").text
+    assert "Server-Meldungen" in page and "Fehler beim Speichern" in page
+    assert "database is locked" in page
+    assert world.web["anna"].get("/admin/users").status_code == 403

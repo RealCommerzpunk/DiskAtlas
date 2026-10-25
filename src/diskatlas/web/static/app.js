@@ -73,23 +73,32 @@
     setInterval(check, 3000);
   }
 
-  // Warnbanner: laufende Indizierungen (Festplatte nicht abziehen), auf jeder Seite.
+  // Laufende Indizierungen: kompakte Anzeige in der Kopfleiste (Festplatte nicht abziehen).
   var banner = document.getElementById("activity");
   if (banner && window.fetch) {
     var fmt = function (n) { return n.toLocaleString("de-DE"); };
+    var label = function (it) {
+      return it.disk_name + (it.volume_label && it.volume_label !== it.disk_name ? " (" + it.volume_label + ")" : "");
+    };
     var renderActivity = function (items) {
       banner.textContent = "";
       if (!items.length) { banner.hidden = true; return; }
-      items.forEach(function (it) {
-        var line = document.createElement("div");
-        var name = it.disk_name + (it.volume_label && it.volume_label !== it.disk_name ? " (" + it.volume_label + ")" : "");
-        line.appendChild(document.createTextNode("\u26A0 Indizierung läuft: " + name + " – bitte nicht abziehen. "));
-        var small = document.createElement("span");
-        small.className = "small";
-        small.textContent = fmt(it.files_so_far) + " Dateien bisher";
-        line.appendChild(small);
-        banner.appendChild(line);
-      });
+      var first = items[0];
+      var dot = document.createElement("span");
+      dot.className = "pulse";
+      dot.setAttribute("aria-hidden", "true");
+      var text = document.createElement("span");
+      text.className = "pill-text";
+      text.textContent = "Indiziert: " + label(first);
+      var count = document.createElement("span");
+      count.className = "pill-count";
+      count.textContent = items.length > 1 ? "+" + (items.length - 1) : fmt(first.files_so_far);
+      banner.append(dot, text, count);
+      banner.href = "/disks/" + first.disk_id;
+      banner.title = items.map(function (it) {
+        return "Indizierung läuft: " + label(it) + " – " + fmt(it.files_so_far) + " Dateien bisher";
+      }).join("\n") + "\nBitte die Festplatte" + (items.length > 1 ? "n" : "") + " nicht abziehen.";
+      banner.setAttribute("aria-label", banner.title);
       banner.hidden = false;
     };
     var pollActivity = function () {
