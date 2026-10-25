@@ -9,8 +9,8 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.7.0 (27.09.2026) |
-| **Nächster Meilenstein** | Release 0.8 (M2 und M3 umgesetzt, Fix der hängenden Indizierung); danach M1 im echten Betrieb und M4 |
+| **Aktuelle Version** | 0.8.0 (25.10.2026) |
+| **Nächster Meilenstein** | M1 – 0.7/0.8 im echten Betrieb prüfen, danach M4 |
 | **Zuletzt aktualisiert** | 25.10.2026 (abends) |
 
 **Zeichen:** ✅ erledigt · 🔜 als Nächstes · ⏳ geplant · 💡 Idee, noch nicht eingeplant ·
@@ -73,13 +73,13 @@ behoben.
       (Laufwerksbuchstaben, Junctions).
 - [ ] **Hinter dem Reverse-Proxy (SWAG):** Die neue Prüfung gegen Fremdseiten-Anfragen darf
       Formulare nicht blockieren (Kopfzeile `X-Forwarded-Host`).
-- [x] **Hängende Indizierung der Systemplatte** (gemeldet am 25.10.) ✅ behoben, erscheint mit 0.8:
+- [x] **Hängende Indizierung der Systemplatte** (gemeldet am 25.10.) ✅ behoben, in 0.8.0:
       abgebrochene Läufe werden erkannt, der Agent versucht es nach 10 min erneut.
 - [ ] **Hinweis „Bitte Platte anschließen“:** kommt die Tray-Meldung an, und nur einmal am Tag?
 
 ## M2 – Leere Platten und Löschprotokolle ⏳ (0.8)
 
-### M2.1 Label für leere Platten ✅ (umgesetzt, erscheint mit 0.8)
+### M2.1 Label für leere Platten ✅ (umgesetzt, in 0.8.0)
 
 **Ziel:** Komplett leere Platten bekommen automatisch ein Label. Der Name ist **je Benutzer** in den
 Einstellungen festlegbar, Standard **„leer“**.
@@ -115,7 +115,7 @@ bekommt; das Label in den Einstellungen umbenannt und abgeschaltet werden kann.
 - Ändert man den Namen in den Einstellungen, wird das bestehende Label **umbenannt**.
 - Eine Platte mit Partition, aber **ohne Dateisystem** zählt als leer.
 
-### M2.2 Löschprotokoll (PDF) an die Platte hängen ✅ (umgesetzt, erscheint mit 0.8)
+### M2.2 Löschprotokoll (PDF) an die Platte hängen ✅ (umgesetzt, in 0.8.0)
 
 **Ziel:** Das PDF-Protokoll von nwipe (ab nwipe 0.35 bzw. in ShredOS als Löschzertifikat je Platte)
 hochladen und dem Datenträger zuordnen, mit Verlauf: mehrere Protokolle je Platte.
@@ -141,7 +141,7 @@ zu große Dateien abgewiesen werden.
   zum Besitzer); Notizen und Labels entfallen weiter wie bisher.
 - Benutzer mit **Lesefreigabe** sehen und laden die Protokolle, ändern sie aber nicht.
 
-### M2.3 Protokolle automatisch zuordnen ✅ (Grundstufe umgesetzt, erscheint mit 0.8)
+### M2.3 Protokolle automatisch zuordnen ✅ (Grundstufe umgesetzt, in 0.8.0)
 
 **Ziel:** Weniger Klickarbeit, wenn mit ShredOS viele Platten auf einmal gelöscht wurden.
 
@@ -162,20 +162,20 @@ zu große Dateien abgewiesen werden.
 - [ ] **Methode und Ergebnis** auslesen, „Zuletzt gelöscht am … – Ergebnis …“ auf der Plattenseite,
       **„fehlgeschlagen“** deutlich hervorgehoben, Filter „gelöscht / nicht gelöscht“ im Dashboard.
 
-## M3 – Bedienung und Überblick ✅ (umgesetzt, erscheint mit 0.8)
+## M3 – Bedienung und Überblick ✅ (umgesetzt, in 0.8.0)
 
-- [x] **Knopf „Jetzt neu scannen“** auf der Plattenseite ✅ (erscheint mit 0.8). Dabei behoben:
+- [x] **Knopf „Jetzt neu scannen“** auf der Plattenseite ✅ (in 0.8.0). Dabei behoben:
       Umbenennen war im Server-Betrieb seit 0.6.0 gesperrt.
-- [x] **Agenten-Übersicht** ✅ (erscheint mit 0.8): je Client online/offline, Version (mit
+- [x] **Agenten-Übersicht** ✅ (in 0.8.0): je Client online/offline, Version (mit
       „veraltet“), System, „Kopieren erlaubt“, Fingerabdruck.
-- [x] **Schlüssel-Fingerabdruck** ✅ (erscheint mit 0.8): Der sendende Agent merkt sich den
+- [x] **Schlüssel-Fingerabdruck** ✅ (in 0.8.0): Der sendende Agent merkt sich den
       Schlüssel jedes Zielrechners beim ersten Senden und verweigert später einen anderen
       (Einstellungsfenster → *Sicherheit*: eigener Fingerabdruck, bekannte Ziele, „vergessen“).
       Rest-Lücke: Beim allerersten Senden muss man dem Server vertrauen oder die Fingerabdrücke
       an beiden Rechnern vergleichen.
-- [x] **Fortschritt laufender Kopien** und **Relay-Belegung** für den Admin ✅ (erscheint mit 0.8).
-- [x] **Relay: Fortsetzen statt Neustart** ✅ (erscheint mit 0.8).
-- [x] **CSV/JSON-Export** von Platten und Dateilisten ✅ (erscheint mit 0.8).
+- [x] **Fortschritt laufender Kopien** und **Relay-Belegung** für den Admin ✅ (in 0.8.0).
+- [x] **Relay: Fortsetzen statt Neustart** ✅ (in 0.8.0).
+- [x] **CSV/JSON-Export** von Platten und Dateilisten ✅ (in 0.8.0).
 
 ## M4 – Große Bestände und Auswertung ⏳ (1.0)
 
@@ -198,7 +198,8 @@ zu große Dateien abgewiesen werden.
 
 | Version | Datum | Wichtigste Inhalte |
 |---|---|---|
-| **0.7.0** | 27.09.2026 | Dateibrowser mit Ordnern und Checkboxen; **„Datei anfordern“** mit Kopierberechtigung je Freigabe (nie / nachfragen / immer), Zustimmung des Besitzers, Hinweis „Platte anschließen“; Agent kopiert nur mit Haken am Rechner, mit Pfadschutz; **Relay** zwischen Rechnern, Ende-zu-Ende verschlüsselt, seriell, mit begrenztem Platz; Benutzermenü; „Master“ heißt „Admin“; Startpasswort nur beim ersten Start; Schutz vor Fremdseiten-Anfragen |
+| **0.8.0** | 25.10.2026 | Label „leer“ für leere Platten; **Löschprotokolle** (PDF) an Platten, Sammel-Upload mit Zuordnung per Seriennummer; „Jetzt neu scannen“; Agenten-Übersicht und gemerkte Schlüssel der Zielrechner; Kopierfortschritt; Relay setzt nach Abbruch fort; CSV/JSON-Export; Fix: hängende Indizierung, gesperrtes Umbenennen im Server-Betrieb; Roadmap und Doku in `docs/` |
+| 0.7.0 | 27.09.2026 | Dateibrowser mit Ordnern und Checkboxen; **„Datei anfordern“** mit Kopierberechtigung je Freigabe (nie / nachfragen / immer), Zustimmung des Besitzers, Hinweis „Platte anschließen“; Agent kopiert nur mit Haken am Rechner, mit Pfadschutz; **Relay** zwischen Rechnern, Ende-zu-Ende verschlüsselt, seriell, mit begrenztem Platz; Benutzermenü; „Master“ heißt „Admin“; Startpasswort nur beim ersten Start; Schutz vor Fremdseiten-Anfragen |
 | 0.6.0 | 27.09.2026 | Schächte je Client (Anzahl, Assistent, „Keine Wechselschächte“); Filter und Gruppierung „zuletzt an Client“ |
 | 0.5.1 | 27.09.2026 | Dauer-Neuindex der Systemplatte behoben (Schwellen, Mindestabstand) |
 | 0.5.0 | 26.09.2026 | **Mehrbenutzer:** Konten mit Freischaltung, Clients mit eigenem Token, Platten gehören Benutzern, Lesefreigabe je Platte, Übernahme nur mit Zustimmung; englisches README |

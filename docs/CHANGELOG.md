@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-25
+
 ### Hinzugefügt
 - **Export als CSV und JSON** (Roadmap M3): die Plattenliste mit den aktuellen Dashboard-Filtern
   (Link in der Filterleiste), Suchtreffer (Dateisuche) und die Dateiliste einer Platte

@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.7.0 (siehe `src/diskatlas/__init__.py`) |
+| **Aktuelle Version** | 0.8.0 (siehe `src/diskatlas/__init__.py`) |
 | **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
 | **Zuletzt aktualisiert** | 2026-10-25 |
 
@@ -59,7 +59,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Systemdatenträger ausblenden | Haken im Dashboard (Standard an), blendet Platten mit Label „System“ in UI-Listen und Suchen aus | ✅ 0.2.0 |
 | Hot-Swap-Schächte | 4 grafische Einschübe als erste Zeilen der Festplattenliste, Port→Schacht per Assistent, Linux/SATA | ✅ 0.2.0 |
 | Änderungserkennung | Neuindex bei deutlich geänderter Belegung (≥ 50 MB, `change_min_bytes`) + 30 s Ruhe, höchstens alle 10 min; Systemvolumes nie | ✅ 0.2.0 (Schwellen: 0.5.1) |
-| Neu scannen | Knopf auf der Plattenseite, Auftrag an den Agenten der Platte (`rescan`) | ✅ (Unreleased) |
+| Neu scannen | Knopf auf der Plattenseite, Auftrag an den Agenten der Platte (`rescan`) | ✅ 0.8.0 |
 | Volume umbenennen | Dateisystem-Label aus der GUI ändern (Linux udisks2/polkit, dabei bei Bedarf aus-/einhängen; Windows `Set-Volume`), nur lokal | ✅ 0.2.0 |
 | Indizierungs-Warnbanner | „nicht abziehen“ mit Zwischenstand auf jeder Seite (`/api/v1/activity`) | ✅ 0.2.0 |
 | Doubletten | Dateien (Name+Größe) und Ordner (identischer Inhalt) aus dem Index, ohne Prüfsummen | ✅ 0.2.0 |
@@ -72,11 +72,11 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Client-Bezug | „Zuletzt an Client“ je Platte; Filter/Suche/Gruppierung nach Client für Platten und Dateien | ✅ 0.6.0 |
 | Schächte je Client | Anzahl und Port-Zuordnung je Client (Assistent), Haken „Keine Wechselschächte“, Schachtblock je Client im Dashboard | ✅ 0.6.0 |
 | Berechtigungen | Platten gehören einem Benutzer; Schreiben nur für den Besitzer (und Admin), Lesen per Freigabe je Platte; Besitzwechsel nur mit Zustimmung des Besitzers; Ingest mit Client-Token; Labels, Schächte, Aufträge je Benutzer | ✅ 0.5.0 |
-| Leere Platten | Automatisches Label für komplett leere Platten, Name je Benutzer einstellbar (Standard „leer“, Seite *Labels*), `services/emptylabel.py` | ✅ (Unreleased) |
-| Löschprotokolle | PDF (z. B. nwipe) an die Platte hängen, mehrere je Platte, Download mit Rechteprüfung (`services/attachments.py`, `web/protocols.py`); Sammel-Upload mit Zuordnung per Seriennummer im PDF-Text (`services/pdftext.py`, pypdf) | ✅ (Unreleased); Methode/Ergebnis auslesen ⏳ (Roadmap M2.3) |
+| Leere Platten | Automatisches Label für komplett leere Platten, Name je Benutzer einstellbar (Standard „leer“, Seite *Labels*), `services/emptylabel.py` | ✅ 0.8.0 |
+| Löschprotokolle | PDF (z. B. nwipe) an die Platte hängen, mehrere je Platte, Download mit Rechteprüfung (`services/attachments.py`, `web/protocols.py`); Sammel-Upload mit Zuordnung per Seriennummer im PDF-Text (`services/pdftext.py`, pypdf) | ✅ 0.8.0; Methode/Ergebnis auslesen ⏳ (Roadmap M2.3) |
 | Suche | Volltext-Index (SQLite FTS5 / PostgreSQL `tsvector`) für sehr große Indizes | ⏳ geplant |
 | Auswertung | Diagramme (Belegung/Temperatur über Zeit), Duplikatsuche | ⏳ geplant |
-| Export | CSV/JSON-Export von Festplatten und Dateilisten (`web/export.py`, gestreamt) | ✅ (Unreleased) |
+| Export | CSV/JSON-Export von Festplatten und Dateilisten (`web/export.py`, gestreamt) | ✅ 0.8.0 |
 | Benachrichtigung | Warnung bei SMART-Verschlechterung (E-Mail/Push) | 💡 Idee |
 
 ## 3. Architektur
