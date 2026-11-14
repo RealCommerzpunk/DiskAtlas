@@ -13,7 +13,7 @@ has long been put back in the cupboard.
 - 🏷️ **Labels & categories**: e.g. `Location: Basement`, `Content: Movies`, plus notes; completely empty drives are labelled “leer” (empty) automatically (configurable)
 - 🧾 **Wipe reports**: attach PDF certificates from nwipe/ShredOS to the drive, or upload many at once and let DiskAtlas match them by serial number
 - 📊 **Dashboard**: key figures, search, filters, grouping, sorting (in the browser)
-- 📱 **iPhone web app**: scan a drive's serial-number barcode to see where it is
+- 📱 **iPhone app (PWA)**: install it on the home screen; live camera scan of the barcodes on the drive label – *Info* mode overlays what drive it is, *Find* mode highlights a chosen drive among many
 - 🐧🪟 **Linux and Windows**; optional central server as a **Docker container** (e.g. Unraid)
 
 > The user interface and the detailed guides are currently in German.

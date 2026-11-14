@@ -276,7 +276,7 @@ def test_nothing_of_annas_data_leaks_to_bob(world):
         "/api/v1/labels", "/api/v1/activity", "/api/v1/bays/live",
         f"/api/v1/bays/live?host=rechner-{MARK}", "/api/v1/lookup?code=ANNA1",
         f"/api/v1/lookup?code=SER-{MARK}", "/api/v1/commands/recent", "/api/v1/stats",
-        "/api/v1/users",
+        "/api/v1/users", "/api/v1/scan/index", "/scan?mode=find",
     ]
     for url in urls:
         r = bob.get(url)

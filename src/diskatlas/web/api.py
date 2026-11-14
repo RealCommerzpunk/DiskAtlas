@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import func, select
@@ -372,6 +374,24 @@ def lookup(
             )
         )
     return result
+
+
+@router.get("/scan/index", tags=["disks"])
+def scan_index(session: Session = Depends(get_session), viewer: Viewer = Depends(get_viewer)):
+    """Kompaktes Verzeichnis aller sichtbaren Platten für die iPhone-App: Sie erkennt Barcodes
+    damit sofort und auch bei schlechtem Empfang. Enthält nur, was der Benutzer ohnehin sieht."""
+    items = []
+    for disk in queries.load_disks(session, authz.visible_ids(viewer)):
+        where = lookup_service.whereabouts(session, disk)
+        items.append({
+            "id": disk.id, "name": disk.display_name, "brand": disk.brand, "model": disk.model,
+            "serial": disk.serial, "wwn": disk.wwn, "size_bytes": disk.size_bytes,
+            "health": disk.health, "labels": sorted(lab.name for lab in disk.labels),
+            "location": disk.location, "is_connected": disk.is_connected, "state": where.state,
+            "host": where.host, "bay": where.bay, "file_count": disk.file_count,
+        })
+    items.sort(key=lambda d: d["name"].lower())
+    return {"generated_at": datetime.now(UTC).isoformat(), "disks": items}
 
 
 @router.get("/commands/recent", tags=["system"])

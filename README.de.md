@@ -13,7 +13,7 @@ die Übersicht vollständig, auch wenn eine Platte längst wieder im Schrank lie
 - 🏷️ **Labels & Kategorien**: z. B. `Standort: Keller`, `Inhalt: Filme`, plus Notizen; komplett leere Platten bekommen automatisch das Label „leer“ (einstellbar)
 - 🧾 **Löschprotokolle**: PDF-Zertifikate von nwipe/ShredOS an die Platte hängen, gesammelt hochladen und automatisch per Seriennummer zuordnen
 - 📊 **Dashboard**: Kennzahlen, Suche, Filter, Gruppierung, Sortierung (Browser)
-- 📱 **iPhone-Web-App**: Barcode der Seriennummer scannen und sehen, wo die Platte liegt
+- 📱 **iPhone-App (PWA)**: auf den Home-Bildschirm legen, Barcodes auf dem Etikett live scannen – Modus *Info* zeigt im Kamerabild, welche Platte es ist, Modus *Suchen* markiert eine gewählte Platte unter vielen
 - 🐧🪟 **Linux Mint und Windows**; Server optional im **Docker-Container** (Unraid) oder in der Cloud
 
 Details zu Architektur und Entscheidungen: **[PROJECT.md](PROJECT.md)** · Roadmap: **[docs/ROADMAP.md](docs/ROADMAP.md)** ·

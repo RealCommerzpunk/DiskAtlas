@@ -12,6 +12,17 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 ## [Unreleased]
 
 ### Hinzugefügt
+- **iPhone-App neu gestaltet** (installierbare PWA, Startseite des Home-Bildschirm-Symbols): Vollbild-
+  Kamera mit zwei Modi. **Info** markiert den erkannten Barcode im Bild und zeigt darunter die Platte
+  (Ort: Schacht, angeschlossen oder Lagerort; Gesundheit, Labels, Dateien; Lagerort direkt
+  änderbar; „Diese Platte suchen“). **Suchen**: Platte wählen (Liste mit Suche, oder auf der
+  Plattenseite *📷 Mit dem iPhone suchen*), dann über die Etiketten fahren – die richtige wird grün
+  mit „GEFUNDEN“, Ton und Rahmen markiert, andere erkannte Platten rot mit Namen. Die App lädt ein
+  kompaktes Verzeichnis der sichtbaren Platten (`/api/v1/scan/index`) und erkennt damit sofort,
+  auch bei schlechtem WLAN; ein Service Worker hält die App-Dateien für schnellen Start vor.
+  Erkennung mit dem eingebauten `BarcodeDetector`, wo vorhanden (mehrere Codes je Bild), sonst
+  ZXing; Lichtknopf, wenn das Gerät eine steuerbare Taschenlampe hat; Direktlink `/scan?code=…`;
+  App-Kurzbefehle „Platte erkennen“ und „Platte suchen“ im Manifest.
 - Entwicklung: Befehl **`/SessionEnde`** für Claude Code (`.claude/commands/SessionEnde.md`). Er
   bringt am Ende einer Sitzung Memory, CHANGELOG, ROADMAP, PROJECT.md und `docs/CLAUDE.md` auf den
   aktuellen Stand und reicht die Dokumente als Pull Request ein.

@@ -9,7 +9,8 @@
     <h1>{{ disk.display_name }}</h1>
     <p class="muted">{% if disk.brand %}<strong>{{ disk.brand }}</strong> · {% endif %}{{ disk.model or 'Unbekanntes Modell' }} · {{ disk.size_bytes | filesize }}</p>
   </div>
-  <div class="head-badges">{{ health_badge(disk.health) }} {{ connection_badge(disk) }}</div>
+  <div class="head-badges">{{ health_badge(disk.health) }} {{ connection_badge(disk) }}
+    <a class="small" href="/scan?mode=find&amp;disk={{ disk.id }}" title="Auf dem iPhone: Kamera über die Etiketten halten, die Platte wird markiert">📷 Mit dem iPhone suchen</a></div>
 </div>
 
 <div class="grid-2">

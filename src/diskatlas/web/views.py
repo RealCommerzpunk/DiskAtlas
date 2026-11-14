@@ -628,8 +628,46 @@ def _browsable(session: Session, viewer: Viewer, excluded) -> list[tuple[Disk, l
 
 # ------------------------------------------------------------------ iPhone-Web-App
 @router.get("/scan", response_class=HTMLResponse)
-def scan_page(request: Request):
-    return templates.TemplateResponse(request, "scan.html", {})
+def scan_page(request: Request, mode: str = "info", disk: str = ""):
+    """iPhone-App (Vollbild): Barcode scannen – Info zu einer Platte oder eine Platte suchen."""
+    return templates.TemplateResponse(request, "scan.html", {
+        "mode": "find" if mode == "find" else "info",
+        "target": int(disk) if disk.isdigit() else None,
+    })
+
+
+SERVICE_WORKER = """// DiskAtlas: hält die App-Dateien vor, damit die iPhone-App sofort startet.
+// Seiten und API-Antworten kommen immer frisch vom Server (Anmeldung, aktuelle Daten).
+const CACHE = "diskatlas-app-%(version)s";
+const SHELL = ["/static/scan.css?v=%(version)s", "/static/scan.js?v=%(version)s",
+  "/static/vendor/zxing.min.js?v=%(version)s", "/static/icon-192.png",
+  "/static/apple-touch-icon.png"];
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", (e) => {
+  e.waitUntil(caches.keys().then((keys) => Promise.all(
+    keys.filter((k) => k.startsWith("diskatlas-app-") && k !== CACHE).map((k) => caches.delete(k))
+  )).then(() => self.clients.claim()));
+});
+self.addEventListener("fetch", (e) => {
+  const url = new URL(e.request.url);
+  const own = url.origin === location.origin && url.pathname.startsWith("/static/");
+  if (e.request.method !== "GET" || !own) {
+    return;  // alles andere geht direkt ans Netz
+  }
+  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
+});
+"""
+
+
+@router.get("/sw.js")
+def service_worker():
+    from fastapi.responses import Response
+
+    return Response(SERVICE_WORKER % {"version": __version__},
+                    media_type="application/javascript",
+                    headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
 
 
 @router.get("/manifest.webmanifest")
@@ -642,8 +680,13 @@ def manifest():
     ]
     body = {
         "name": "DiskAtlas", "short_name": "DiskAtlas", "start_url": "/scan", "scope": "/",
-        "display": "standalone", "background_color": "#000000", "theme_color": "#000000",
-        "lang": "de", "icons": icons,
+        "display": "standalone", "orientation": "portrait", "background_color": "#000000",
+        "theme_color": "#000000", "lang": "de", "icons": icons,
+        "description": "Festplatten per Barcode erkennen und finden",
+        "shortcuts": [
+            {"name": "Platte erkennen", "url": "/scan?mode=info"},
+            {"name": "Platte suchen", "url": "/scan?mode=find"},
+        ],
     }
     return JSONResponse(body, media_type="application/manifest+json")
 
