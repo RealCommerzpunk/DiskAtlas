@@ -11,6 +11,12 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Dashboard merkt sich die Filter** (Wunsch 14.11.): Suche, Gesundheit, Verbindung, Label,
+  Dateisystem, Belegung, Client, Gruppierung und Sortierung bleiben erhalten, wenn du eine Platte
+  öffnest oder bearbeitest und über *Dashboard* zurückkommst (Cookie im Browser, ein Jahr).
+  *Filter zurücksetzen* in der Filterleiste löscht sie; leerst du alle Filter von Hand, ebenso.
+
 ## [0.10.2] - 2026-11-14
 
 ### Geändert

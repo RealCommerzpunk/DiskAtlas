@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import time
 from pathlib import Path
-from urllib.parse import urlencode, urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -99,6 +99,21 @@ def _int_or_none(value: str | None) -> int | None:
 
 
 HIDE_SYSTEM_COOKIE = "diskatlas_hide_system"
+# Zuletzt gewählte Dashboard-Filter: „Dashboard“ ohne Filter führt wieder dorthin
+FILTER_COOKIE = "diskatlas_dashboard"
+FILTER_KEYS = ("q", "health", "connected", "label", "fs", "usage", "client", "group", "sort",
+               "desc")
+FILTER_DEFAULTS = {"group": "none", "sort": "name", "desc": "false"}
+
+
+def _clean_filters(pairs) -> str:
+    """Nur bekannte, von der Voreinstellung abweichende Filter (als Query-String)."""
+    clean = {}
+    for key, value in pairs:
+        value = (value or "").strip()
+        if key in FILTER_KEYS and value and FILTER_DEFAULTS.get(key) != value.lower():
+            clean[key] = value[:200]
+    return urlencode(clean)
 
 
 def _hide_system(request: Request) -> bool:
@@ -199,6 +214,17 @@ def dashboard(
     session: Session = Depends(get_session),
     viewer: Viewer = Depends(get_viewer),
 ):
+    params = request.query_params
+    if "reset" in params:  # „Filter zurücksetzen“
+        response = _redirect("/")
+        response.delete_cookie(FILTER_COOKIE)
+        return response
+    explicit = any(key in params for key in FILTER_KEYS)
+    if not explicit:
+        saved = _clean_filters(parse_qsl(request.cookies.get(FILTER_COOKIE, "")))
+        if saved:
+            return _redirect("/?" + saved)
+    remembered = _clean_filters(params.multi_items()) if explicit else None
     excluded = set(_excluded_disks(request, session, viewer))
     all_disks = [
         d for d in queries.load_disks(session, authz.visible_ids(viewer)) if d.id not in excluded
@@ -213,10 +239,11 @@ def dashboard(
     disks = queries.sort_disks(
         queries.filter_disks([d for d in all_disks if d.id not in in_bay], flt), sort, desc
     )
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "dashboard.html",
         {
+            "filters_active": bool(remembered),
             "stats": queries.dashboard_stats(all_disks),
             "hide_system": _hide_system(request),
             "hidden_system_count": len(excluded),
@@ -239,6 +266,12 @@ def dashboard(
                   "desc": desc},
         },
     )
+    if remembered:
+        response.set_cookie(FILTER_COOKIE, remembered, max_age=365 * 24 * 3600, samesite="lax",
+                            httponly=True)
+    elif remembered is not None:  # alle Filter von Hand geleert
+        response.delete_cookie(FILTER_COOKIE)
+    return response
 
 
 def setup_context(
