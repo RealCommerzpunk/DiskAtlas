@@ -9,7 +9,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.10.2 (14.11.2026) |
+| **Aktuelle Version** | 0.10.3 (14.11.2026) |
 | **Nächster Meilenstein** | MV – Vertrauen und Datenschutz (parallel: M1 im echten Betrieb) |
 | **Zuletzt aktualisiert** | 14.11.2026 |
 
@@ -66,7 +66,7 @@ Kein Code; wartet auf dich.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
       damit die automatische Zuordnung an echten Dateien statt an Vermutungen gebaut wird.
 
-## Dashboard merkt sich Filter (Wunsch vom 14.11.2026) ✅ umgesetzt, noch nicht released
+## Dashboard merkt sich Filter (Wunsch vom 14.11.2026) ✅ in 0.10.3
 
 - [x] Filter bleiben nach Plattenansicht/Bearbeiten erhalten; *Filter zurücksetzen* löscht sie.
 
@@ -333,7 +333,8 @@ Rechnern der Benutzer liegen:
 
 | Version | Datum | Wichtigste Inhalte |
 |---|---|---|
-| **0.10.2** | 14.11.2026 | iPhone-App: Barcode-Erkennung mit zxing-cpp (WebAssembly), 4K, Rahmen in voller Auflösung, Hinweis „näher ran“, 2×-Zoom |
+| **0.10.3** | 14.11.2026 | Dashboard merkt sich die Filter |
+| 0.10.2 | 14.11.2026 | iPhone-App: Barcode-Erkennung mit zxing-cpp (WebAssembly), 4K, Rahmen in voller Auflösung, Hinweis „näher ran“, 2×-Zoom |
 | 0.10.1 | 14.11.2026 | Fix: CSS/JS hinter HTTPS-Proxy (Tailscale) blockiert – App ungestaltet und ohne Funktion |
 | 0.10.0 | 14.11.2026 | **iPhone-App neu**: Vollbild-Scanner mit Modi *Info* und *Suchen*, Plattenverzeichnis auf dem Gerät, Service Worker; Befehl `/SessionEnde` |
 | 0.9.1 | 26.10.2026 | Fix „database is locked“ (Aufräumen im Hintergrund statt großer Löschungen), Indizierung als kompakte Anzeige in der Kopfleiste, Server-Meldungen in der Verwaltung, Empfehlung `/mnt/cache` für Unraid |

@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-11-14
+
 ### Hinzugefügt
 - **Dashboard merkt sich die Filter** (Wunsch 14.11.): Suche, Gesundheit, Verbindung, Label,
   Dateisystem, Belegung, Client, Gruppierung und Sortierung bleiben erhalten, wenn du eine Platte
