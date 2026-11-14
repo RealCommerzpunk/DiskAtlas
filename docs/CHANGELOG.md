@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-14
+
 ### Hinzugefügt
 - **iPhone-App neu gestaltet** (installierbare PWA, Startseite des Home-Bildschirm-Symbols): Vollbild-
   Kamera mit zwei Modi. **Info** markiert den erkannten Barcode im Bild und zeigt darunter die Platte

@@ -7,9 +7,9 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.9.1 (siehe `src/diskatlas/__init__.py`) |
+| **Aktuelle Version** | 0.10.0 (siehe `src/diskatlas/__init__.py`) |
 | **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0; Löschprotokolle, Label „leer“, Export seit 0.8.0; Altbestand-Import seit 0.9.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
-| **Zuletzt aktualisiert** | 2026-10-26 |
+| **Zuletzt aktualisiert** | 2026-11-14 |
 
 ---
 
@@ -52,7 +52,7 @@ mehr angeschlossen ist**. Über ein Web-Dashboard kann man suchen („Auf welche
 | Dateisuche | über alle (auch offline) Festplatten, Endung, Größe, Label | ✅ 0.1.0 |
 | Dateibrowser | Ordner durchklicken (Ordnerindex), Checkboxen je Datei/Ordner (Suche und Browser) | ✅ 0.7.0 |
 | Datei anfordern | Kopierberechtigung je Freigabe (nie/nachfragen/immer), Anfragen mit Zustandsmaschine und Zustimmung des Besitzers; Ausführung durch den Agenten (`agent/transfer.py`, `agent/safepath.py`, nur mit `allow_transfer`): lokal und über den verschlüsselten, seriellen Relay (`services/relay.py`, `agent/relaycrypto.py`); Schalter `copy_enabled` | ✅ 0.7.0 (im echten Betrieb noch zu prüfen, Roadmap M1) |
-| iPhone-App (PWA) | Vollbild-Scanner (BarcodeDetector, sonst ZXing lokal) mit Modi *Info* (Markierung im Bild + Karte: Ort, Gesundheit, Labels, Lagerort) und *Suchen* (gewählte Platte grün „GEFUNDEN“, andere rot); Plattenverzeichnis auf dem Gerät (`/api/v1/scan/index`), Service Worker für die App-Dateien, Direktlink `/scan?code=…` | ✅ 0.3.0, neu gestaltet (Unreleased) |
+| iPhone-App (PWA) | Vollbild-Scanner (BarcodeDetector, sonst ZXing lokal) mit Modi *Info* (Markierung im Bild + Karte: Ort, Gesundheit, Labels, Lagerort) und *Suchen* (gewählte Platte grün „GEFUNDEN“, andere rot); Plattenverzeichnis auf dem Gerät (`/api/v1/scan/index`), Service Worker für die App-Dateien, Direktlink `/scan?code=…` | ✅ 0.3.0, neu gestaltet 0.10.0 |
 | Hersteller/Serie | Hersteller und Verkaufsbezeichnung aus Modellnummer (smartctl-Familie, `drivedb.h`), gespeichert in `disks` | ✅ 0.2.0 |
 | Dateisystem-Filter | Dashboard filtert/sortiert/gruppiert nach Dateisystem, Belegung bekannt/unbekannt | ✅ 0.2.0 |
 | Auto-Einhängen | Linux: nicht eingehängte Dateisysteme selbst einhängen (`auto_mount`, udisks2), damit Belegung/Index möglich sind | ✅ 0.2.0 |
