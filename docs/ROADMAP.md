@@ -22,7 +22,7 @@
 
 | # | Meilenstein | Version | Inhalt | Stand |
 |---|---|---|---|---|
-| M0 | Betreiber-Aufgaben | – | Unraid auf 0.9.1 mit Datenpfad `/mnt/cache`, Altbestand importieren, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
+| M0 | Betreiber-Aufgaben | – | Unraid auf 0.10.4, Datenpfad `/mnt/cache` prüfen, Altbestand importieren, SignPath-Antrag, Beispiel-PDF von nwipe | 👤 offen |
 | M1 | Im echten Betrieb prüfen | 0.9.x | „Datei anfordern“ und Relay mit echten Rechnern, Windows auf echter Hardware, Reverse-Proxy | 🔜 |
 | M2 | Leere Platten und Löschprotokolle | 0.8 | Label für leere Platten ✅, nwipe-PDF an Platte hängen ✅, automatisch per Seriennummer zuordnen ✅; Methode/Ergebnis auslesen (wartet auf Beispiel-PDF) | ✅ bis auf Rest |
 | M3 | Bedienung und Überblick | 0.8 | „Jetzt neu scannen“, Agenten-Übersicht, Kopierfortschritt, Schlüssel-Fingerabdruck, Fortsetzen im Relay, Export | ✅ umgesetzt |
@@ -52,8 +52,10 @@
 Kein Code; wartet auf dich.
 
 - [x] **Unraid auf 0.7.0+ aktualisiert**, Anmeldung als Admin (Server lief am 25.10. mit 0.9.0).
-- [ ] **Unraid auf 0.9.1 aktualisieren und Datenpfad umstellen:** Container stoppen, Pfad *Daten*
-      von `/mnt/user/appdata/diskatlas` auf `/mnt/cache/appdata/diskatlas`, starten. Behebt die
+- [x] **Unraid auf 0.10.x aktualisiert** (iPhone-App läuft am 14.11. über Tailscale); auf 0.10.4
+      aktualisieren, damit die neuen Rahmen und ⚙-Einstellungen ankommen.
+- [ ] **Datenpfad prüfen bzw. umstellen:** Container stoppen, Pfad *Daten* von
+      `/mnt/user/appdata/diskatlas` auf `/mnt/cache/appdata/diskatlas`, starten. Behebt die
       „database is locked“-Fehler beim Indizieren der Systemplatte (Agent muss nicht neu).
 - [x] **Einrichtung nach dem Umstieg auf Mehrbenutzer:** Client „LinuxMint“ angelegt, Agent meldet
       sich (Stand 25.10.).
@@ -84,9 +86,12 @@ Kein Code; wartet auf dich.
       Nachziehen, Beschriftung ohne Überlappung (auch bei zehn Platten), einstellbare Angaben
       (Standard: Name), Suchmodus nur grün/dezent rot. Mit simulierter Kamera (zehn Etiketten)
       geprüft.
-- [ ] **Auf dem echten iPhone prüfen** (nur im Desktop-Browser und mit Tests geprüft): Erkennung
-      der Etiketten-Barcodes (Code 128/39, DataMatrix) bei Regal-Licht, Lage der Markierung im Bild,
-      Ton im Suchmodus, Anmeldung in der Home-Bildschirm-App, Verhalten nach Hintergrund/Sperre.
+- [ ] **Auf dem echten iPhone prüfen:** Erkennung funktioniert (Rückmeldung 14.11., Stand 0.10.3).
+      Noch offen mit 0.10.4: Live-Rahmen und Schilder bei vielen Platten, Tipp öffnet/schließt die
+      Details, ⚙-Einstellungen, Ton im Suchmodus, Verhalten nach Hintergrund/Sperre.
+- [ ] **Offene Frage:** Wozu gehört der Barcode `*P0U45551844256*` auf deinem Foto (Hersteller-
+      Etikett, Karton, eigenes Label)? *Vorschlag:* Ist es eine Teile-/Chargennummer, ignorieren
+      wir ihn; ist es eine Seriennummer, ordnen wir ihn als Alias der Platte zu.
 - 💡 **Eigene QR-Etiketten** (Vorschlag 14.11.): DiskAtlas druckt je Platte ein Etikett mit großem
       QR-Code (Platten-ID) und Namen, z. B. für Stirnseite oder Karton. Ein 2-cm-QR-Code ist aus
       ~1 m lesbar – ideal zum Suchen im Regal, unabhängig von den feinen Hersteller-Barcodes.

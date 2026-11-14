@@ -25,5 +25,8 @@
   sonst fassen Tests das echte `~/.local/share/diskatlas` an.
 - **Tests:** große Daten nie als `pytest.mark.parametrize`-Werte (pytest schreibt sie in jeden
   Bericht; unter Windows hing die CI daran).
+- **Statische Dateien in Templates** immer relativ (`/static/…?v={{ version }}`), nie
+  `url_for('static', …)` – hinter dem HTTPS-Proxy (Tailscale) wird daraus `http://…` und der
+  Browser blockiert CSS/JS.
 - **Shell:** kein `pkill -f <muster>`, wenn das Muster in der eigenen Befehlszeile steht (beendet
   die eigene Shell); Prozesse per Port (`ss -ltnp`) oder PID beenden.
