@@ -66,6 +66,10 @@ Kein Code; wartet auf dich.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
       damit die automatische Zuordnung an echten Dateien statt an Vermutungen gebaut wird.
 
+## Dashboard merkt sich Filter (Wunsch vom 14.11.2026) ✅ umgesetzt, noch nicht released
+
+- [x] Filter bleiben nach Plattenansicht/Bearbeiten erhalten; *Filter zurücksetzen* löscht sie.
+
 ## iPhone-App (Wunsch vom 14.11.2026) ✅ in 0.10.0
 
 - [x] Installierbare Vollbild-App mit Live-Scan und den Modi **Info** (Overlay: welche Platte) und
