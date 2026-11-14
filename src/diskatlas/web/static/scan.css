@@ -15,10 +15,11 @@ a { color: inherit; }
 .cam { position: fixed; inset: 0; }
 .cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cam canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.guide { position: absolute; left: 8%; right: 8%; top: 34%; height: 18%; border-radius: 16px;
-  border: 2px solid rgba(255, 255, 255, .55); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .28);
-  pointer-events: none; transition: border-color .2s; }
-.app[data-mode="find"].hunting .guide { border-color: rgba(109, 147, 255, .9); }
+/* Hilfsrahmen: nur ein dezenter Hinweis, wo die volle Auflösung ausgewertet wird */
+.guide { position: absolute; left: 8%; right: 8%; top: 34%; height: 18%; border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, .3); pointer-events: none; transition: border-color .2s; }
+.cam canvas { z-index: 1; }
+.app[data-mode="find"].hunting .guide { border-color: rgba(109, 147, 255, .45); }
 
 /* „Gefunden“: groß und unübersehbar */
 .found { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); display: flex;
@@ -104,3 +105,14 @@ a { color: inherit; }
 .link { background: var(--glass); padding: .6rem 1.1rem; border-radius: 999px; font-size: .95rem; }
 .manual { display: flex; gap: .5rem; width: 100%; }
 @media (prefers-reduced-motion: reduce) { .found, .sheet { animation: none; } .app.flash .cam::after { animation: none; opacity: 0; } }
+
+/* Einstellungen der Beschriftung */
+.small-gear { font-size: 1.2rem; }
+.settings-list { display: flex; flex-direction: column; gap: .15rem; margin-top: .6rem; }
+.settings-list .check { display: flex; align-items: center; gap: .7rem; padding: .6rem .2rem; border-bottom: 1px solid var(--line); font-size: 1rem; }
+.settings-list input { width: 1.3rem; height: 1.3rem; accent-color: var(--accent); }
+/* „Gefunden“ etwas kleiner, damit es das Bild nicht verdeckt */
+.found { font-size: 1.15rem; padding: .45rem 1rem; top: auto; bottom: calc(var(--safe-b) + 4.6rem); pointer-events: none; }
+.found span { font-size: 1.3rem; }
+.app.flash .cam::after { border-width: 6px; }
+.cam { cursor: pointer; }

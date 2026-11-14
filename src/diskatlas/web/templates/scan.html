@@ -28,6 +28,7 @@
       <button type="button" role="tab" data-mode="info">Info</button>
       <button type="button" role="tab" data-mode="find">Suchen</button>
     </div>
+    <button type="button" class="round small-gear" id="settings-btn" aria-label="Anzeige im Kamerabild einstellen">⚙</button>
     <button type="button" class="round zoom" id="zoom" aria-label="Zoom 2-fach" aria-pressed="false" hidden>2×</button>
     <button type="button" class="round" id="torch" aria-label="Licht" aria-pressed="false" hidden>☀</button>
   </header>
@@ -50,6 +51,12 @@
     <div class="sheet-head"><h2>Welche Platte suchst du?</h2><button type="button" class="round small" id="picker-close" aria-label="Schließen">✕</button></div>
     <input id="picker-q" type="search" placeholder="Name, Seriennummer, Label, Lagerort" autocomplete="off" autocorrect="off" spellcheck="false">
     <ul id="picker-list"></ul>
+  </section>
+
+  <section class="sheet" id="settings" hidden>
+    <div class="sheet-head"><h2>Beschriftung im Kamerabild</h2><button type="button" class="round small" id="settings-close" aria-label="Schließen">✕</button></div>
+    <p class="note">Was neben erkannten Platten steht (gilt für dieses Gerät). Die erste gewählte Angabe steht fett, die übrigen klein darunter.</p>
+    <div id="settings-list" class="settings-list"></div>
   </section>
 
   <footer class="foot">

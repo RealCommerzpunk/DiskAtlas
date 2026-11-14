@@ -77,13 +77,14 @@ ein gültiges Zertifikat ohne eigene Domain und Zugriff auch unterwegs.
    Kamerazugriff erlauben.
 
 **Die Scanner-App** hat zwei Modi (oben umschalten):
-- **Info:** Kamera auf das Etikett halten. Der erkannte Barcode wird im Bild markiert, unten
-  erscheint die Platte mit Ort (Schacht, angeschlossen oder Lagerort), Gesundheit, Labels und
-  einem Feld für den Lagerort.
+- **Info:** Kamera auf die Etiketten halten. Jede erkannte Platte bekommt einen schlanken Rahmen
+  mit einem kleinen Namensschild (unbekannte Barcodes nur einen grauen Rahmen). Ein **Tipp auf das
+  Schild** zeigt die Details: Ort (Schacht, angeschlossen oder Lagerort), Gesundheit, Labels und ein
+  Feld für den Lagerort. Was auf den Schildern steht, stellst du über **⚙** ein (Standard: Name).
 - **Suchen:** erst die gesuchte Platte wählen (Liste mit Suche nach Name, Seriennummer, Label,
   Lagerort – oder auf der Plattenseite *📷 Mit dem iPhone suchen*). Dann einfach über die Etiketten
-  im Regal oder Karton fahren: Die richtige Platte wird grün mit **GEFUNDEN** markiert (mit Ton),
-  andere erkannte Platten rot mit ihrem Namen.
+  im Regal oder Karton fahren: Die richtige Platte wird grün mit Namen markiert (mit Ton und
+  „Gefunden“), alle anderen Barcodes dezent rot.
 
 Die App lädt beim Start ein Verzeichnis deiner Platten aufs iPhone (nur was du sehen darfst) und
 erkennt Barcodes damit sofort, auch bei schlechtem WLAN; alle 5 Minuten wird es aufgefrischt.

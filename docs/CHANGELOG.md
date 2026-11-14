@@ -11,6 +11,22 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- **iPhone-App: ruhigeres Kamerabild** (Wünsche vom 14.11.).
+  - **Details nur auf Tipp:** Eine erkannte Platte öffnet keine Karte mehr; erst ein Tipp auf
+    ihre Beschriftung oder ihren Rahmen zeigt die Details (schließen mit ✕). Getippte
+    Seriennummern zeigen die Karte weiterhin direkt.
+  - **Live-Rahmen:** schlanke Rahmen (mit dunklem Saum, auf hellen Etiketten sichtbar), die
+    genau so lange stehen, wie der Barcode im Bild ist – kein Nachziehen mehr. Der Hilfsrahmen
+    ist nur noch eine dezente gestrichelte Linie ohne Abdunklung; abwechselnd wird er in voller
+    Auflösung und das ganze Bild ausgewertet, damit auch viele Platten gleichzeitig erkannt werden.
+  - **Beschriftung ohne Überlappung**, auch bei zehn Platten im Bild: kleine Schilder über,
+    unter oder neben dem Rahmen, gekürzt, wenn nötig.
+  - **Einstellbar (⚙):** welche Angaben auf den Schildern stehen – Name (Standard), Seriennummer,
+    Ort, Lagerort, Labels, Gesundheit, Größe, Modell; gespeichert je Gerät.
+  - **Suchen:** nur die gesuchte Platte grün mit Namen, alle anderen Barcodes dezent rot ohne
+    Text; „Gefunden“ kleiner am unteren Rand.
+
 ## [0.10.3] - 2026-11-14
 
 ### Hinzugefügt

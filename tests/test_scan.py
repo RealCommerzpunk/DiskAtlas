@@ -157,3 +157,10 @@ def test_wasm_barcode_reader_is_served_locally(client):
     assert wasm.content[:4] == b"\0asm"
     assert client.get("/static/vendor/barcode-detector.js").status_code == 200
     assert "zxing_reader.wasm" in client.get("/sw.js").text, "für schnellen Start vorgehalten"
+
+
+def test_overlay_settings_are_part_of_the_app(client):
+    page = client.get("/scan").text
+    assert 'id="settings-btn"' in page and 'id="settings-list"' in page
+    js = client.get("/static/scan.js").text
+    assert 'diskatlas.scan.fields' in js and 'return ["name"]' in js, "Standard: nur der Name"
