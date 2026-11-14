@@ -7,7 +7,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.10.0 (siehe `src/diskatlas/__init__.py`) |
+| **Aktuelle Version** | 0.10.1 (siehe `src/diskatlas/__init__.py`) |
 | **Status** | Server auf Unraid (Docker) im Einsatz; Agent-Programm für Linux und Windows (lokal oder mit Server), Windows-Signatur über SignPath in Vorbereitung; Mehrbenutzer (Benutzer, Clients, Besitz, Freigaben) seit 0.5.0; Dateibrowser und „Datei anfordern“ (lokal und über verschlüsselten Relay) seit 0.7.0; Löschprotokolle, Label „leer“, Export seit 0.8.0; Altbestand-Import seit 0.9.0. Reihenfolge der weiteren Arbeit: [docs/ROADMAP.md](docs/ROADMAP.md) |
 | **Zuletzt aktualisiert** | 2026-11-14 |
 

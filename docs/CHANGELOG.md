@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-14
+
 ### Behoben
 - **Seiten ohne Gestaltung und ohne Funktion hinter HTTPS-Proxys** (z. B. `tailscale serve`, SWAG):
   CSS, JavaScript und Symbole wurden mit absoluter Adresse eingebunden. Da der Container hinter dem

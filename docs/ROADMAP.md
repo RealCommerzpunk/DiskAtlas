@@ -9,7 +9,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.10.0 (14.11.2026) |
+| **Aktuelle Version** | 0.10.1 (14.11.2026) |
 | **Nächster Meilenstein** | MV – Vertrauen und Datenschutz (parallel: M1 im echten Betrieb) |
 | **Zuletzt aktualisiert** | 14.11.2026 |
 
@@ -319,7 +319,8 @@ Rechnern der Benutzer liegen:
 
 | Version | Datum | Wichtigste Inhalte |
 |---|---|---|
-| **0.10.0** | 14.11.2026 | **iPhone-App neu**: Vollbild-Scanner mit Modi *Info* und *Suchen*, Plattenverzeichnis auf dem Gerät, Service Worker; Befehl `/SessionEnde` |
+| **0.10.1** | 14.11.2026 | Fix: CSS/JS hinter HTTPS-Proxy (Tailscale) blockiert – App ungestaltet und ohne Funktion |
+| 0.10.0 | 14.11.2026 | **iPhone-App neu**: Vollbild-Scanner mit Modi *Info* und *Suchen*, Plattenverzeichnis auf dem Gerät, Service Worker; Befehl `/SessionEnde` |
 | 0.9.1 | 26.10.2026 | Fix „database is locked“ (Aufräumen im Hintergrund statt großer Löschungen), Indizierung als kompakte Anzeige in der Kopfleiste, Server-Meldungen in der Verwaltung, Empfehlung `/mnt/cache` für Unraid |
 | 0.9.0 | 25.10.2026 | **Altbestand importieren** (Verwaltung bzw. `diskatlas db import`): Platten einer alten DiskAtlas-Datenbank in die laufende übernehmen |
 | 0.8.0 | 25.10.2026 | Label „leer“ für leere Platten; **Löschprotokolle** (PDF) an Platten, Sammel-Upload mit Zuordnung per Seriennummer; „Jetzt neu scannen“; Agenten-Übersicht und gemerkte Schlüssel der Zielrechner; Kopierfortschritt; Relay setzt nach Abbruch fort; CSV/JSON-Export; Fix: hängende Indizierung, gesperrtes Umbenennen im Server-Betrieb; Roadmap und Doku in `docs/` |
