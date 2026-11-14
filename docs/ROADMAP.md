@@ -72,9 +72,19 @@ Kein Code; wartet auf dich.
       **Suchen** (vorher gewählte Platte deutlich markiert) – siehe [UNRAID.md](UNRAID.md) › iPhone.
 - [x] **Über Tailscale ungestaltet und ohne Funktion** (gemeldet 14.11.) ✅ behoben: absolute
       Adressen für CSS/JS wurden hinter dem HTTPS-Proxy zu `http://…` und blockiert.
+- [x] **Nichts erkannt** (gemeldet 14.11. mit Foto eines Plattenstapels): Bei dem Abstand war ein
+      Strich nur 1–2 Bildpunkte breit und verschwommen – auch zxing-cpp liest das nicht. Jetzt
+      zxing-cpp (WebAssembly), 4K, Auswertung des Rahmens in voller Auflösung, Hinweis „näher ran“,
+      2×-Zoom wo möglich.
 - [ ] **Auf dem echten iPhone prüfen** (nur im Desktop-Browser und mit Tests geprüft): Erkennung
       der Etiketten-Barcodes (Code 128/39, DataMatrix) bei Regal-Licht, Lage der Markierung im Bild,
       Ton im Suchmodus, Anmeldung in der Home-Bildschirm-App, Verhalten nach Hintergrund/Sperre.
+- 💡 **Eigene QR-Etiketten** (Vorschlag 14.11.): DiskAtlas druckt je Platte ein Etikett mit großem
+      QR-Code (Platten-ID) und Namen, z. B. für Stirnseite oder Karton. Ein 2-cm-QR-Code ist aus
+      ~1 m lesbar – ideal zum Suchen im Regal, unabhängig von den feinen Hersteller-Barcodes.
+- 💡 **Texterkennung als Ergänzung** (Vorschlag 14.11.): Knopf „Text lesen“ für Etiketten ohne
+      lesbaren Barcode – ein Standbild des Rahmens per OCR (z. B. Tesseract.js) lesen und mit den
+      bekannten Seriennummern unscharf abgleichen (O/0, I/1, B/8). Nicht als Ersatz für Barcodes.
 - 💡 Ideen für später: mehrere Platten gleichzeitig suchen (Einkaufsliste), Taschenlampe
       automatisch im Dunkeln, „zuletzt gescannt“-Verlauf, Lagerort per Sprache.
 

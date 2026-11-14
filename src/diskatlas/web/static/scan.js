@@ -173,6 +173,7 @@
   function onCode(text, points) {
     var code = norm(text), now = Date.now();
     if (!code) { return; }
+    state.lastCodeAt = now;
     var repeat = state.seen[code] && now - state.seen[code] < SAME_CODE_MS;
     state.seen[code] = now;
     var hits = match(text);
@@ -362,21 +363,47 @@
       showStart("Die Kamera funktioniert nur über HTTPS (z. B. Tailscale, siehe Anleitung). Seriennummer unten eintippen geht immer.");
       return;
     }
-    var constraints = { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } } };
+    // Hohe Auflösung: feine Strichcodes brauchen 2–3 scharfe Bildpunkte je Strich
+    var constraints = { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } } };
     state.running = true;
-    if ("BarcodeDetector" in window) {
-      window.BarcodeDetector.getSupportedFormats().then(function (supported) {
+    // 1. eingebaute Erkennung (Chrome/Android), 2. zxing-cpp als WebAssembly (iPhone/Safari),
+    // 3. notfalls die ältere ZXing-Bibliothek in JavaScript
+    pickDetector().then(function (Detector) {
+      return Detector.getSupportedFormats().then(function (supported) {
         var formats = FORMATS.filter(function (f) { return supported.indexOf(f) >= 0; });
         if (!formats.length) { throw new Error("keine Formate"); }
-        state.detector = new window.BarcodeDetector({ formats: formats });
+        state.detector = new Detector({ formats: formats });
         return navigator.mediaDevices.getUserMedia(constraints);
-      }).then(function (stream) {
-        attach(stream);
-        detectLoop();
-      }).catch(function () { startZxing(constraints); });
-    } else {
-      startZxing(constraints);
+      });
+    }).then(function (stream) {
+      attach(stream);
+      detectLoop();
+    }).catch(function (e) {
+      if (e && e.name && /NotAllowed|Security|NotFound/.test(e.name)) { state.running = false; showStart(cameraError(e)); return; }
+      startZxing({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
+    });
+  }
+  function pickDetector() {
+    if ("BarcodeDetector" in window) {
+      return window.BarcodeDetector.getSupportedFormats().then(function (f) {
+        return f.length ? window.BarcodeDetector : wasmDetector();
+      });
     }
+    return wasmDetector();
+  }
+  function wasmDetector() {
+    var api = window.BarcodeDetectionAPI;
+    if (!api || !api.BarcodeDetector) { return Promise.reject(new Error("kein Detector")); }
+    var version = body.dataset.version || "";
+    api.prepareZXingModule({
+      overrides: {
+        locateFile: function (path, prefix) {
+          return path.slice(-5) === ".wasm" ? "/static/vendor/" + path + "?v=" + version : prefix + path;
+        },
+      },
+      fireImmediately: true,
+    });
+    return Promise.resolve(api.BarcodeDetector);
   }
   function startZxing(constraints) {
     if (!window.ZXing) { showStart("Scanner-Bibliothek nicht geladen."); state.running = false; return; }
@@ -397,21 +424,52 @@
     }).catch(function (e) { state.running = false; showStart(cameraError(e)); });
   }
   function attach(stream) {
+    state.startedAt = Date.now();
     state.stream = stream;
     video.srcObject = stream;
     video.play().catch(function () { /* stumm: Wiedergabe startet trotzdem */ });
     setupTorch();
   }
+  // Ausschnitt um den Rahmen in voller Kameraauflösung (Bildschirm -> Kamerabild umgerechnet)
+  var crop = document.createElement("canvas"), cropCtx = crop.getContext("2d", { willReadFrequently: true });
+  var frameNo = 0;
+  function guideInVideo() {
+    var vw = video.videoWidth, vh = video.videoHeight;
+    var r = canvas.getBoundingClientRect(), g = document.querySelector(".guide").getBoundingClientRect();
+    if (!vw || !vh || !r.width) { return null; }
+    var s = Math.max(r.width / vw, r.height / vh), ox = (r.width - vw * s) / 2, oy = (r.height - vh * s) / 2;
+    var extra = g.height * 0.6;  // etwas großzügiger als der sichtbare Rahmen
+    var x = Math.max(0, (g.left - r.left - ox) / s), y = Math.max(0, (g.top - r.top - extra - oy) / s);
+    var w = Math.min(vw - x, g.width / s), h = Math.min(vh - y, (g.height + 2 * extra) / s);
+    return w > 50 && h > 30 ? { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) } : null;
+  }
   function detectLoop() {
     if (!state.running || !state.detector) { return; }
-    if (video.readyState >= 2) {
-      state.detector.detect(video).then(function (codes) {
-        codes.forEach(function (c) { onCode(c.rawValue, c.cornerPoints || []); });
-      }).catch(function () { /* ein Bild verpasst */ }).then(function () { setTimeout(detectLoop, 120); });
-    } else {
-      setTimeout(detectLoop, 200);
+    if (video.readyState < 2) { setTimeout(detectLoop, 200); return; }
+    frameNo += 1;
+    var area = frameNo % 4 === 0 ? null : guideInVideo();  // jedes 4. Bild: ganzes Bild
+    var source = video, dx = 0, dy = 0;
+    if (area) {
+      crop.width = area.w;
+      crop.height = area.h;
+      cropCtx.drawImage(video, area.x, area.y, area.w, area.h, 0, 0, area.w, area.h);
+      source = crop; dx = area.x; dy = area.y;
     }
+    state.detector.detect(source).then(function (codes) {
+      codes.forEach(function (c) {
+        var pts = (c.cornerPoints || []).map(function (p) { return { x: p.x + dx, y: p.y + dy }; });
+        onCode(c.rawValue, pts);
+      });
+    }).catch(function () { /* ein Bild verpasst */ }).then(function () { setTimeout(detectLoop, 60); });
   }
+  // Hinweis, wenn eine Weile nichts erkannt wird
+  var lastHint = 0;
+  setInterval(function () {
+    var now = Date.now(), last = Math.max(state.lastCodeAt || 0, state.startedAt || now);
+    if (!state.running || !sheet.hidden || !picker.hidden || now - last < 6000 || now - lastHint < 9000) { return; }
+    lastHint = now;
+    toast("Kein Barcode erkannt – näher an ein Etikett, bis es den Rahmen ausfüllt" + (state.zoomable ? " (oder 2×)" : "") + ".", 3500);
+  }, 1000);
   function stop() {
     state.running = false;
     if (state.reader) { try { state.reader.reset(); } catch (e) { /* schon gestoppt */ } state.reader = null; }
@@ -429,6 +487,18 @@
       track.applyConstraints({ advanced: [{ torch: on }] }).then(function () {
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       }).catch(function () { btn.hidden = true; });
+    };
+    // Zoom (wenn die Kamera ihn anbietet): näher heran, ohne das iPhone näher zu halten
+    var zoomBtn = $("zoom");
+    state.zoomable = !!(caps.zoom && caps.zoom.max >= 1.5);
+    zoomBtn.hidden = !state.zoomable;
+    zoomBtn.setAttribute("aria-pressed", "false");
+    zoomBtn.onclick = function () {
+      var on = zoomBtn.getAttribute("aria-pressed") !== "true";
+      var level = on ? Math.min(2, caps.zoom.max) : Math.max(1, caps.zoom.min || 1);
+      track.applyConstraints({ advanced: [{ zoom: level }] }).then(function () {
+        zoomBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      }).catch(function () { zoomBtn.hidden = true; state.zoomable = false; });
     };
   }
 
