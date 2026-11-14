@@ -66,6 +66,16 @@ Kein Code; wartet auf dich.
 - [ ] **Ein echtes nwipe-PDF bereitstellen** (gern mit geschwärzten Angaben). Gebraucht für den Rest von M2.3 (Methode und Ergebnis),
       damit die automatische Zuordnung an echten Dateien statt an Vermutungen gebaut wird.
 
+## iPhone-App (Wunsch vom 14.11.2026) ✅ umgesetzt, noch nicht released
+
+- [x] Installierbare Vollbild-App mit Live-Scan und den Modi **Info** (Overlay: welche Platte) und
+      **Suchen** (vorher gewählte Platte deutlich markiert) – siehe [UNRAID.md](UNRAID.md) › iPhone.
+- [ ] **Auf dem echten iPhone prüfen** (nur im Desktop-Browser und mit Tests geprüft): Erkennung
+      der Etiketten-Barcodes (Code 128/39, DataMatrix) bei Regal-Licht, Lage der Markierung im Bild,
+      Ton im Suchmodus, Anmeldung in der Home-Bildschirm-App, Verhalten nach Hintergrund/Sperre.
+- 💡 Ideen für später: mehrere Platten gleichzeitig suchen (Einkaufsliste), Taschenlampe
+      automatisch im Dunkeln, „zuletzt gescannt“-Verlauf, Lagerort per Sprache.
+
 ## M1 – Im echten Betrieb prüfen 🔜 (0.9.x)
 
 Ziel: Was es schon gibt (seit 0.7: Datei anfordern, Relay; seit 0.8/0.9: Löschprotokolle, Import),

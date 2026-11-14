@@ -1,0 +1,105 @@
+/* DiskAtlas Scanner: Vollbild-App für das iPhone (Kamera, Info- und Suchmodus). */
+:root {
+  --ok: #22c55e; --bad: #ef4444; --warn: #f59e0b; --text: #f5f7fa; --muted: #a8b0bd;
+  --glass: rgba(18, 22, 30, .78); --line: rgba(255, 255, 255, .14); --accent: #6d93ff;
+  --safe-t: env(safe-area-inset-top); --safe-b: env(safe-area-inset-bottom);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: #000; color: var(--text); overflow: hidden;
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+a { color: inherit; }
+[hidden] { display: none !important; }
+
+/* Kamera */
+.cam { position: fixed; inset: 0; }
+.cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.guide { position: absolute; left: 8%; right: 8%; top: 34%; height: 18%; border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, .55); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .28);
+  pointer-events: none; transition: border-color .2s; }
+.app[data-mode="find"].hunting .guide { border-color: rgba(109, 147, 255, .9); }
+
+/* „Gefunden“: groß und unübersehbar */
+.found { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); display: flex;
+  align-items: center; gap: .5rem; padding: .7rem 1.4rem; border-radius: 999px; background: var(--ok);
+  color: #04210f; font-size: 1.6rem; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+  box-shadow: 0 10px 40px rgba(34, 197, 94, .55); animation: pop .35s ease-out; }
+.found span { font-size: 1.9rem; }
+.app.flash .cam::after { content: ""; position: absolute; inset: 0; border: 10px solid var(--ok);
+  animation: flash 1.2s ease-out forwards; pointer-events: none; }
+@keyframes pop { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+
+/* Kopfleiste */
+.bar { position: fixed; left: 0; right: 0; top: 0; padding: calc(var(--safe-t) + .6rem) .8rem .6rem;
+  display: flex; align-items: center; gap: .6rem;
+  background: linear-gradient(rgba(0, 0, 0, .55), transparent); }
+.round { width: 2.6rem; height: 2.6rem; flex: none; display: grid; place-items: center; border-radius: 50%;
+  background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 1.5rem; text-decoration: none; }
+.round.small { width: 2.1rem; height: 2.1rem; font-size: 1rem; }
+.round[aria-pressed="true"] { background: #fff; color: #000; }
+.modes { flex: 1; display: flex; padding: .25rem; border-radius: 999px; background: var(--glass);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.modes button { flex: 1; padding: .55rem 0; border-radius: 999px; background: none; font-weight: 600; color: var(--muted); }
+.modes button[aria-selected="true"] { background: #fff; color: #000; }
+
+/* gesuchte Platte */
+.target { position: fixed; left: .8rem; right: .8rem; top: calc(var(--safe-t) + 4.1rem); display: flex;
+  align-items: center; gap: .6rem; padding: .6rem .8rem; border-radius: 14px; background: var(--glass);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(109, 147, 255, .6); }
+.target > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.target small { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+.target strong, .target span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.target span { color: var(--muted); font-size: .85rem; }
+.target button { padding: .5rem .8rem; border-radius: 10px; background: rgba(255, 255, 255, .14); }
+
+.toast { position: fixed; left: 50%; top: 58%; transform: translateX(-50%); max-width: 88%;
+  padding: .55rem .9rem; border-radius: 12px; background: var(--glass); font-size: .9rem; text-align: center; }
+.start { position: fixed; inset: 0; display: grid; place-content: center; gap: 1rem; padding: 2rem; text-align: center; }
+.start p { color: var(--muted); }
+
+/* Karte unten („Bottom Sheet“) */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 72%; overflow-y: auto;
+  padding: 1rem 1rem calc(var(--safe-b) + 1.2rem); border-radius: 20px 20px 0 0; z-index: 5; background: var(--glass);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-top: 1px solid var(--line);
+  animation: up .25s ease-out; }
+@keyframes up { from { transform: translateY(30%); opacity: .4; } }
+.sheet-head { display: flex; align-items: flex-start; gap: .6rem; }
+.sheet-head h2 { flex: 1; margin: 0; font-size: 1.25rem; line-height: 1.25; }
+.sheet .meta { color: var(--muted); font-size: .9rem; margin: .2rem 0 .6rem; }
+.where { font-size: 1.15rem; font-weight: 700; margin: .4rem 0; padding: .6rem .8rem; border-radius: 12px;
+  background: rgba(255, 255, 255, .08); border-left: 4px solid var(--muted); }
+.where.bay, .where.connected { border-left-color: var(--ok); }
+.where.offline { border-left-color: var(--warn); }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0; }
+.chip { padding: .15rem .6rem; border-radius: 999px; background: rgba(255, 255, 255, .12); font-size: .85rem; }
+.health { font-weight: 700; }
+.health.ok { color: var(--ok); } .health.warning { color: var(--warn); } .health.failed { color: var(--bad); }
+.actions { display: flex; gap: .5rem; margin-top: .8rem; }
+.actions > * { flex: 1; text-align: center; padding: .75rem; border-radius: 12px; background: rgba(255, 255, 255, .14);
+  text-decoration: none; font-weight: 600; }
+.primary { padding: .75rem 1.2rem; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; }
+.row { display: flex; gap: .5rem; margin-top: .6rem; }
+.row input, .picker input, .manual input { flex: 1; min-width: 0; padding: .75rem .8rem; border-radius: 12px;
+  border: 1px solid var(--line); background: rgba(0, 0, 0, .35); color: var(--text); font-size: 1rem; }
+.row button { padding: 0 1rem; border-radius: 12px; background: rgba(255, 255, 255, .14); }
+.note { color: var(--muted); font-size: .85rem; min-height: 1.2em; margin-top: .3rem; }
+
+.sheet:not([hidden]) ~ .foot { display: none; }  /* Karte offen: Eingabeknopf ausblenden */
+
+/* Auswahl der gesuchten Platte */
+.picker { min-height: 60%; }
+.picker input { width: 100%; margin: .8rem 0 .4rem; }
+.picker ul { list-style: none; margin: 0; padding: 0; }
+.picker li button { width: 100%; text-align: left; padding: .7rem .2rem; background: none;
+  border-bottom: 1px solid var(--line); display: flex; flex-direction: column; }
+.picker li small { color: var(--muted); }
+
+/* unten */
+.foot { position: fixed; left: 0; right: 0; bottom: 0; padding: .6rem 1rem calc(var(--safe-b) + .6rem);
+  display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+.link { background: var(--glass); padding: .6rem 1.1rem; border-radius: 999px; font-size: .95rem; }
+.manual { display: flex; gap: .5rem; width: 100%; }
+@media (prefers-reduced-motion: reduce) { .found, .sheet { animation: none; } .app.flash .cam::after { animation: none; opacity: 0; } }

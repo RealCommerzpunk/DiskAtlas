@@ -74,10 +74,64 @@ def test_lookup_api_location_patch_and_pwa_routes(client, db):
         "location"] == "Schrank"
 
     page = client.get("/scan")
-    assert page.status_code == 200 and "scan-video" in page.text and "zxing.min.js" in page.text
+    assert page.status_code == 200 and 'id="video"' in page.text and "zxing.min.js" in page.text
     manifest = client.get("/manifest.webmanifest")
     assert manifest.headers["content-type"].startswith("application/manifest+json")
     assert manifest.json()["start_url"] == "/scan" and manifest.json()["display"] == "standalone"
     assert 'rel="manifest"' in client.get("/").text
-    for asset in ("vendor/zxing.min.js", "scan.js", "icon-192.png", "icon-512.png"):
+    for asset in ("vendor/zxing.min.js", "scan.js", "scan.css", "icon-192.png", "icon-512.png"):
         assert client.get(f"/static/{asset}").status_code == 200, asset
+
+
+def test_iphone_app_is_a_fullscreen_page_with_both_modes(client, db):
+    _add(db, "sn:A", "WD-WCC4E2VRR0CJ")
+    page = client.get("/scan").text
+    assert 'class="topbar"' not in page, "Vollbild-App ohne Navigation der Weboberfläche"
+    assert 'data-mode="info"' in page and 'data-mode="find"' in page
+    assert 'apple-mobile-web-app-capable' in page and 'viewport-fit=cover' in page
+    find = client.get("/scan?mode=find&disk=7").text
+    assert '<body class="app" data-mode="find" data-target="7">' in find
+    odd = client.get("/scan?mode=quatsch&disk=abc").text
+    assert '<body class="app" data-mode="info" data-target="">' in odd
+
+
+def test_scan_index_has_what_the_app_needs(client, db):
+    _add(db, "sn:A", "WD-WCC4E2VRR0CJ", wwn="wwn-0x5000c500abcdef12")
+    data = client.get("/api/v1/scan/index").json()
+    (disk,) = data["disks"]
+    assert {"id", "name", "serial", "wwn", "labels", "location", "state", "health"} <= set(disk)
+    assert disk["serial"] == "WD-WCC4E2VRR0CJ" and disk["wwn"] == "wwn-0x5000c500abcdef12"
+    assert data["generated_at"]
+
+
+def test_manifest_and_service_worker(client):
+    manifest = client.get("/manifest.webmanifest").json()
+    assert manifest["orientation"] == "portrait"
+    assert [s["url"] for s in manifest["shortcuts"]] == ["/scan?mode=info", "/scan?mode=find"]
+    sw = client.get("/sw.js")
+    assert sw.status_code == 200 and sw.headers["content-type"].startswith("application/javascript")
+    assert sw.headers["service-worker-allowed"] == "/" and "/static/scan.js" in sw.text
+    assert "caches" in sw.text
+
+
+def test_disk_page_links_to_the_search_mode(client, db):
+    _add(db, "sn:A", "WD-WCC4E2VRR0CJ")
+    with db.session() as s:
+        disk_id = s.scalar(select(Disk.id))
+    assert f"/scan?mode=find&amp;disk={disk_id}" in client.get(f"/disks/{disk_id}").text
+
+
+def test_scan_index_and_service_worker_with_login(db, tmp_path):
+    from test_authz import World
+
+    world = World(db, tmp_path)
+    world.ingest_disk("anna", "sn:A1", "pc")
+    anna = world.web["anna"].get("/api/v1/scan/index").json()["disks"]
+    assert [d["serial"] for d in anna] == ["A1"]
+    assert world.web["bob"].get("/api/v1/scan/index").json()["disks"] == []
+    from fastapi.testclient import TestClient
+
+    anonymous = TestClient(world.app, follow_redirects=False)
+    assert anonymous.get("/api/v1/scan/index").status_code == 401
+    assert anonymous.get("/sw.js").status_code == 200, "Service Worker ohne Anmeldung ladbar"
+    assert anonymous.get("/scan").status_code == 303, "die App selbst nur mit Anmeldung"
