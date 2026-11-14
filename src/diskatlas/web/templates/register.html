@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#000000">
   <title>Zugang beantragen · DiskAtlas</title>
-  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v={{ version }}">
-  <link rel="icon" href="{{ url_for('static', path='favicon-32.png') }}" sizes="32x32" type="image/png">
-  <link rel="icon" href="{{ url_for('static', path='favicon.svg') }}" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="{{ url_for('static', path='apple-touch-icon.png') }}">
+  <link rel="stylesheet" href="/static/style.css?v={{ version }}">
+  <link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 </head>
 <body class="login-page">
   <main class="login-card">
-    <img src="{{ url_for('static', path='favicon.svg') }}" alt="" width="64" height="64" class="login-logo">
+    <img src="/static/favicon.svg" alt="" width="64" height="64" class="login-logo">
     <h1>Zugang beantragen</h1>
     {% if done %}
       <p class="notice ok" role="status">Antrag gesendet. Sobald der Admin ihn freigeschaltet hat, kannst du dich anmelden.</p>

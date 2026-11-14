@@ -70,6 +70,8 @@ Kein Code; wartet auf dich.
 
 - [x] Installierbare Vollbild-App mit Live-Scan und den Modi **Info** (Overlay: welche Platte) und
       **Suchen** (vorher gewählte Platte deutlich markiert) – siehe [UNRAID.md](UNRAID.md) › iPhone.
+- [x] **Über Tailscale ungestaltet und ohne Funktion** (gemeldet 14.11.) ✅ behoben: absolute
+      Adressen für CSS/JS wurden hinter dem HTTPS-Proxy zu `http://…` und blockiert.
 - [ ] **Auf dem echten iPhone prüfen** (nur im Desktop-Browser und mit Tests geprüft): Erkennung
       der Etiketten-Barcodes (Code 128/39, DataMatrix) bei Regal-Licht, Lage der Markierung im Bild,
       Ton im Suchmodus, Anmeldung in der Home-Bildschirm-App, Verhalten nach Hintergrund/Sperre.

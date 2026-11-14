@@ -11,6 +11,13 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Behoben
+- **Seiten ohne Gestaltung und ohne Funktion hinter HTTPS-Proxys** (z. B. `tailscale serve`, SWAG):
+  CSS, JavaScript und Symbole wurden mit absoluter Adresse eingebunden. Da der Container hinter dem
+  Proxy nur HTTP sieht, entstanden `http://…`-Adressen, die der Browser auf einer HTTPS-Seite
+  blockiert – die iPhone-App war ungestaltet, ihre Knöpfe ohne Funktion. Jetzt relative Pfade
+  (`/static/…`) auf allen Seiten.
+
 ## [0.10.0] - 2026-11-14
 
 ### Hinzugefügt

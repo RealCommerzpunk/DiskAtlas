@@ -135,3 +135,15 @@ def test_scan_index_and_service_worker_with_login(db, tmp_path):
     assert anonymous.get("/api/v1/scan/index").status_code == 401
     assert anonymous.get("/sw.js").status_code == 200, "Service Worker ohne Anmeldung ladbar"
     assert anonymous.get("/scan").status_code == 303, "die App selbst nur mit Anmeldung"
+
+
+def test_assets_use_relative_paths_behind_https_proxies(client, db):
+    """Hinter einem HTTPS-Proxy (tailscale serve, SWAG) sieht der Container nur HTTP. Absolute
+    Adressen würden dann als http://… ausgeliefert und vom Browser blockiert (Seite ohne CSS/JS)."""
+    _add(db, "sn:A", "WD-WCC4E2VRR0CJ")
+    for path in ("/scan", "/", "/login"):
+        html = client.get(path, headers={"host": "unraid.tail1234.ts.net"}).text
+        assert "http://" not in html.split("<body")[0], path
+        assert "/static/" in html, path
+    page = client.get("/scan").text
+    assert 'href="/static/scan.css?v=' in page and 'src="/static/scan.js?v=' in page
