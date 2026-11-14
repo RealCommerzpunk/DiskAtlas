@@ -11,6 +11,14 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+### Geändert
+- **iPhone-App erkennt Barcodes zuverlässiger** (gemeldet 14.11.: nichts erkannt). Statt des
+  JavaScript-ZXing liest jetzt **zxing-cpp als WebAssembly** (lokal ausgeliefert, Paket
+  `barcode-detector`) – auch mehrere Codes je Bild, mit Position. Die Kamera liefert bis zu 4K,
+  ausgewertet wird der Bereich um den Rahmen in voller Auflösung (jedes vierte Bild das ganze
+  Bild). Wird einige Sekunden nichts erkannt, erscheint der Hinweis „näher ran“; bietet die Kamera
+  Zoom, gibt es einen 2×-Knopf. Die alte ZXing-Bibliothek bleibt als Rückfall.
+
 ## [0.10.1] - 2026-11-14
 
 ### Behoben

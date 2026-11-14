@@ -640,7 +640,8 @@ SERVICE_WORKER = """// DiskAtlas: hält die App-Dateien vor, damit die iPhone-Ap
 // Seiten und API-Antworten kommen immer frisch vom Server (Anmeldung, aktuelle Daten).
 const CACHE = "diskatlas-app-%(version)s";
 const SHELL = ["/static/scan.css?v=%(version)s", "/static/scan.js?v=%(version)s",
-  "/static/vendor/zxing.min.js?v=%(version)s", "/static/icon-192.png",
+  "/static/vendor/zxing.min.js?v=%(version)s", "/static/vendor/barcode-detector.js?v=%(version)s",
+  "/static/vendor/zxing_reader.wasm?v=%(version)s", "/static/icon-192.png",
   "/static/apple-touch-icon.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

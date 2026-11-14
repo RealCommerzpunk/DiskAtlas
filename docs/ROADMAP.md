@@ -72,6 +72,10 @@ Kein Code; wartet auf dich.
       **Suchen** (vorher gewählte Platte deutlich markiert) – siehe [UNRAID.md](UNRAID.md) › iPhone.
 - [x] **Über Tailscale ungestaltet und ohne Funktion** (gemeldet 14.11.) ✅ behoben: absolute
       Adressen für CSS/JS wurden hinter dem HTTPS-Proxy zu `http://…` und blockiert.
+- [x] **Nichts erkannt** (gemeldet 14.11. mit Foto eines Plattenstapels): Bei dem Abstand war ein
+      Strich nur 1–2 Bildpunkte breit und verschwommen – auch zxing-cpp liest das nicht. Jetzt
+      zxing-cpp (WebAssembly), 4K, Auswertung des Rahmens in voller Auflösung, Hinweis „näher ran“,
+      2×-Zoom wo möglich.
 - [ ] **Auf dem echten iPhone prüfen** (nur im Desktop-Browser und mit Tests geprüft): Erkennung
       der Etiketten-Barcodes (Code 128/39, DataMatrix) bei Regal-Licht, Lage der Markierung im Bild,
       Ton im Suchmodus, Anmeldung in der Home-Bildschirm-App, Verhalten nach Hintergrund/Sperre.

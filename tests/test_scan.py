@@ -90,9 +90,9 @@ def test_iphone_app_is_a_fullscreen_page_with_both_modes(client, db):
     assert 'data-mode="info"' in page and 'data-mode="find"' in page
     assert 'apple-mobile-web-app-capable' in page and 'viewport-fit=cover' in page
     find = client.get("/scan?mode=find&disk=7").text
-    assert '<body class="app" data-mode="find" data-target="7">' in find
+    assert '<body class="app" data-mode="find" data-target="7"' in find
     odd = client.get("/scan?mode=quatsch&disk=abc").text
-    assert '<body class="app" data-mode="info" data-target="">' in odd
+    assert '<body class="app" data-mode="info" data-target=""' in odd
 
 
 def test_scan_index_has_what_the_app_needs(client, db):
@@ -147,3 +147,13 @@ def test_assets_use_relative_paths_behind_https_proxies(client, db):
         assert "/static/" in html, path
     page = client.get("/scan").text
     assert 'href="/static/scan.css?v=' in page and 'src="/static/scan.js?v=' in page
+
+
+def test_wasm_barcode_reader_is_served_locally(client):
+    page = client.get("/scan").text
+    assert page.index("barcode-detector.js") < page.index("scan.js"), "Leser vor der App laden"
+    wasm = client.get("/static/vendor/zxing_reader.wasm")
+    assert wasm.status_code == 200 and wasm.headers["content-type"] == "application/wasm"
+    assert wasm.content[:4] == b"\0asm"
+    assert client.get("/static/vendor/barcode-detector.js").status_code == 200
+    assert "zxing_reader.wasm" in client.get("/sw.js").text, "für schnellen Start vorgehalten"

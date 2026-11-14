@@ -14,7 +14,7 @@
   <title>DiskAtlas Scanner</title>
   <link rel="stylesheet" href="/static/scan.css?v={{ version }}">
 </head>
-<body class="app" data-mode="{{ mode }}" data-target="{{ target or '' }}">
+<body class="app" data-mode="{{ mode }}" data-target="{{ target or '' }}" data-version="{{ version }}">
   <div class="cam" id="cam">
     <video id="video" playsinline muted autoplay></video>
     <canvas id="marks" aria-hidden="true"></canvas>
@@ -28,6 +28,7 @@
       <button type="button" role="tab" data-mode="info">Info</button>
       <button type="button" role="tab" data-mode="find">Suchen</button>
     </div>
+    <button type="button" class="round zoom" id="zoom" aria-label="Zoom 2-fach" aria-pressed="false" hidden>2×</button>
     <button type="button" class="round" id="torch" aria-label="Licht" aria-pressed="false" hidden>☀</button>
   </header>
 
@@ -59,6 +60,7 @@
     <button type="button" id="manual-toggle" class="link">Seriennummer eintippen</button>
   </footer>
 
+  <script src="/static/vendor/barcode-detector.js?v={{ version }}"></script>
   <script src="/static/vendor/zxing.min.js?v={{ version }}"></script>
   <script src="/static/scan.js?v={{ version }}"></script>
 </body>
