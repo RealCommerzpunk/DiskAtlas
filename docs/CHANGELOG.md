@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-11-14
+
 ### Geändert
 - **iPhone-App erkennt Barcodes zuverlässiger** (gemeldet 14.11.: nichts erkannt). Statt des
   JavaScript-ZXing liest jetzt **zxing-cpp als WebAssembly** (lokal ausgeliefert, Paket
