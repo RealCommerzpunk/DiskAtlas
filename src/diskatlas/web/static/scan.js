@@ -1,6 +1,6 @@
 // DiskAtlas Scanner (iPhone-App): Barcodes auf Festplatten live erkennen.
-// Modus „Info“ zeigt zur erkannten Platte eine Karte, Modus „Suchen“ markiert eine vorher gewählte
-// Platte unübersehbar. Die Erkennung läuft komplett im Browser (BarcodeDetector, sonst ZXing);
+// Modus „Info“ beschriftet erkannte Platten im Kamerabild (Tipp darauf: Details), Modus „Suchen“
+// markiert eine vorher gewählte Platte grün und alle anderen Barcodes dezent rot. Die Erkennung läuft komplett im Browser (BarcodeDetector, sonst ZXing);
 // zum Server gehen nur Abfragen des Plattenverzeichnisses.
 (function () {
   "use strict";
@@ -9,11 +9,11 @@
   var body = document.body, video = $("video"), canvas = $("marks"), ctx = canvas.getContext("2d");
   var sheet = $("sheet"), picker = $("picker"), toastEl = $("toast"), foundEl = $("found");
   var INDEX_KEY = "diskatlas.scan.index", TARGET_KEY = "diskatlas.scan.target";
-  var REFRESH_MS = 5 * 60 * 1000, MARK_MS = 1600, SAME_CODE_MS = 2500;
+  var REFRESH_MS = 5 * 60 * 1000;
 
   var state = {
     mode: body.dataset.mode === "find" ? "find" : "info",
-    disks: [], target: null, shown: null, marks: [], seen: {},
+    disks: [], target: null, shown: null,
     stream: null, reader: null, detector: null, running: false, audio: null,
   };
 
@@ -92,7 +92,30 @@
     return null;
   }
 
-  // ------------------------------------------------------------------ Markierungen im Bild
+  // ------------------------------------------------------------------ Live-Markierungen im Bild
+  // Jeder erkannte Barcode bekommt einen schlanken Rahmen, solange er im Bild ist (kein
+  // Nachziehen). Bekannte Platten tragen eine kleine Beschriftung; die Beschriftungen werden so
+  // gesetzt, dass sie sich nicht überlappen. Ein Tipp darauf öffnet die Details.
+  var FIELD_KEY = "diskatlas.scan.fields";
+  var FIELDS = [
+    ["name", "Name"], ["serial", "Seriennummer"], ["where", "Ort (Schacht / angeschlossen)"],
+    ["location", "Lagerort"], ["labels", "Labels"], ["health", "Gesundheit"],
+    ["size", "Größe"], ["model", "Modell"],
+  ];
+  state.live = {};       // Code -> { box, kind, disk, seen }
+  state.hits = [];       // tippbare Flächen der aktuellen Anzeige
+  state.asked = {};      // unbekannte Codes, die schon beim Server nachgefragt wurden
+  state.cycle = 250;     // gleitender Mittelwert der Erkennungsdauer (ms)
+
+  function loadFields() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(FIELD_KEY) || "null");
+      if (Array.isArray(saved) && saved.length) { return saved; }
+    } catch (e) { /* Standard */ }
+    return ["name"];
+  }
+  state.fields = loadFields();
+
   function resize() {
     var r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(r.width * dpr);
@@ -109,37 +132,123 @@
     var ys = points.map(function (p) { return p.y * s + oy; });
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
     var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-    var padX = 14, padY = Math.max(18, (x1 - x0) * 0.12);  // 1D-Codes liefern nur eine Linie
+    var padX = 4, padY = Math.max(4, Math.min(14, (x1 - x0) * 0.06));  // 1D-Codes: oft nur eine Linie
     return { x: x0 - padX, y: y0 - padY, w: x1 - x0 + 2 * padX, h: y1 - y0 + 2 * padY };
   }
-  function addMark(points, kind, label) {
+  function setLive(code, points, kind, disk) {
     var box = toScreen(points);
     if (!box) { return; }
-    state.marks.push({ box: box, kind: kind, label: label, at: Date.now() });
+    state.live[code] = { box: box, kind: kind, disk: disk, seen: Date.now() };
   }
+  // So lange bleibt ein Rahmen ohne neue Erkennung stehen: zwei Erkennungsrunden (Ausschnitt und
+  // ganzes Bild wechseln sich ab), damit nichts flackert – danach verschwindet er sofort.
+  function liveTtl() { return Math.max(350, Math.min(1500, state.cycle * 2.6)); }
+
+  function shortWhere(d) {
+    if (d.state === "bay") { return "Schacht " + d.bay; }
+    if (d.state === "connected") { return "angeschlossen"; }
+    return "offline";
+  }
+  function fieldText(d, key) {
+    switch (key) {
+      case "name": return d.name;
+      case "serial": return d.serial ? "S/N " + d.serial : "";
+      case "where": return shortWhere(d);
+      case "location": return d.location || "";
+      case "labels": return (d.labels || []).join(", ");
+      case "health": return HEALTH[d.health] || "";
+      case "size": return size(d.size_bytes);
+      case "model": return d.model || "";
+      default: return "";
+    }
+  }
+  function labelLines(m) {
+    var d = m.disk;
+    if (!d) { return []; }
+    var parts = state.fields.map(function (k) { return fieldText(d, k); }).filter(Boolean);
+    if (!parts.length) { parts = [d.name]; }
+    var lines = [parts[0]];
+    if (parts.length > 1) { lines.push(parts.slice(1).join(" · ")); }
+    return lines;
+  }
+  function fit(text, maxW) {
+    if (ctx.measureText(text).width <= maxW) { return text; }
+    while (text.length > 1 && ctx.measureText(text + "…").width > maxW) { text = text.slice(0, -1); }
+    return text + "…";
+  }
+  function overlap(a, b) {
+    var w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    var h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    return w > 0 && h > 0 ? w * h : 0;
+  }
+  var STYLE = {
+    known: { stroke: "rgba(255,255,255,.95)", width: 2, pill: "rgba(15,18,24,.82)", text: "#fff" },
+    unknown: { stroke: "rgba(255,255,255,.35)", width: 1 },
+    target: { stroke: "rgba(34,197,94,1)", width: 3, pill: "rgba(34,197,94,.95)", text: "#04210f" },
+    other: { stroke: "rgba(239,68,68,.65)", width: 1.5 },
+  };
   function draw() {
-    var r = canvas.getBoundingClientRect(), now = Date.now();
+    var r = canvas.getBoundingClientRect(), now = Date.now(), ttl = liveTtl();
     ctx.clearRect(0, 0, r.width, r.height);
-    state.marks = state.marks.filter(function (m) { return now - m.at < MARK_MS; });
-    state.marks.forEach(function (m) {
-      var a = 1 - (now - m.at) / MARK_MS, b = m.box;
-      var color = m.kind === "hit" ? "34,197,94" : m.kind === "other" ? "239,68,68" : "255,255,255";
-      ctx.lineWidth = m.kind === "hit" ? 6 : 4;
-      ctx.strokeStyle = "rgba(" + color + "," + Math.min(1, a + 0.2) + ")";
-      ctx.fillStyle = "rgba(" + color + "," + (m.kind === "hit" ? 0.22 : 0.12) * a + ")";
-      roundRect(b.x, b.y, b.w, b.h, 12);
-      ctx.fill();
-      ctx.stroke();
-      if (m.label) {
-        ctx.font = "600 15px -apple-system, system-ui, sans-serif";
-        var tw = ctx.measureText(m.label).width + 16, ty = Math.max(4, b.y - 30);
-        ctx.fillStyle = "rgba(" + color + "," + Math.min(1, a + 0.3) + ")";
-        roundRect(b.x, ty, tw, 26, 8);
-        ctx.fill();
-        ctx.fillStyle = m.kind === "hit" ? "#04210f" : "#fff";
-        ctx.fillText(m.label, b.x + 8, ty + 18);
-      }
+    var marks = [];
+    Object.keys(state.live).forEach(function (code) {
+      var m = state.live[code];
+      if (now - m.seen > ttl) { delete state.live[code]; } else { marks.push(m); }
     });
+    // Ziel zuerst, dann von oben nach unten: so bekommen wichtige Beschriftungen die besten Plätze
+    marks.sort(function (a, b) { return (b.kind === "target") - (a.kind === "target") || a.box.y - b.box.y; });
+    var top = (document.querySelector(".bar").getBoundingClientRect().bottom || 60) + 4;
+    var bottom = r.height - 64;
+    var placed = [], hits = [];
+    marks.forEach(function (m) {
+      var st = STYLE[m.kind], b = m.box;
+      roundRect(b.x, b.y, b.w, b.h, 5);
+      ctx.lineWidth = st.width + 2;  // dunkler Saum: auch auf weißen Etiketten sichtbar
+      ctx.strokeStyle = "rgba(0,0,0,.45)";
+      ctx.stroke();
+      ctx.lineWidth = st.width;
+      ctx.strokeStyle = st.stroke;
+      ctx.stroke();
+      if (m.disk) { hits.push({ rect: b, disk: m.disk }); }
+    });
+    marks.forEach(function (m) {
+      var st = STYLE[m.kind], lines = st.pill ? labelLines(m) : [];
+      if (!lines.length) { return; }
+      var maxW = Math.min(r.width * 0.62, 260);
+      ctx.font = "600 13px -apple-system, system-ui, sans-serif";
+      var first = fit(lines[0], maxW), w = ctx.measureText(first).width;
+      var second = null;
+      if (lines[1]) {
+        ctx.font = "400 11px -apple-system, system-ui, sans-serif";
+        second = fit(lines[1], maxW);
+        w = Math.max(w, ctx.measureText(second).width);
+      }
+      var pw = w + 14, ph = second ? 34 : 20, b = m.box;
+      var cx = Math.max(6, Math.min(r.width - pw - 6, b.x + b.w / 2 - pw / 2));
+      var tries = [b.y - ph - 3, b.y + b.h + 3, b.y - 2 * ph - 6, b.y + b.h + ph + 6, b.y + b.h / 2 - ph / 2];
+      var best = null, bestCost = Infinity;
+      tries.forEach(function (y, i) {
+        var rect = { x: cx, y: Math.max(top, Math.min(bottom - ph, y)), w: pw, h: ph };
+        var cost = i * 2;  // nahe am Rahmen bevorzugen
+        placed.forEach(function (p) { cost += overlap(rect, p) * 10; });
+        if (cost < bestCost) { best = rect; bestCost = cost; }
+      });
+      placed.push({ x: best.x - 2, y: best.y - 2, w: best.w + 4, h: best.h + 4 });
+      ctx.fillStyle = st.pill;
+      roundRect(best.x, best.y, best.w, best.h, 7);
+      ctx.fill();
+      ctx.fillStyle = st.text;
+      ctx.font = "600 13px -apple-system, system-ui, sans-serif";
+      ctx.fillText(first, best.x + 7, best.y + 14.5);
+      if (second) {
+        ctx.font = "400 11px -apple-system, system-ui, sans-serif";
+        ctx.globalAlpha = 0.85;
+        ctx.fillText(second, best.x + 7, best.y + 28);
+        ctx.globalAlpha = 1;
+      }
+      hits.unshift({ rect: best, disk: m.disk });  // Beschriftung hat beim Tippen Vorrang
+    });
+    state.hits = hits;
     requestAnimationFrame(draw);
   }
   function roundRect(x, y, w, h, r) {
@@ -151,6 +260,18 @@
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
+  // Tipp auf eine Beschriftung oder einen Rahmen: Details der Platte
+  $("cam").addEventListener("click", function (e) {
+    var x = e.clientX, y = e.clientY, slack = 10;
+    for (var i = 0; i < state.hits.length; i++) {
+      var h = state.hits[i].rect;
+      if (x >= h.x - slack && x <= h.x + h.w + slack && y >= h.y - slack && y <= h.y + h.h + slack) {
+        unlockAudio();
+        showDisk(byId(state.hits[i].disk.id) || state.hits[i].disk, 1);
+        return;
+      }
+    }
+  });
 
   // Ton und Vibration als Bestätigung (iOS kennt kein Vibrieren im Browser: dann nur Ton)
   function unlockAudio() {
@@ -170,57 +291,78 @@
   }
 
   // ------------------------------------------------------------------ Erkannter Barcode
+  // `points` fehlt bei getippter Seriennummer bzw. Direktlink: dann gleich die Details zeigen.
   function onCode(text, points) {
     var code = norm(text), now = Date.now();
     if (!code) { return; }
     state.lastCodeAt = now;
-    var repeat = state.seen[code] && now - state.seen[code] < SAME_CODE_MS;
-    state.seen[code] = now;
-    var hits = match(text);
-    if (state.mode === "find") { return onFind(hits, points, repeat); }
-    if (hits.length) {
-      addMark(points, "hit", hits[0].name);
-      if (!repeat && (!state.shown || state.shown.id !== hits[0].id)) { beep(880, 90); showDisk(hits[0], hits.length); }
+    var hits = match(text), disk = hits[0] || null;
+    if (!points) { return manualCode(text, disk, hits.length); }
+    if (state.mode === "find") {
+      var isTarget = !!state.target && hits.some(function (d) { return d.id === state.target.id; });
+      var wasLive = state.live[code] && state.live[code].kind === "target";
+      setLive(code, points, isTarget ? "target" : "other", isTarget ? state.target : null);
+      if (isTarget && !wasLive) { celebrate(); }
       return;
     }
-    if (repeat) { return; }
-    // Verzeichnis evtl. veraltet: einmal beim Server nachfragen
+    setLive(code, points, disk ? "known" : "unknown", disk);
+    if (!disk && (!state.asked[code] || now - state.asked[code] > 60000)) {
+      state.asked[code] = now;  // Verzeichnis evtl. veraltet: einmal beim Server nachfragen
+      fetch("/api/v1/lookup?code=" + encodeURIComponent(text), { cache: "no-store", credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (items) { if (items.length) { refreshIndex(); } })
+        .catch(function () { /* offline */ });
+    }
+  }
+  function manualCode(text, disk, count) {
+    if (disk) { showDisk(disk, count); return; }
     fetch("/api/v1/lookup?code=" + encodeURIComponent(text), { cache: "no-store", credentials: "same-origin" })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (items) {
-        if (items.length) {
-          refreshIndex();
-          addMark(points, "hit", items[0].name);
-          showDisk(items[0], items.length);
-        } else {
-          addMark(points, "none", null);
-          toast("Kein Treffer für „" + text.slice(0, 24) + "“ – evtl. ein anderer Barcode auf dem Etikett.");
-        }
+        if (items.length) { refreshIndex(); showDisk(items[0], items.length); }
+        else { toast("Keine Platte mit „" + text.slice(0, 24) + "“ gefunden."); }
       })
-      .catch(function () { addMark(points, "none", null); });
+      .catch(function () { toast("Suche fehlgeschlagen – Server erreichbar?"); });
   }
-  function onFind(hits, points, repeat) {
-    if (!state.target) { return; }
-    var isTarget = hits.some(function (d) { return d.id === state.target.id; });
-    if (isTarget) {
-      addMark(points, "hit", "GEFUNDEN");
-      if (!repeat) {
-        beep(1046, 260);
-        foundEl.hidden = false;
-        body.classList.remove("flash");
-        void body.offsetWidth;  // Animation neu starten
-        body.classList.add("flash");
-        clearTimeout(onFind.timer);
-        onFind.timer = setTimeout(function () { foundEl.hidden = true; body.classList.remove("flash"); }, 2500);
-      }
-    } else if (hits.length) {
-      addMark(points, "other", "Nicht gesucht: " + hits[0].name);
-    }
+  function celebrate() {
+    beep(1046, 260);
+    foundEl.hidden = false;
+    body.classList.remove("flash");
+    void body.offsetWidth;  // Animation neu starten
+    body.classList.add("flash");
+    clearTimeout(celebrate.timer);
+    celebrate.timer = setTimeout(function () { foundEl.hidden = true; body.classList.remove("flash"); }, 1800);
+  }
+
+  // ------------------------------------------------------------------ Einstellungen der Anzeige
+  function openSettings() {
+    hideSheet();
+    picker.hidden = true;
+    var box = $("settings-list");
+    box.textContent = "";
+    FIELDS.forEach(function (f) {
+      var label = make("label", "check"), input = make("input");
+      input.type = "checkbox";
+      input.value = f[0];
+      input.checked = state.fields.indexOf(f[0]) >= 0;
+      input.addEventListener("change", saveSettings);
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(f[1]));
+      box.appendChild(label);
+    });
+    $("settings").hidden = false;
+  }
+  function saveSettings() {
+    var chosen = Array.prototype.map.call(
+      document.querySelectorAll("#settings-list input:checked"), function (i) { return i.value; });
+    state.fields = chosen.length ? chosen : ["name"];
+    try { localStorage.setItem(FIELD_KEY, JSON.stringify(state.fields)); } catch (e) { /* egal */ }
   }
 
   // ------------------------------------------------------------------ Info-Karte
   function showDisk(d, count) {
     state.shown = d;
+    $("settings").hidden = true;
     sheet.textContent = "";
     var head = make("div", "sheet-head");
     head.appendChild(make("h2", "", d.name));
@@ -305,6 +447,7 @@
   }
   function openPicker() {
     hideSheet();
+    $("settings").hidden = true;
     picker.hidden = false;
     renderPicker();
   }
@@ -447,7 +590,9 @@
     if (!state.running || !state.detector) { return; }
     if (video.readyState < 2) { setTimeout(detectLoop, 200); return; }
     frameNo += 1;
-    var area = frameNo % 4 === 0 ? null : guideInVideo();  // jedes 4. Bild: ganzes Bild
+    var started = Date.now();
+    // abwechselnd: Bereich um den Rahmen in voller Auflösung und das ganze Bild (alle Platten)
+    var area = frameNo % 2 === 0 ? null : guideInVideo();
     var source = video, dx = 0, dy = 0;
     if (area) {
       crop.width = area.w;
@@ -460,13 +605,16 @@
         var pts = (c.cornerPoints || []).map(function (p) { return { x: p.x + dx, y: p.y + dy }; });
         onCode(c.rawValue, pts);
       });
-    }).catch(function () { /* ein Bild verpasst */ }).then(function () { setTimeout(detectLoop, 60); });
+    }).catch(function () { /* ein Bild verpasst */ }).then(function () {
+      state.cycle = state.cycle * 0.8 + (Date.now() - started + 40) * 0.2;
+      setTimeout(detectLoop, 40);
+    });
   }
   // Hinweis, wenn eine Weile nichts erkannt wird
   var lastHint = 0;
   setInterval(function () {
     var now = Date.now(), last = Math.max(state.lastCodeAt || 0, state.startedAt || now);
-    if (!state.running || !sheet.hidden || !picker.hidden || now - last < 6000 || now - lastHint < 9000) { return; }
+    if (!state.running || !sheet.hidden || !picker.hidden || !$("settings").hidden || now - last < 6000 || now - lastHint < 9000) { return; }
     lastHint = now;
     toast("Kein Barcode erkannt – näher an ein Etikett, bis es den Rahmen ausfüllt" + (state.zoomable ? " (oder 2×)" : "") + ".", 3500);
   }, 1000);
@@ -509,6 +657,8 @@
   $("target-change").addEventListener("click", function () { unlockAudio(); openPicker(); });
   $("picker-close").addEventListener("click", function () { picker.hidden = true; if (!state.target) { setMode("info"); } });
   $("picker-q").addEventListener("input", renderPicker);
+  $("settings-btn").addEventListener("click", function () { if ($("settings").hidden) { openSettings(); } else { $("settings").hidden = true; } });
+  $("settings-close").addEventListener("click", function () { $("settings").hidden = true; });
   $("start-btn").addEventListener("click", function () { unlockAudio(); start(); });
   $("manual-toggle").addEventListener("click", function () {
     var form = $("manual");
@@ -520,7 +670,6 @@
     unlockAudio();
     var value = $("manual-input").value.trim();
     if (norm(value).length < 4) { toast("Bitte mindestens 4 Zeichen eingeben."); return; }
-    state.seen = {};
     onCode(value, null);
     $("manual-input").blur();
   });

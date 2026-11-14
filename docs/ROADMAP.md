@@ -80,6 +80,10 @@ Kein Code; wartet auf dich.
       Strich nur 1–2 Bildpunkte breit und verschwommen – auch zxing-cpp liest das nicht. Jetzt
       zxing-cpp (WebAssembly), 4K, Auswertung des Rahmens in voller Auflösung, Hinweis „näher ran“,
       2×-Zoom wo möglich.
+- [x] **Ruhigeres Kamerabild** (Wünsche 14.11.): Details nur auf Tipp, schlanke Live-Rahmen ohne
+      Nachziehen, Beschriftung ohne Überlappung (auch bei zehn Platten), einstellbare Angaben
+      (Standard: Name), Suchmodus nur grün/dezent rot. Mit simulierter Kamera (zehn Etiketten)
+      geprüft.
 - [ ] **Auf dem echten iPhone prüfen** (nur im Desktop-Browser und mit Tests geprüft): Erkennung
       der Etiketten-Barcodes (Code 128/39, DataMatrix) bei Regal-Licht, Lage der Markierung im Bild,
       Ton im Suchmodus, Anmeldung in der Home-Bildschirm-App, Verhalten nach Hintergrund/Sperre.
