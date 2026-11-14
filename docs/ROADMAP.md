@@ -9,7 +9,7 @@
 
 | | |
 |---|---|
-| **Aktuelle Version** | 0.10.3 (14.11.2026) |
+| **Aktuelle Version** | 0.10.4 (14.11.2026) |
 | **Nächster Meilenstein** | MV – Vertrauen und Datenschutz (parallel: M1 im echten Betrieb) |
 | **Zuletzt aktualisiert** | 14.11.2026 |
 
@@ -337,7 +337,8 @@ Rechnern der Benutzer liegen:
 
 | Version | Datum | Wichtigste Inhalte |
 |---|---|---|
-| **0.10.3** | 14.11.2026 | Dashboard merkt sich die Filter |
+| **0.10.4** | 14.11.2026 | iPhone-App: Details auf Tipp, schlanke Live-Rahmen, Beschriftung ohne Überlappung, einstellbare Angaben |
+| 0.10.3 | 14.11.2026 | Dashboard merkt sich die Filter |
 | 0.10.2 | 14.11.2026 | iPhone-App: Barcode-Erkennung mit zxing-cpp (WebAssembly), 4K, Rahmen in voller Auflösung, Hinweis „näher ran“, 2×-Zoom |
 | 0.10.1 | 14.11.2026 | Fix: CSS/JS hinter HTTPS-Proxy (Tailscale) blockiert – App ungestaltet und ohne Funktion |
 | 0.10.0 | 14.11.2026 | **iPhone-App neu**: Vollbild-Scanner mit Modi *Info* und *Suchen*, Plattenverzeichnis auf dem Gerät, Service Worker; Befehl `/SessionEnde` |

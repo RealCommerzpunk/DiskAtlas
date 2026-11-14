@@ -11,6 +11,8 @@ Ein Release entsteht mit `python scripts/bump_version.py patch|minor|major`.
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-11-14
+
 ### Geändert
 - **iPhone-App: ruhigeres Kamerabild** (Wünsche vom 14.11.).
   - **Details nur auf Tipp:** Eine erkannte Platte öffnet keine Karte mehr; erst ein Tipp auf
